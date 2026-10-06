@@ -190,6 +190,26 @@ export function wasteLabel(id: WasteStreamId): string {
   return WASTE_LABELS[currentLocale]?.[id] || WASTE_LABELS.en[id] || id;
 }
 
+// Reminder rules store their trigger as an English phrase ("evening before",
+// "3 days before", ...). Older rules and the onboarding preview use
+// capitalised variants, so matching is case-insensitive.
+const WHEN_KEYS: Record<string, StringKey> = {
+  "same day": "when.same_day",
+  "morning of": "when.morning_of",
+  "evening before": "when.evening_before",
+  "1 day before": "when.day_before",
+  "2 days before": "when.two_days_before",
+  "3 days before": "when.three_days_before",
+  "1 week before": "when.week_before",
+  "specific date": "when.specific_date",
+};
+
+/** Localized label for a stored ReminderRule.when value. Unknown values pass through. */
+export function whenLabel(when: string): string {
+  const key = WHEN_KEYS[when.trim().toLowerCase()];
+  return key ? t(key) : when;
+}
+
 /**
  * Resolve a translation key with optional {placeholder} interpolation.
  * Falls back to English, then to the key itself, so a missing translation

@@ -5,6 +5,7 @@ import { S, ST, STREAM_ORDER, type WasteStreamId } from "../theme/colors";
 import { StreamGlyph } from "./icons/StreamGlyph";
 import { XIcon } from "./icons/Icons";
 import type { CollectionEvent } from "../types/calendar";
+import { parseISODate } from "../lib/dates";
 
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -28,7 +29,7 @@ export function EventEditSheet({ visible, onClose, event, year, zones, onSave, o
   useEffect(() => {
     if (!visible) return;
     if (event) {
-      const d = new Date(event.date);
+      const d = parseISODate(event.date);
       setType(event.type);
       setMonth(d.getMonth() + 1);
       setDay(String(d.getDate()));

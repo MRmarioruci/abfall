@@ -175,12 +175,12 @@ export async function shareCalendar(args: {
 }): Promise<CommunityCalendarDetail> {
   const { calendar, country, sharedByName, sourceLanguage } = args;
 
-  // Trim + omit empty strings — the server zod schema treats "" as a
-  // present-but-invalid value (fails min(1)). `optional()` only excuses
-  // missing fields, not empty ones.
-  const cleanStr = (s: string | undefined | null): string | undefined => {
+  // Trim, cut to the server's max length, and omit empty strings — the
+  // server zod schema treats "" as a present-but-invalid value (fails
+  // min(1)), and one over-long field would reject the whole publish.
+  const cleanStr = (s: string | undefined | null, max: number): string | undefined => {
     if (typeof s !== "string") return undefined;
-    const t = s.trim();
+    const t = s.trim().slice(0, max).trim();
     return t.length > 0 ? t : undefined;
   };
 
@@ -189,17 +189,18 @@ export async function shareCalendar(args: {
   const cityFromLocation = calendar.location
     ? calendar.location.split(",")[0]
     : undefined;
-  const city = cleanStr(calendar.municipality) ?? cleanStr(cityFromLocation);
+  const city = cleanStr(calendar.municipality, 120) ?? cleanStr(cityFromLocation, 120);
   if (!city) {
     throw new Error("Set your city on the home screen before publishing.");
   }
 
-  const zones =
+  const rawZones =
     calendar.zones && calendar.zones.length > 0
-      ? calendar.zones.map((z) => cleanStr(z) ?? "all")
+      ? calendar.zones.map((z) => cleanStr(z, 40) ?? "all")
       : calendar.zone
-      ? [cleanStr(calendar.zone) ?? "all"]
+      ? [cleanStr(calendar.zone, 40) ?? "all"]
       : ["all"];
+  const zones = [...new Set(rawZones)].slice(0, 20);
 
   // Coerce each event into the shape the server expects: valid date,
   // trimmed type, non-empty zone, and time/note dropped if invalid.
@@ -207,37 +208,38 @@ export async function shareCalendar(args: {
   const events = calendar.events
     .map((e) => {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(e.date)) return null;
-      const type = cleanStr(e.type);
+      const type = cleanStr(e.type, 40);
       if (!type) return null;
       const time =
         e.time && /^\d{2}:\d{2}$/.test(e.time) ? e.time : undefined;
       const cleaned: Record<string, unknown> = {
         date: e.date,
         type,
-        zone: cleanStr(e.zone) ?? "all",
+        zone: cleanStr(e.zone, 40) ?? "all",
       };
       if (time) cleaned.time = time;
-      const note = cleanStr(e.note);
+      const note = cleanStr(e.note, 200);
       if (note) cleaned.note = note;
       return cleaned;
     })
-    .filter((e): e is Record<string, unknown> => e !== null);
+    .filter((e): e is Record<string, unknown> => e !== null)
+    .slice(0, 1000);
 
   if (events.length === 0) {
     throw new Error("No valid events to publish.");
   }
 
   const payload = {
-    title: cleanStr(calendar.title) ?? "Untitled calendar",
+    title: cleanStr(calendar.title, 120) ?? "Untitled calendar",
     country,
-    region: cleanStr(calendar.canton),
+    region: cleanStr(calendar.canton, 80),
     city,
     zones,
     year: calendar.year,
     half: calendar.half,
     events,
-    sourceLanguage: cleanStr(sourceLanguage),
-    sharedByName: cleanStr(sharedByName),
+    sourceLanguage: cleanStr(sourceLanguage, 5),
+    sharedByName: cleanStr(sharedByName, 40),
   };
 
   // Diagnostic so we can see what the local calendar actually contains

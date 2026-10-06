@@ -46,29 +46,16 @@ const EMPTY_REMINDERS: RemindersMap = {
 };
 
 function getWhenIcon(when: string, color: string, size = 19) {
-  if (when.includes("Morning")) return <SunIcon color={color} size={size} />;
-  if (when.includes("Evening")) return <MoonIcon color={color} size={size} />;
+  const w = when.toLowerCase();
+  if (w.includes("morning")) return <SunIcon color={color} size={size} />;
+  if (w.includes("evening")) return <MoonIcon color={color} size={size} />;
   return <BellIcon color={color} size={size} />;
-}
-
-// Map the literal English values stored in ReminderRule.when to a localized
-// display string. The stored value stays English so the icon/logic checks in
-// getWhenIcon and elsewhere keep working — only the rendered text changes.
-function whenLabel(when: string, t: (k: StringKey, p?: Record<string, string | number>) => string): string {
-  switch (when) {
-    case "Morning of": return t("when.morning_of");
-    case "Evening before": return t("when.evening_before");
-    case "1 day before": return t("when.day_before");
-    case "2 days before": return t("when.two_days_before");
-    case "specific date": return t("when.specific_date");
-    default: return when;
-  }
 }
 
 export function RemindersScreen({ preselectedStream }: { preselectedStream?: WasteStreamId }) {
   const insets = useSafeAreaInsets();
   const { active, patchCalendar } = useCalendars();
-  const { t, wasteLabel, monthShort } = useT();
+  const { t, wasteLabel, whenLabel, monthShort } = useT();
   const toast = useToast();
 
   // Notification destination — read on mount, picker overwrites on change.
@@ -91,16 +78,25 @@ export function RemindersScreen({ preselectedStream }: { preselectedStream?: Was
   const previousDestinationRef = useRef<NotificationDestination | null>(null);
 
   const finalizeDestination = async (next: NotificationDestination) => {
+    const previous = await getNotificationDestination();
     await setNotificationDestination(next);
-    if (active) {
-      await applyDelivery({
-        calendar: active,
-        googleClientId: getRefreshClientId(),
-      }).catch((err) => {
-        console.warn("[reminders] applyDelivery failed", err);
-      });
-    }
     const destLabel = t(`destination.${next}.label` as StringKey);
+    if (active) {
+      try {
+        await applyDelivery({
+          calendar: active,
+          googleClientId: getRefreshClientId(),
+        });
+      } catch (err) {
+        // The previous destination's reminders are still in place, so
+        // just point the setting back at it.
+        console.warn("[reminders] applyDelivery failed", err);
+        await setNotificationDestination(previous);
+        setDestination(previous);
+        toast.show(t("reminders.toast.delivery_failed", { dest: destLabel }));
+        return;
+      }
+    }
     toast.show(t("reminders.toast.delivered_to", { dest: destLabel }));
   };
 
@@ -696,7 +692,7 @@ export function RemindersScreen({ preselectedStream }: { preselectedStream?: Was
                   >
                     {r.when === "specific date" && r.customDate
                       ? r.customDate
-                      : whenLabel(r.when, t)}
+                      : whenLabel(r.when)}
                   </Text>
                   <Text
                     style={{

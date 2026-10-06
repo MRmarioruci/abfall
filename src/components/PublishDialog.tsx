@@ -23,7 +23,8 @@ import { SlideUpSheet } from "./ui/SlideUpSheet";
 import { S } from "../theme/colors";
 import { CheckIcon, GlobeIcon, PinIcon, XIcon } from "./icons/Icons";
 import type { SavedCalendar } from "../types/calendar";
-import { ApiError, shareCalendar, type CommunityCalendarDetail } from "../services/api";
+import { ApiError, shareCalendar } from "../services/api";
+import { useCalendars } from "../context/CalendarContext";
 import { useToast } from "./ui/Toast";
 
 const SHARE_NAME_KEY = "abfall_share_name";
@@ -33,9 +34,6 @@ interface Props {
   visible: boolean;
   onClose: () => void;
   calendar: SavedCalendar | null;
-  /** Fired after a successful publish with the server-assigned record so
-   *  the caller can persist the community id, mark `shared: true`, etc. */
-  onPublished?: (detail: CommunityCalendarDetail) => void;
 }
 
 // Derive the city/region the server will tag this calendar under.
@@ -60,9 +58,10 @@ function derivePublishRegion(c: SavedCalendar): string {
   return "";
 }
 
-export function PublishDialog({ visible, onClose, calendar, onPublished }: Props) {
+export function PublishDialog({ visible, onClose, calendar }: Props) {
   const insets = useSafeAreaInsets();
   const toast = useToast();
+  const { patchCalendar } = useCalendars();
   const [publishTitle, setPublishTitle] = useState("");
   const [shareName, setShareName] = useState("");
   const [publishing, setPublishing] = useState(false);
@@ -100,14 +99,21 @@ export function PublishDialog({ visible, onClose, calendar, onPublished }: Props
       if (shareName.trim()) {
         AsyncStorage.setItem(SHARE_NAME_KEY, shareName.trim()).catch(() => {});
       }
+      // Only mark the local copy as published once the server has it.
+      await patchCalendar(calendar.id, {
+        shared: true,
+        shareCode: detail.id,
+        shareUrl: `https://abfall.app/c/${detail.id}`,
+      });
       toast.show("Published to community");
-      onPublished?.(detail);
       onClose();
     } catch (err) {
       console.warn("[publish] failed", err);
       if (err instanceof ApiError) {
         toast.show(
-          err.status === 401 ? "API key mismatch" : `Publish failed · ${err.message}`,
+          err.status === 429
+            ? "You've published a lot today · try again tomorrow"
+            : "Publish failed · try again later",
         );
       } else {
         const msg = err instanceof Error ? err.message : String(err);

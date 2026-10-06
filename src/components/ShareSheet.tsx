@@ -85,18 +85,9 @@ export function ShareSheet({ visible, onClose, calendar }: Props) {
       setConfirmUnpublish(true);
       return;
     }
-    // Hand off to the reusable PublishDialog. After it succeeds we
-    // patch the calendar via handlePublished below.
+    // Hand off to the reusable PublishDialog, which marks the calendar
+    // as published once the server accepts it.
     setShowPublishDialog(true);
-  };
-
-  const handlePublished = async (detail: { id: string }) => {
-    if (!calendar) return;
-    await patchCalendar(calendar.id, {
-      shared: true,
-      shareCode: detail.id,
-      shareUrl: `https://abfall.app/c/${detail.id}`,
-    });
   };
 
   return (
@@ -281,7 +272,6 @@ export function ShareSheet({ visible, onClose, calendar }: Props) {
       visible={showPublishDialog}
       onClose={() => setShowPublishDialog(false)}
       calendar={calendar}
-      onPublished={handlePublished}
     />
 
     <ConfirmSheet

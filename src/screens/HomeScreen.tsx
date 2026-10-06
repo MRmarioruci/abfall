@@ -18,6 +18,7 @@ import { requestNotificationPermissions, getNextTriggerForRule } from "../servic
 import { isReminderNudgeDismissed, dismissReminderNudge } from "../services/nudges";
 import { getFunFactPool } from "../services/funFacts";
 import type { ReminderRule, CollectionEvent } from "../types/calendar";
+import { parseISODate } from "../lib/dates";
 
 interface Props {
   onCalendarPress?: () => void;
@@ -120,7 +121,7 @@ export function HomeScreen({ onCalendarPress, onGoToReminders }: Props) {
     // Pass ALL events with month/year so CalendarMonth filters internally
     // when the user navigates between months.
     return active.events.map((e) => {
-      const d = new Date(e.date);
+      const d = parseISODate(e.date);
       return {
         day: d.getDate(),
         month: d.getMonth() + 1,
@@ -138,7 +139,7 @@ export function HomeScreen({ onCalendarPress, onGoToReminders }: Props) {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
     return active.events
-      .filter((e) => new Date(e.date) >= now)
+      .filter((e) => parseISODate(e.date) >= now)
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [active]);
 
@@ -554,7 +555,7 @@ export function HomeScreen({ onCalendarPress, onGoToReminders }: Props) {
           {upcoming.map((evt, i) => {
             const s = ST[evt.type];
             if (!s) return null;
-            const d = new Date(evt.date);
+            const d = parseISODate(evt.date);
             const now = new Date();
             now.setHours(0, 0, 0, 0);
             const diffDays = Math.round((d.getTime() - now.getTime()) / 86400000);

@@ -2,8 +2,10 @@ import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ST } from "../theme/colors";
+import { t, wasteLabel, weekdayLong, monthShort } from "../i18n";
 import type { WasteStreamId } from "../theme/colors";
 import type { ReminderRule, SavedCalendar } from "../types/calendar";
+import { parseISODate } from "../lib/dates";
 
 const NOTIFICATION_IDS_KEY = "abfall_notification_ids";
 const SCHEDULE_WINDOW_MONTHS = 3;
@@ -25,7 +27,7 @@ export async function requestNotificationPermissions(): Promise<boolean> {
 async function ensureAndroidChannel() {
   if (Platform.OS !== "android") return;
   await Notifications.setNotificationChannelAsync("default", {
-    name: "Pickup reminders",
+    name: t("notif.channel"),
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 250, 250, 250],
     lightColor: "#211F1C",
@@ -33,6 +35,7 @@ async function ensureAndroidChannel() {
 }
 
 export function parseReminderTime(when: string, eventDate: Date, timeStr: string): Date | null {
+  when = when.toLowerCase();
   const [hours, minutes] = timeStr.split(":").map(Number);
   if (isNaN(hours) || isNaN(minutes)) return null;
 
@@ -65,24 +68,26 @@ export function parseReminderTime(when: string, eventDate: Date, timeStr: string
 }
 
 function buildNotificationContent(
-  rule: ReminderRule,
   streamLabel: string,
   eventDate: Date,
+  triggerDate: Date,
 ): { title: string; body: string } {
-  const isBefore =
-    rule.when.includes("before") || rule.when.includes("evening");
-  const dateLabel = isBefore
-    ? "tomorrow"
-    : eventDate.toLocaleDateString(undefined, {
-        weekday: "long",
-        month: "short",
-        day: "numeric",
-      });
-
-  return {
-    title: `${streamLabel} pickup`,
-    body: `${streamLabel} pickup is ${dateLabel}.`,
+  // Describe the pickup relative to when the notification fires, so a
+  // "3 days before" reminder doesn't claim the pickup is tomorrow.
+  const fireDay = new Date(triggerDate);
+  fireDay.setHours(0, 0, 0, 0);
+  const daysAhead = Math.round((eventDate.getTime() - fireDay.getTime()) / 86400000);
+  const params = {
+    stream: streamLabel,
+    date: `${weekdayLong(eventDate.getDay())} ${eventDate.getDate()} ${monthShort(eventDate.getMonth() + 1)}`,
   };
+  const body =
+    daysAhead <= 0
+      ? t("notif.body.today", params)
+      : daysAhead === 1
+      ? t("notif.body.tomorrow", params)
+      : t("notif.body.on_date", params);
+  return { title: t("notif.title", params), body };
 }
 
 export async function scheduleRemindersForCalendar(
@@ -105,6 +110,8 @@ export async function scheduleRemindersForCalendar(
 
   const rulesByStream = calendar.reminders || ({} as Record<WasteStreamId, ReminderRule[]>);
   const now = new Date();
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
   const windowEnd = new Date();
   windowEnd.setMonth(now.getMonth() + SCHEDULE_WINDOW_MONTHS);
 
@@ -129,50 +136,56 @@ export async function scheduleRemindersForCalendar(
     identifiers.push(id);
   };
 
-  // 1. Specific-date (one-off) reminders — not tied to any event.
-  for (const streamId of Object.keys(rulesByStream) as WasteStreamId[]) {
-    const rules = rulesByStream[streamId] || [];
-    const stream = ST[streamId];
-    for (const rule of rules) {
-      if (!rule.on || rule.when !== "specific date" || !rule.customDate) continue;
+  // Save whatever got scheduled even if a later call throws, so the next
+  // run can still cancel it instead of leaving orphaned notifications.
+  try {
+    // 1. Specific-date (one-off) reminders — not tied to any event.
+    for (const streamId of Object.keys(rulesByStream) as WasteStreamId[]) {
+      const rules = rulesByStream[streamId] || [];
+      const label = wasteLabel(streamId);
+      for (const rule of rules) {
+        if (!rule.on || rule.when !== "specific date" || !rule.customDate) continue;
 
-      const triggerDate = parseReminderTime("specific date", new Date(rule.customDate), rule.time);
-      if (!triggerDate || triggerDate <= now) continue;
+        const triggerDate = parseReminderTime("specific date", parseISODate(rule.customDate), rule.time);
+        if (!triggerDate || triggerDate <= now) continue;
 
-      await scheduleOne(
-        `${stream.label} pickup`,
-        `${stream.label} pickup reminder.`,
-        triggerDate,
-        { calendarId: calendar.id, stream: streamId, customDate: rule.customDate },
-      );
+        await scheduleOne(
+          t("notif.title", { stream: label }),
+          t("notif.body.reminder", { stream: label }),
+          triggerDate,
+          { calendarId: calendar.id, stream: streamId, customDate: rule.customDate },
+        );
+      }
     }
-  }
 
-  // 2. Event-based reminders for upcoming pickups.
-  for (const event of calendar.events) {
-    const eventDate = new Date(event.date);
-    // Skip past pickups and pickups too far in the future.
-    if (eventDate < now || eventDate > windowEnd) continue;
+    // 2. Event-based reminders for upcoming pickups.
+    for (const event of calendar.events) {
+      const eventDate = parseISODate(event.date);
+      // Skip past pickups, pickups too far in the future, and anything with
+      // a type this build doesn't know (community calendars aren't
+      // validated against our stream list).
+      if (isNaN(eventDate.getTime()) || eventDate < today || eventDate > windowEnd) continue;
+      if (!ST[event.type]) continue;
 
-    const rules = rulesByStream[event.type] || [];
-    for (const rule of rules) {
-      if (!rule.on || rule.when === "specific date") continue;
+      const rules = rulesByStream[event.type] || [];
+      for (const rule of rules) {
+        if (!rule.on || rule.when === "specific date") continue;
 
-      const triggerDate = parseReminderTime(rule.when, eventDate, rule.time);
-      if (!triggerDate || triggerDate <= now) continue;
+        const triggerDate = parseReminderTime(rule.when, eventDate, rule.time);
+        if (!triggerDate || triggerDate <= now) continue;
 
-      const stream = ST[event.type];
-      const { title, body } = buildNotificationContent(rule, stream.label, eventDate);
+        const { title, body } = buildNotificationContent(wasteLabel(event.type), eventDate, triggerDate);
 
-      await scheduleOne(title, body, triggerDate, {
-        calendarId: calendar.id,
-        eventDate: event.date,
-        stream: event.type,
-      });
+        await scheduleOne(title, body, triggerDate, {
+          calendarId: calendar.id,
+          eventDate: event.date,
+          stream: event.type,
+        });
+      }
     }
+  } finally {
+    await storeNotificationIds(calendar.id, identifiers);
   }
-
-  await storeNotificationIds(calendar.id, identifiers);
   console.log(`[notifications] scheduled ${identifiers.length} reminders for calendar ${calendar.id}`);
   return identifiers.length;
 }
@@ -208,18 +221,20 @@ export function getUpcomingTriggersForRule(
 
   if (rule.when === "specific date") {
     if (!rule.customDate) return [];
-    const trigger = parseReminderTime("specific date", new Date(rule.customDate), rule.time);
+    const trigger = parseReminderTime("specific date", parseISODate(rule.customDate), rule.time);
     return trigger && trigger > now ? [trigger] : [];
   }
 
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
   const windowEnd = new Date();
   windowEnd.setMonth(now.getMonth() + SCHEDULE_WINDOW_MONTHS);
 
   const triggers: Date[] = [];
   for (const event of calendar.events) {
     if (event.type !== stream) continue;
-    const eventDate = new Date(event.date);
-    if (eventDate < now || eventDate > windowEnd) continue;
+    const eventDate = parseISODate(event.date);
+    if (isNaN(eventDate.getTime()) || eventDate < today || eventDate > windowEnd) continue;
     const trigger = parseReminderTime(rule.when, eventDate, rule.time);
     if (!trigger || trigger <= now) continue;
     triggers.push(trigger);
@@ -251,8 +266,8 @@ export async function sendTestNotification(): Promise<boolean> {
   await ensureAndroidChannel();
   await Notifications.scheduleNotificationAsync({
     content: {
-      title: "Test reminder",
-      body: "If you see this, notifications are working.",
+      title: t("notif.test.title"),
+      body: t("notif.test.body"),
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,

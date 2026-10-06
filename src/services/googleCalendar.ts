@@ -24,6 +24,7 @@ import type { SavedCalendar, CollectionEvent } from "../types/calendar";
 import type { WasteStreamId } from "../theme/colors";
 import { ST } from "../theme/colors";
 import { parseReminderTime } from "./notifications";
+import { parseISODate } from "../lib/dates";
 
 const ACCESS_TOKEN_KEY = "abfall_google_access_token";
 const REFRESH_TOKEN_KEY = "abfall_google_refresh_token";
@@ -266,7 +267,7 @@ export async function syncToGoogleCalendar(args: {
   now.setHours(0, 0, 0, 0);
 
   const upcoming = args.calendar.events.filter((e) => {
-    const d = new Date(e.date);
+    const d = parseISODate(e.date);
     return !isNaN(d.getTime()) && d >= now;
   });
 

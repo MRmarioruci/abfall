@@ -81,26 +81,37 @@ export async function setNotificationDestination(d: NotificationDestination): Pr
 
 // ─── the materializer ──────────────────────────────────────────────────
 
+// Runs are serialized: the context effect and the Reminders screen can both
+// trigger a sync at once, and two overlapping cancel-then-schedule passes
+// would each book a full set and lose track of the other's IDs.
+let deliveryQueue: Promise<void> = Promise.resolve();
+
 /**
  * Materialize the active calendar's reminders to whichever destination
- * the user chose. Cleans up the *other* destinations first so switching
- * mode never leaves duplicate alarms behind.
+ * the user chose, then clean up the *other* destinations so switching
+ * mode never leaves duplicate alarms behind. If the chosen destination
+ * fails (e.g. calendar permission denied), the error propagates and the
+ * previous destination's reminders are left in place.
  *
  * Pass `googleClientId` even if the user isn't on Google — it's only
  * used when destination === "google" or when cleaning up a previous
  * Google sync. Use an empty string if you don't have one yet (the
  * cleanup is fail-soft).
  */
-export async function applyDelivery(args: {
+export function applyDelivery(args: {
+  calendar: SavedCalendar;
+  googleClientId: string;
+}): Promise<void> {
+  const run = deliveryQueue.then(() => deliver(args));
+  deliveryQueue = run.catch(() => {});
+  return run;
+}
+
+async function deliver(args: {
   calendar: SavedCalendar;
   googleClientId: string;
 }): Promise<void> {
   const destination = await getNotificationDestination();
-
-  // Always tear down the destinations we're NOT using so a switch
-  // (e.g., abfall → phone) doesn't leave the abfall notifications
-  // scheduled in addition to the new phone calendar alarms.
-  await cleanupNonActive(args.calendar.id, destination, args.googleClientId);
 
   switch (destination) {
     case "abfall":
@@ -118,9 +129,13 @@ export async function applyDelivery(args: {
       }
       break;
     case "none":
-      // explicit no-op; cleanupNonActive already wiped everything
       break;
   }
+
+  // Only once the new destination is in place, tear down the ones we're
+  // NOT using so a switch (e.g., abfall → phone) doesn't leave the abfall
+  // notifications scheduled in addition to the new phone calendar alarms.
+  await cleanupNonActive(args.calendar.id, destination, args.googleClientId);
 }
 
 async function cleanupNonActive(

@@ -20,6 +20,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
 import { S, ST } from "../theme/colors";
+import { parseISODate } from "../lib/dates";
 import {
   BackIcon,
   SearchIcon,
@@ -101,6 +102,12 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
   // Tracks whether the current results came from a free-text q or from
   // the country-wide fallback, so pagination keeps paginating the same set.
   const lastQuery = useRef<{ q?: string }>({});
+  // Each search bumps this; responses from an older search are dropped so
+  // a slow request can't overwrite the results of a newer one.
+  const searchSeq = useRef(0);
+  // The query the last search ran with, so the debounce doesn't repeat
+  // the initial auto-search when it fills the box.
+  const lastSearched = useRef<string | null>(null);
 
   // Preview screen state.
   const [previewId, setPreviewId] = useState<string | null>(null);
@@ -113,6 +120,8 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
   useEffect(() => {
     if (!visible) {
       searchGuard.current = false;
+      searchSeq.current++;
+      lastSearched.current = null;
       setResults(null);
       setSearchError(null);
       setFallbackBanner(null);
@@ -131,6 +140,7 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
   // Doesn't fire on the initial mount (auto-search already handled).
   useEffect(() => {
     if (!visible || !searchGuard.current) return;
+    if (query.trim() === lastSearched.current) return;
     const t = setTimeout(() => {
       runSearch(query);
     }, 350);
@@ -139,7 +149,11 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
   }, [query, visible]);
 
   const runSearch = async (queryValue: string) => {
-    const trimmed = queryValue.trim();
+    // Server caps q at 80 chars and rejects longer queries outright.
+    const trimmed = queryValue.trim().slice(0, 80);
+    const seq = ++searchSeq.current;
+    const stale = () => seq !== searchSeq.current;
+    lastSearched.current = queryValue.trim();
     setSearching(true);
     setSearchError(null);
     setResults(null);
@@ -154,6 +168,7 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
           country: DEFAULT_COUNTRY,
           q: trimmed,
         });
+        if (stale()) return;
         if (matched.results.length > 0) {
           setResults(matched.results);
           setNextCursor(matched.nextCursor);
@@ -168,6 +183,7 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
       const countryWide = await searchCommunityCalendars({
         country: DEFAULT_COUNTRY,
       });
+      if (stale()) return;
       if (countryWide.results.length > 0) {
         setResults(countryWide.results);
         setNextCursor(countryWide.nextCursor);
@@ -185,27 +201,20 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
         "No community calendars shared yet. Be the first — share yours from the home screen.",
       );
     } catch (err) {
-      // Surface the actual reason so the user can act on it. Common cases:
-      //   • 401 → app key / env vars mismatch
-      //   • 5xx → server issue
-      //   • network throw → bad URL, DNS, or device offline
+      if (stale()) return;
+      // Details go to the log; users get something they can act on.
       console.warn("[community] search failed:", err);
       if (err instanceof ApiError) {
         setSearchError(
-          err.status === 401
-            ? "API rejected our app key. The mobile and Vercel keys don't match — rebuild after updating .env."
-            : err.status >= 500
-            ? `Server error (${err.status}). Check Vercel function logs.`
-            : `Request failed: ${err.message}`,
+          err.status === 429
+            ? "Too many searches. Wait a minute and try again."
+            : "Community calendars are unavailable right now. Try again later.",
         );
       } else {
-        const msg = err instanceof Error ? err.message : String(err);
-        setSearchError(
-          `Network error: ${msg}. Verify EXPO_PUBLIC_API_BASE_URL in .env and that you've rebuilt the app.`,
-        );
+        setSearchError("No connection. Check your internet and try again.");
       }
     } finally {
-      setSearching(false);
+      if (!stale()) setSearching(false);
     }
   };
 
@@ -214,6 +223,7 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
   // region, or country-wide) so we keep paginating the same slice.
   const handleLoadMore = async () => {
     if (!nextCursor || loadingMore) return;
+    const seq = searchSeq.current;
     setLoadingMore(true);
     try {
       const page = await searchCommunityCalendars({
@@ -221,6 +231,8 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
         q: lastQuery.current.q,
         after: nextCursor,
       });
+      // A new search started meanwhile; this page belongs to the old list.
+      if (seq !== searchSeq.current) return;
       setResults((prev) => [...(prev ?? []), ...page.results]);
       setNextCursor(page.nextCursor);
     } catch (err) {
@@ -255,7 +267,11 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
         zones: detail.zones,
         year: detail.year,
         half: (detail.half as 1 | 2 | undefined) ?? undefined,
-        events: detail.events,
+        // The server accepts any type string and date; keep only events
+        // this build can render and schedule.
+        events: detail.events.filter(
+          (e) => e.type in ST && !isNaN(parseISODate(e.date).getTime()),
+        ),
         source: "community",
         active: true,
         createdAt: new Date().toISOString(),
@@ -272,13 +288,14 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
   };
 
   // ── Preview screen ───────────────────────────────────────────────────
-  if (previewId) {
-    const summary = results?.find((r) => r.id === previewId);
-    if (!summary) {
-      // Race condition — search refreshed away the row. Bounce back.
-      setPreviewId(null);
-      return null;
-    }
+  // A new search can refresh the previewed row away; bounce back to the list.
+  const previewSummary = previewId ? results?.find((r) => r.id === previewId) : undefined;
+  useEffect(() => {
+    if (previewId && !previewSummary) setPreviewId(null);
+  }, [previewId, previewSummary]);
+
+  if (previewSummary) {
+    const summary = previewSummary;
     return (
       <SlideUpSheet visible={visible} onClose={onClose}>
         <PreviewBody

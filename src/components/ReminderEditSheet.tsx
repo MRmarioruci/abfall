@@ -8,17 +8,19 @@ import { XIcon, CheckIcon, SunIcon, MoonIcon, BellIcon, CalIcon } from "./icons/
 import type { ReminderRule } from "../types/calendar";
 import { sendTestNotification } from "../services/notifications";
 import { useToast } from "./ui/Toast";
+import { useT } from "../context/LocaleContext";
+import { parseISODate } from "../lib/dates";
 
 // Relative-time options for RECURRING reminders only — "specific date" is now
 // surfaced via the Mode toggle at the top of the sheet, not buried in this list.
 const WHEN_OPTIONS = [
-  { value: "same day", label: "Same day" },
-  { value: "morning of", label: "Morning of" },
-  { value: "evening before", label: "Evening before" },
-  { value: "1 day before", label: "1 day before" },
-  { value: "2 days before", label: "2 days before" },
-  { value: "3 days before", label: "3 days before" },
-  { value: "1 week before", label: "1 week before" },
+  { value: "same day" },
+  { value: "morning of" },
+  { value: "evening before" },
+  { value: "1 day before" },
+  { value: "2 days before" },
+  { value: "3 days before" },
+  { value: "1 week before" },
 ];
 
 type Mode = "recurring" | "specific";
@@ -34,8 +36,9 @@ function deriveWhen(rule: ReminderRule | null | undefined, initialWhen: string |
   // "specific date" sentinel. When the rule is a specific-date one, fall back
   // to a sensible recurring default so the chip row has something selected
   // if the user flips the mode to Recurring.
-  if (rule?.when && rule.when !== "specific date") return rule.when;
-  if (initialWhen && initialWhen !== "specific date") return initialWhen;
+  // Lowercased so older capitalised values still match a chip.
+  if (rule?.when && rule.when !== "specific date") return rule.when.toLowerCase();
+  if (initialWhen && initialWhen !== "specific date") return initialWhen.toLowerCase();
   return "1 day before";
 }
 
@@ -81,7 +84,8 @@ interface Props {
 export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate, initialWhen, onSave }: Props) {
   const insets = useSafeAreaInsets();
   const toast = useToast();
-  const today = initialDate ? new Date(initialDate) : new Date();
+  const { whenLabel } = useT();
+  const today = initialDate ? parseISODate(initialDate) : new Date();
   const [selectedStream, setSelectedStream] = useState<WasteStreamId>(stream);
   const [mode, setMode] = useState<Mode>(() => deriveMode(rule, initialWhen));
   const [when, setWhen] = useState(() => deriveWhen(rule, initialWhen));
@@ -325,7 +329,7 @@ export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate,
                   }}
                   numberOfLines={2}
                 >
-                  {opt.label}
+                  {whenLabel(opt.value)}
                 </Text>
               </Pressable>
             );

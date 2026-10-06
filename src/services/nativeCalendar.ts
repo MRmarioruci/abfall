@@ -20,6 +20,7 @@ import type { SavedCalendar, CollectionEvent, ReminderRule } from "../types/cale
 import type { WasteStreamId } from "../theme/colors";
 import { ST } from "../theme/colors";
 import { parseReminderTime } from "./notifications";
+import { parseISODate } from "../lib/dates";
 
 const STORAGE_KEY = "abfall_native_calendar_event_ids";
 const ABFALL_CALENDAR_TITLE = "Abfall";
@@ -90,7 +91,7 @@ export async function syncCalendarToNative(calendar: SavedCalendar): Promise<num
   const now = new Date();
   now.setHours(0, 0, 0, 0);
   const upcoming = calendar.events.filter((e) => {
-    const d = new Date(e.date);
+    const d = parseISODate(e.date);
     return !isNaN(d.getTime()) && d >= now;
   });
 

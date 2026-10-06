@@ -1,5 +1,5 @@
-import { useState, useCallback, useMemo } from "react";
-import { View } from "react-native";
+import { useState, useCallback, useMemo, useEffect } from "react";
+import { BackHandler, View } from "react-native";
 import { BottomTabBar } from "../components/BottomTabBar";
 import { AddCalendarSheet } from "../components/AddCalendarSheet";
 import { CalendarSwitcher } from "../components/CalendarSwitcher";
@@ -53,6 +53,24 @@ export function TabNavigator() {
     setScanImages(null);
     setActiveTab("Home");
   }, []);
+
+  // Android hardware back. Sheets are Modals and handle it themselves;
+  // here back leaves the scan review (same as its on-screen back button),
+  // then returns to Home, and only exits the app from Home.
+  useEffect(() => {
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (scanImages) {
+        setScanImages(null);
+        return true;
+      }
+      if (activeTab !== "Home") {
+        setActiveTab("Home");
+        return true;
+      }
+      return false;
+    });
+    return () => sub.remove();
+  }, [scanImages, activeTab]);
 
   if (scanImages) {
     return (

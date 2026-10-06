@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from "react";
 import type { SavedCalendar } from "../types/calendar";
 import { getCalendars, saveCalendar, setActiveCalendar, deleteCalendar, getActiveCalendar, updateCalendar } from "../services/storage";
 import {
@@ -8,6 +8,7 @@ import {
 import { applyDelivery } from "../services/notificationDelivery";
 import { getRefreshClientId } from "../hooks/useGoogleAuth";
 import { useToast } from "~/components/ui/Toast";
+import { t } from "../i18n";
 
 interface CalendarContextValue {
   calendars: SavedCalendar[];
@@ -43,12 +44,13 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
   }, [reload]);
 
   const switchCalendar = useCallback(async (id: string) => {
+    const wasActive = getActiveCalendar(calendars)?.id;
     await setActiveCalendar(id);
     await reload();
-    if (id !== getActiveCalendar(calendars)?.id) {
-      toast.show("Active calendar switched");
+    if (id !== wasActive) {
+      toast.show(t("calendar.toast.switched"));
     }
-  }, [reload]);
+  }, [reload, calendars, toast]);
 
   const removeCalendar = useCallback(async (id: string) => {
     await deleteCalendar(id);
@@ -71,6 +73,14 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
   // so canceling the OS-level schedules is non-destructive: switching back
   // re-reads the rules and books fresh notifications from scratch.
   const prevActiveIdRef = useRef<string | undefined>(undefined);
+
+  // Every reload produces a new `active` object, so key the sync on what
+  // delivery actually depends on. Otherwise renaming or publishing a
+  // calendar would re-sync everything (including a full Google rewrite).
+  const deliveryKey = useMemo(
+    () => (active ? JSON.stringify([active.id, active.events, active.reminders]) : ""),
+    [active],
+  );
 
   useEffect(() => {
     const prevId = prevActiveIdRef.current;
@@ -99,7 +109,8 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
     } else {
       cancelAllNotifications().catch(() => {});
     }
-  }, [active]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deliveryKey]);
 
   return (
     <CalendarContext.Provider

@@ -8,11 +8,13 @@ import { BackIcon, CalIcon } from "../components/icons/Icons";
 import { DayEditSheet } from "../components/DayEditSheet";
 import { ScanProgress } from "../components/ScanProgress";
 import { PostScanShareDialog } from "../components/PostScanShareDialog";
+import { PublishDialog } from "../components/PublishDialog";
 import { LocationSearchInput } from "../components/LocationSearchInput";
 import { parseCalendarImage, type ImageInput, type ParseProgress } from "../services/parseCalendar";
 import { generateCalendarId } from "../services/storage";
 import { useCalendars } from "../context/CalendarContext";
 import type { ParsedCalendarResult, SavedCalendar, CollectionEvent } from "../types/calendar";
+import { parseISODate } from "../lib/dates";
 
 type Phase = "parsing" | "review" | "error";
 
@@ -24,7 +26,7 @@ interface Props {
 
 export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
   const insets = useSafeAreaInsets();
-  const { addCalendar, patchCalendar, active: previouslyActive } = useCalendars();
+  const { addCalendar, active: previouslyActive } = useCalendars();
   const [phase, setPhase] = useState<Phase>("parsing");
   const [error, setError] = useState<string>("");
   const [saving, setSaving] = useState(false);
@@ -46,6 +48,7 @@ export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
   // (link copy / native share) is reachable from the home screen later.
   const [savedCalendar, setSavedCalendar] = useState<SavedCalendar | null>(null);
   const [postShareVisible, setPostShareVisible] = useState(false);
+  const [publishVisible, setPublishVisible] = useState(false);
 
 
   useEffect(() => {
@@ -76,7 +79,7 @@ export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
           : "";
         const defaultLocation = parsedDefault || previouslyActive?.location || "";
         setLocation(defaultLocation);
-        const y = parsed.events[0] ? new Date(parsed.events[0].date).getFullYear() : new Date().getFullYear();
+        const y = parsed.events[0] ? parseISODate(parsed.events[0].date).getFullYear() : new Date().getFullYear();
         setYear(y);
         setEvents(parsed.events);
         setPhase("review");
@@ -91,9 +94,8 @@ export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
 
   const handleSave = async () => {
     setSaving(true);
-    // Default action when adding a calendar: PUBLISH. The user can opt out
-    // in the post-save dialog ("Keep private") which patches shared back to
-    // false. The backend isn't connected yet, so this is a queued flag.
+    // Saved as private. The post-save dialog offers publishing, which goes
+    // through PublishDialog and only marks it shared once the server has it.
     const calendar: SavedCalendar = {
       id: generateCalendarId(),
       title: title.trim() || `${municipality || "Calendar"} ${year}`,
@@ -105,35 +107,35 @@ export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
       events,
       source: "scan",
       active: true,
-      shared: true,
       createdAt: new Date().toISOString(),
     };
-    await addCalendar(calendar);
-    setSaving(false);
+    try {
+      await addCalendar(calendar);
+    } catch (err) {
+      console.warn("[scan] save failed", err);
+      Alert.alert("Couldn't save calendar", "Please try again.");
+      return;
+    } finally {
+      setSaving(false);
+    }
     setSavedCalendar(calendar);
     setPostShareVisible(true);
   };
 
-  // User accepts the default — calendar stays marked as shared and queued
-  // for community publish when the backend goes live.
   const handlePostShareYes = () => {
     setPostShareVisible(false);
-    onComplete();
+    setPublishVisible(true);
   };
 
-  // User opts out of publishing — patch the calendar to keep it private.
-  const handlePostShareSkip = async () => {
+  const handlePostShareSkip = () => {
     setPostShareVisible(false);
-    if (savedCalendar) {
-      await patchCalendar(savedCalendar.id, { shared: false });
-    }
     onComplete();
   };
 
   const calendarMarks = useMemo(
     () =>
       events.map((e) => {
-        const d = new Date(e.date);
+        const d = parseISODate(e.date);
         return {
           day: d.getDate(),
           month: d.getMonth() + 1,
@@ -315,6 +317,15 @@ export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
         calendar={savedCalendar}
         onShare={handlePostShareYes}
         onSkip={handlePostShareSkip}
+      />
+
+      <PublishDialog
+        visible={publishVisible}
+        calendar={savedCalendar}
+        onClose={() => {
+          setPublishVisible(false);
+          onComplete();
+        }}
       />
     </View>
   );

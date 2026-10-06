@@ -123,17 +123,32 @@ export const en = {
   "reminders.toast.on_no_match": "On · no match",
   "reminders.toast.off": "Off",
   "reminders.toast.delivered_to": "Reminders via {dest}",
+  "reminders.toast.delivery_failed": "Couldn't switch to {dest} · check permissions",
   "reminders.toast.google_failed": "Google sign-in failed · {error}",
   "reminders.toast.google_cancelled": "Google sign-in cancelled",
 
   // ─── recurrence "when" labels ──────────────────────────────────────────
   // These match the literal strings stored in ReminderRule.when so the
   // toggle/state logic still works — only the display layer translates.
+  "when.same_day": "Same day",
   "when.morning_of": "Morning of",
   "when.evening_before": "Evening before",
   "when.day_before": "1 day before",
   "when.two_days_before": "2 days before",
   "when.specific_date": "Specific date",
+  "when.three_days_before": "3 days before",
+  "when.week_before": "1 week before",
+
+  // ─── notifications ─────────────────────────────────────────────────────
+  "notif.channel": "Pickup reminders",
+  "notif.title": "{stream} pickup",
+  "notif.body.today": "{stream} is collected today.",
+  "notif.body.tomorrow": "{stream} is collected tomorrow.",
+  "notif.body.on_date": "{stream} is collected on {date}.",
+  "notif.body.reminder": "Reminder: {stream} pickup.",
+  "notif.test.title": "Test reminder",
+  "notif.test.body": "If you see this, notifications are working.",
+  "calendar.toast.switched": "Active calendar switched",
 } as const;
 
 export type StringKey = keyof typeof en;

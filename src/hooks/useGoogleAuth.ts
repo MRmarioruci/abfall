@@ -67,6 +67,10 @@ export function useGoogleAuth() {
       prompt: "consent",
     },
     responseType: "code",
+    // We exchange the code ourselves below (to keep the refresh_token).
+    // Left on, the provider would redeem it first and ours would fail
+    // with invalid_grant, since a code can only be used once.
+    shouldAutoExchangeCode: false,
   });
 
   useEffect(() => {
