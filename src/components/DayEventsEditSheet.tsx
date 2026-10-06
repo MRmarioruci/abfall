@@ -14,6 +14,7 @@ import { SlideUpSheet } from "./ui/SlideUpSheet";
 import { StreamGlyph } from "./icons/StreamGlyph";
 import { XIcon, CheckIcon } from "./icons/Icons";
 import type { CollectionEvent } from "../types/calendar";
+import { useT } from "../context/LocaleContext";
 
 interface Props {
   visible: boolean;
@@ -27,16 +28,20 @@ interface Props {
   onSave: (date: string, nextEvents: CollectionEvent[]) => void;
 }
 
-function formatDayLabel(iso: string): string {
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return iso;
-  const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-  return `${weekdays[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
-}
 
 export function DayEventsEditSheet({ visible, onClose, date, events, defaultZone, onSave }: Props) {
   const insets = useSafeAreaInsets();
+  const { t, wasteLabel, weekdayLong, monthLong } = useT();
+  const formatDayLabel = (iso: string): string => {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    return t("day_edit.date_long", {
+      weekday: weekdayLong(d.getDay()),
+      day: d.getDate(),
+      month: monthLong(d.getMonth() + 1),
+      year: d.getFullYear(),
+    });
+  };
   // Local working copy so the user can add/remove freely and only commit on Save.
   const [draft, setDraft] = useState<CollectionEvent[]>(events);
 
@@ -74,10 +79,11 @@ export function DayEventsEditSheet({ visible, onClose, date, events, defaultZone
           }}
         >
           <Text style={{ fontSize: 26, fontWeight: "600", color: S.ink, letterSpacing: -0.6 }}>
-            Edit day
+            {t("day_edit.title")}
           </Text>
           <Pressable
             onPress={onClose}
+            accessibilityLabel={t("day_edit.close")}
             style={{
               width: 36,
               height: 36,
@@ -104,7 +110,7 @@ export function DayEventsEditSheet({ visible, onClose, date, events, defaultZone
             marginBottom: 10,
           }}
         >
-          PICKUPS ON THIS DAY
+          {t("day_edit.pickups_on_day")}
         </Text>
         <View style={{ gap: 10, marginBottom: 22 }}>
           {draft.length === 0 && (
@@ -119,7 +125,7 @@ export function DayEventsEditSheet({ visible, onClose, date, events, defaultZone
               }}
             >
               <Text style={{ fontSize: 14, fontWeight: "600", color: S.sec, textAlign: "center" }}>
-                No pickups yet — tap a stream below to add one.
+                {t("day_edit.empty")}
               </Text>
             </View>
           )}
@@ -158,16 +164,17 @@ export function DayEventsEditSheet({ visible, onClose, date, events, defaultZone
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 15, fontWeight: "800", color: S.ink, letterSpacing: -0.3 }}>
-                    {cc.label}
+                    {wasteLabel(evt.type)}
                   </Text>
                   {evt.zone !== "all" && (
                     <Text style={{ fontSize: 12, color: S.sec, fontWeight: "600", marginTop: 1 }}>
-                      Zone {evt.zone}
+                      {t("day_edit.zone", { zone: evt.zone })}
                     </Text>
                   )}
                 </View>
                 <Pressable
                   onPress={() => removeAt(i)}
+                  accessibilityLabel={t("day_edit.remove_pickup", { stream: wasteLabel(evt.type) })}
                   style={{
                     width: 32,
                     height: 32,
@@ -194,7 +201,7 @@ export function DayEventsEditSheet({ visible, onClose, date, events, defaultZone
             marginBottom: 10,
           }}
         >
-          ADD A PICKUP
+          {t("day_edit.add_pickup")}
         </Text>
         <ScrollView
           horizontal
@@ -246,7 +253,7 @@ export function DayEventsEditSheet({ visible, onClose, date, events, defaultZone
                   }}
                   numberOfLines={2}
                 >
-                  {cc.label}
+                  {wasteLabel(id)}
                 </Text>
               </Pressable>
             );
@@ -273,7 +280,7 @@ export function DayEventsEditSheet({ visible, onClose, date, events, defaultZone
           }}
         >
           <CheckIcon color="#fff" size={18} />
-          <Text style={{ fontSize: 16, fontWeight: "800", color: "#fff" }}>Save changes</Text>
+          <Text style={{ fontSize: 16, fontWeight: "800", color: "#fff" }}>{t("day_edit.save_changes")}</Text>
         </Pressable>
       </View>
     </SlideUpSheet>

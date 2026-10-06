@@ -11,7 +11,7 @@ import { ToastProvider } from "./src/components/ui/Toast";
 import { OnboardingScreen } from "./src/screens/OnboardingScreen";
 import { hasOnboarded, markOnboarded } from "./src/services/onboarding";
 import { LocaleProvider } from "./src/context/LocaleContext";
-import { loadStoredLocale, type Locale } from "./src/i18n";
+import { deviceLocale, loadStoredLocale, type Locale } from "./src/i18n";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -32,7 +32,7 @@ export default function App() {
 
   useEffect(() => {
     hasOnboarded().then((done) => setShowOnboarding(!done));
-    loadStoredLocale().then((l) => setInitialLocale(l ?? "en"));
+    loadStoredLocale().then((l) => setInitialLocale(l ?? deviceLocale()));
   }, []);
 
   const handleOnboardingDone = () => {

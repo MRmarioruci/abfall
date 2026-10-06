@@ -5,6 +5,7 @@ import { SlideUpSheet } from "./ui/SlideUpSheet";
 import { S } from "../theme/colors";
 import { PinIcon, XIcon } from "./icons/Icons";
 import { searchPlaces, type PlaceSuggestion } from "../services/geocoding";
+import { useT } from "../context/LocaleContext";
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
 // Sizes of the fixed parts: header block, input, auto-locate, save, padding.
@@ -48,6 +49,7 @@ interface Props {
 }
 
 export function LocationEditSheet({ visible, onClose, current, onSave }: Props) {
+  const { t } = useT();
   const [value, setValue] = useState(current || "");
   const [autoLocating, setAutoLocating] = useState(false);
   // Cancellation flag — expo-location has no AbortSignal, so we just ignore
@@ -152,12 +154,12 @@ export function LocationEditSheet({ visible, onClose, current, onSave }: Props) 
       }
       if (status !== "granted") {
         Alert.alert(
-          "Location permission needed",
-          "Enable location access in Settings to auto-detect your area.",
+          t("location.alert.permission_title"),
+          t("location.alert.permission_body"),
           [
-            { text: "Cancel", style: "cancel" },
+            { text: t("common.cancel"), style: "cancel" },
             {
-              text: "Open Settings",
+              text: t("location.alert.open_settings"),
               onPress: () => {
                 if (Platform.OS === "ios") Linking.openURL("app-settings:");
                 else Linking.openSettings();
@@ -179,16 +181,16 @@ export function LocationEditSheet({ visible, onClose, current, onSave }: Props) 
       if (cancelledRef.current) return;
       if (places.length === 0) {
         Alert.alert(
-          "Couldn't read your location",
-          "No address came back for your GPS position. Try typing it manually.",
+          t("location.alert.read_failed_title"),
+          t("location.alert.no_address_body"),
         );
         return;
       }
       const formatted = formatPlace(places[0]);
       if (!formatted) {
         Alert.alert(
-          "Couldn't read your location",
-          "Your GPS position didn't resolve to a city. Try typing it manually.",
+          t("location.alert.read_failed_title"),
+          t("location.alert.no_city_body"),
         );
         return;
       }
@@ -197,8 +199,8 @@ export function LocationEditSheet({ visible, onClose, current, onSave }: Props) 
       if (cancelledRef.current) return;
       console.warn("[LocationEditSheet] auto-locate failed:", e?.message || e);
       Alert.alert(
-        "Couldn't detect location",
-        "Make sure location services are on, then try again — or type your location manually.",
+        t("location.alert.detect_failed_title"),
+        t("location.alert.detect_failed_body"),
       );
     } finally {
       if (!cancelledRef.current) setAutoLocating(false);
@@ -232,13 +234,13 @@ export function LocationEditSheet({ visible, onClose, current, onSave }: Props) 
     <SlideUpSheet visible={visible} onClose={onClose} height={sheetHeight}>
       <View style={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: 16 }}>
         <Text style={{ fontSize: 11, fontWeight: "800", color: S.ter, letterSpacing: 1.2 }}>
-          LOCATION
+          {t("location.eyebrow")}
         </Text>
         <Text style={{ fontSize: 22, fontWeight: "800", color: S.ink, letterSpacing: -0.5, marginTop: 4 }}>
-          Where is this calendar?
+          {t("location.title")}
         </Text>
         <Text style={{ fontSize: 13, color: S.sec, fontWeight: "600", marginTop: 6 }}>
-          A short, recognisable place name — neighbours search by this.
+          {t("location.body")}
         </Text>
 
         <View
@@ -259,7 +261,7 @@ export function LocationEditSheet({ visible, onClose, current, onSave }: Props) 
           <TextInput
             value={value}
             onChangeText={setValue}
-            placeholder="Start typing — Schlieren, Zürich…"
+            placeholder={t("location.placeholder")}
             placeholderTextColor={S.ter}
             autoFocus
             autoCorrect={false}
@@ -282,6 +284,7 @@ export function LocationEditSheet({ visible, onClose, current, onSave }: Props) 
                 setSuggestions([]);
               }}
               hitSlop={10}
+              accessibilityLabel={t("location.clear")}
               style={{ width: 22, height: 22, borderRadius: 99, backgroundColor: "#F0EAE4", alignItems: "center", justifyContent: "center" }}
             >
               <XIcon color={S.sec} size={11} />
@@ -306,14 +309,14 @@ export function LocationEditSheet({ visible, onClose, current, onSave }: Props) 
               <View style={{ padding: 14, flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <ActivityIndicator size="small" color={S.sec} />
                 <Text style={{ fontSize: 13, fontWeight: "600", color: S.sec }}>
-                  Searching places…
+                  {t("location.searching")}
                 </Text>
               </View>
             )}
             {suggestions.length === 0 && !searching && (
               <View style={{ padding: 14 }}>
                 <Text style={{ fontSize: 13, fontWeight: "600", color: S.sec }}>
-                  No matches — type a city, town, or municipality.
+                  {t("location.no_matches_place")}
                 </Text>
               </View>
             )}
@@ -366,11 +369,12 @@ export function LocationEditSheet({ visible, onClose, current, onSave }: Props) 
           >
             <ActivityIndicator size="small" color="#2C2E61" />
             <Text style={{ flex: 1, fontSize: 14, fontWeight: "800", color: "#2C2E61", letterSpacing: 0.2 }}>
-              Locating…
+              {t("location.locating")}
             </Text>
             <Pressable
               onPress={handleCancelLocate}
               hitSlop={10}
+              accessibilityLabel={t("common.cancel")}
               style={{
                 width: 32,
                 height: 32,
@@ -399,7 +403,7 @@ export function LocationEditSheet({ visible, onClose, current, onSave }: Props) 
           >
             <PinIcon color="#2C2E61" size={14} />
             <Text style={{ fontSize: 14, fontWeight: "800", color: "#2C2E61", letterSpacing: 0.2 }}>
-              Use my current location
+              {t("location.use_current")}
             </Text>
           </Pressable>
         )}
@@ -415,7 +419,7 @@ export function LocationEditSheet({ visible, onClose, current, onSave }: Props) 
             justifyContent: "center",
           }}
         >
-          <Text style={{ fontSize: 17, fontWeight: "700", color: "#fff" }}>Save location</Text>
+          <Text style={{ fontSize: 17, fontWeight: "700", color: "#fff" }}>{t("location.save")}</Text>
         </Pressable>
       </View>
     </SlideUpSheet>

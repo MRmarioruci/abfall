@@ -10,6 +10,7 @@ import { DestinationPicker } from "../components/DestinationPicker";
 import { useToast } from "../components/ui/Toast";
 import { useCalendars } from "../context/CalendarContext";
 import { useT } from "../context/LocaleContext";
+import { parseISODate } from "../lib/dates";
 import type { StringKey } from "../i18n";
 import {
   requestNotificationPermissions,
@@ -691,7 +692,7 @@ export function RemindersScreen({ preselectedStream }: { preselectedStream?: Was
                     }}
                   >
                     {r.when === "specific date" && r.customDate
-                      ? r.customDate
+                      ? formatCustomDate(r.customDate, monthShort)
                       : whenLabel(r.when)}
                   </Text>
                   <Text
@@ -793,6 +794,12 @@ export function RemindersScreen({ preselectedStream }: { preselectedStream?: Was
       />
     </View>
   );
+}
+
+function formatCustomDate(iso: string, monthShort: (m: number) => string): string {
+  const d = parseISODate(iso);
+  if (isNaN(d.getTime())) return iso;
+  return `${d.getDate()} ${monthShort(d.getMonth() + 1)} ${d.getFullYear()}`;
 }
 
 function formatTriggerLabel(d: Date, monthShort: (m: number) => string): string {

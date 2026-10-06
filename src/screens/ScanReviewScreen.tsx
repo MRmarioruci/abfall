@@ -15,6 +15,7 @@ import { generateCalendarId } from "../services/storage";
 import { useCalendars } from "../context/CalendarContext";
 import type { ParsedCalendarResult, SavedCalendar, CollectionEvent } from "../types/calendar";
 import { parseISODate } from "../lib/dates";
+import { useT } from "../context/LocaleContext";
 
 type Phase = "parsing" | "review" | "error";
 
@@ -26,6 +27,7 @@ interface Props {
 
 export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useT();
   const { addCalendar, active: previouslyActive } = useCalendars();
   const [phase, setPhase] = useState<Phase>("parsing");
   const [error, setError] = useState<string>("");
@@ -86,7 +88,7 @@ export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
       })
       .catch((e: any) => {
         if (cancelled) return;
-        setError(e.message || "Failed to parse calendar");
+        setError(e.message || t("scan.review.parse_failed"));
         setPhase("error");
       });
     return () => { cancelled = true; };
@@ -98,7 +100,7 @@ export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
     // through PublishDialog and only marks it shared once the server has it.
     const calendar: SavedCalendar = {
       id: generateCalendarId(),
-      title: title.trim() || `${municipality || "Calendar"} ${year}`,
+      title: title.trim() || `${municipality || t("scan.calendar_fallback")} ${year}`,
       location: location.trim() || undefined,
       municipality,
       canton,
@@ -113,7 +115,7 @@ export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
       await addCalendar(calendar);
     } catch (err) {
       console.warn("[scan] save failed", err);
-      Alert.alert("Couldn't save calendar", "Please try again.");
+      Alert.alert(t("scan.review.save_failed_title"), t("scan.review.save_failed_body"));
       return;
     } finally {
       setSaving(false);
@@ -177,7 +179,7 @@ export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
     return (
       <View style={{ flex: 1, backgroundColor: "#F5F2F7", justifyContent: "center", alignItems: "center", paddingHorizontal: 40 }}>
         <Text style={{ fontSize: 22, fontWeight: "800", color: S.ink, textAlign: "center" }}>
-          Something went wrong
+          {t("scan.review.error_title")}
         </Text>
         <Text style={{ fontSize: 14, color: S.sec, fontWeight: "500", marginTop: 10, textAlign: "center" }}>
           {error}
@@ -186,7 +188,7 @@ export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
           onPress={onBack}
           style={{ marginTop: 24, height: 50, paddingHorizontal: 32, borderRadius: 99, backgroundColor: S.ink, alignItems: "center", justifyContent: "center" }}
         >
-          <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Try again</Text>
+          <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>{t("scan.review.try_again")}</Text>
         </Pressable>
       </View>
     );
@@ -206,7 +208,7 @@ export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
           </CircBtn>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: "#fff", paddingVertical: 8, paddingHorizontal: 14, borderRadius: 99, shadowColor: "rgb(150,118,96)", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 18, elevation: 3 }}>
             <View style={{ width: 7, height: 7, borderRadius: 99, backgroundColor: "#5BA86B" }} />
-            <Text style={{ fontSize: 12, fontWeight: "800", color: S.ink, letterSpacing: 0.3 }}>REVIEW & EDIT</Text>
+            <Text style={{ fontSize: 12, fontWeight: "800", color: S.ink, letterSpacing: 0.3 }}>{t("scan.review.badge")}</Text>
           </View>
           <View style={{ width: 44 }} />
         </View>
@@ -214,12 +216,12 @@ export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
         {/* Editable title + location */}
         <View style={{ paddingHorizontal: 20, paddingTop: 22 }}>
           <Text style={{ fontSize: 12, fontWeight: "800", color: S.ter, letterSpacing: 1, marginBottom: 6 }}>
-            CALENDAR NAME
+            {t("scan.review.name_label")}
           </Text>
           <TextInput
             value={title}
             onChangeText={setTitle}
-            placeholder="Calendar name"
+            placeholder={t("scan.review.name_placeholder")}
             placeholderTextColor={S.ter}
             multiline
             scrollEnabled={false}
@@ -240,12 +242,15 @@ export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
           />
 
           <Text style={{ fontSize: 12, fontWeight: "800", color: S.ter, letterSpacing: 1, marginTop: 16, marginBottom: 6 }}>
-            LOCATION
+            {t("scan.review.location_label")}
           </Text>
           <LocationSearchInput value={location} onChange={setLocation} />
 
           <Text style={{ fontSize: 14, color: S.sec, lineHeight: 20, fontWeight: "500", marginTop: 14 }}>
-            <Text style={{ color: S.ink, fontWeight: "800" }}>{events.length} dates</Text> read from your photo. Tap any day in the calendar to edit.
+            <Text style={{ color: S.ink, fontWeight: "800" }}>
+              {events.length === 1 ? t("scan.review.dates_one") : t("scan.review.dates_other", { n: events.length })}
+            </Text>{" "}
+            {t("scan.review.dates_hint")}
           </Text>
         </View>
 
@@ -296,7 +301,7 @@ export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
             <>
               <CalIcon color="#fff" size={20} />
               <Text style={{ fontSize: 17, fontWeight: "700", color: "#fff" }}>
-                Save calendar
+                {t("scan.review.save")}
               </Text>
             </>
           )}

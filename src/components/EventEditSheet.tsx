@@ -6,8 +6,9 @@ import { StreamGlyph } from "./icons/StreamGlyph";
 import { XIcon } from "./icons/Icons";
 import type { CollectionEvent } from "../types/calendar";
 import { parseISODate } from "../lib/dates";
+import { useT } from "../context/LocaleContext";
 
-const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTH_NUMBERS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
 interface Props {
   visible: boolean;
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export function EventEditSheet({ visible, onClose, event, year, zones, onSave, onDelete }: Props) {
+  const { t, wasteLabel, monthShort } = useT();
   const [type, setType] = useState<WasteStreamId>("kehricht");
   const [month, setMonth] = useState(1);
   const [day, setDay] = useState("1");
@@ -63,7 +65,7 @@ export function EventEditSheet({ visible, onClose, event, year, zones, onSave, o
       <View style={{ paddingHorizontal: 20, paddingTop: 4 }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
           <Text style={{ fontSize: 22, fontWeight: "800", color: S.ink, letterSpacing: -0.5 }}>
-            {event ? "Edit date" : "Add date"}
+            {event ? t("event_edit.title_edit") : t("event_edit.title_add")}
           </Text>
           {event && onDelete && (
             <Pressable
@@ -71,14 +73,14 @@ export function EventEditSheet({ visible, onClose, event, year, zones, onSave, o
               style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 99, backgroundColor: "#F6DDD2" }}
             >
               <XIcon color="#4A1B10" size={13} />
-              <Text style={{ fontSize: 13, fontWeight: "700", color: "#4A1B10" }}>Delete</Text>
+              <Text style={{ fontSize: 13, fontWeight: "700", color: "#4A1B10" }}>{t("common.delete")}</Text>
             </Pressable>
           )}
         </View>
 
         {/* Waste type */}
         <Text style={{ fontSize: 12, fontWeight: "800", color: S.ter, letterSpacing: 1, marginBottom: 10 }}>
-          WASTE TYPE
+          {t("event_edit.waste_type")}
         </Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}>
           {STREAM_ORDER.map((id) => {
@@ -102,7 +104,7 @@ export function EventEditSheet({ visible, onClose, event, year, zones, onSave, o
               >
                 <StreamGlyph stream={id} size={20} color={active ? s.ink : S.sec} />
                 <Text style={{ fontSize: 14, fontWeight: "700", color: active ? s.ink : S.sec }}>
-                  {s.label}
+                  {wasteLabel(id)}
                 </Text>
               </Pressable>
             );
@@ -111,7 +113,7 @@ export function EventEditSheet({ visible, onClose, event, year, zones, onSave, o
 
         {/* Date */}
         <Text style={{ fontSize: 12, fontWeight: "800", color: S.ter, letterSpacing: 1, marginTop: 22, marginBottom: 10 }}>
-          DATE
+          {t("event_edit.date")}
         </Text>
         <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
           <TextInput
@@ -119,6 +121,7 @@ export function EventEditSheet({ visible, onClose, event, year, zones, onSave, o
             onChangeText={setDay}
             keyboardType="number-pad"
             maxLength={2}
+            accessibilityLabel={t("event_edit.day_label")}
             style={{
               width: 64,
               height: 48,
@@ -133,12 +136,12 @@ export function EventEditSheet({ visible, onClose, event, year, zones, onSave, o
             }}
           />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-            {MONTHS_SHORT.map((m, i) => {
-              const active = month === i + 1;
+            {MONTH_NUMBERS.map((m) => {
+              const active = month === m;
               return (
                 <Pressable
                   key={m}
-                  onPress={() => setMonth(i + 1)}
+                  onPress={() => setMonth(m)}
                   style={{
                     paddingVertical: 12,
                     paddingHorizontal: 12,
@@ -148,7 +151,7 @@ export function EventEditSheet({ visible, onClose, event, year, zones, onSave, o
                     borderColor: active ? S.ink : S.line,
                   }}
                 >
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: active ? "#fff" : S.sec }}>{m}</Text>
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: active ? "#fff" : S.sec }}>{monthShort(m)}</Text>
                 </Pressable>
               );
             })}
@@ -159,7 +162,7 @@ export function EventEditSheet({ visible, onClose, event, year, zones, onSave, o
         {zoneOptions.length > 1 && (
           <>
             <Text style={{ fontSize: 12, fontWeight: "800", color: S.ter, letterSpacing: 1, marginTop: 22, marginBottom: 10 }}>
-              ZONE
+              {t("event_edit.zone")}
             </Text>
             <View style={{ flexDirection: "row", gap: 8 }}>
               {zoneOptions.map((z) => {
@@ -178,7 +181,7 @@ export function EventEditSheet({ visible, onClose, event, year, zones, onSave, o
                     }}
                   >
                     <Text style={{ fontSize: 14, fontWeight: "700", color: active ? "#fff" : S.sec }}>
-                      {z === "all" ? "All zones" : z}
+                      {z === "all" ? t("event_edit.all_zones") : z}
                     </Text>
                   </Pressable>
                 );
@@ -200,7 +203,7 @@ export function EventEditSheet({ visible, onClose, event, year, zones, onSave, o
           }}
         >
           <Text style={{ fontSize: 17, fontWeight: "700", color: "#fff" }}>
-            {event ? "Save changes" : "Add date"}
+            {event ? t("event_edit.save_changes") : t("event_edit.title_add")}
           </Text>
         </Pressable>
       </View>

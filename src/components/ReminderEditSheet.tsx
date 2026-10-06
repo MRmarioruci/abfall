@@ -84,7 +84,7 @@ interface Props {
 export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate, initialWhen, onSave }: Props) {
   const insets = useSafeAreaInsets();
   const toast = useToast();
-  const { whenLabel } = useT();
+  const { t, whenLabel, wasteLabel } = useT();
   const today = initialDate ? parseISODate(initialDate) : new Date();
   const [selectedStream, setSelectedStream] = useState<WasteStreamId>(stream);
   const [mode, setMode] = useState<Mode>(() => deriveMode(rule, initialWhen));
@@ -144,12 +144,12 @@ export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate,
     try {
       const sent = await sendTestNotification();
       if (sent) {
-        toast.show("Test fires in 3 seconds…");
+        toast.show(t("reminder_edit.toast.test_scheduled"));
         // Hold the loader for the full 3s scheduled delay so the user has a
         // clear "waiting for notification" affordance.
         await new Promise((r) => setTimeout(r, 3200));
       } else {
-        toast.show("Notifications are blocked — enable in Settings");
+        toast.show(t("reminder_edit.toast.blocked"));
       }
     } finally {
       setTesting(false);
@@ -176,10 +176,11 @@ export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate,
           }}
         >
           <Text style={{ fontSize: 26, fontWeight: "600", color: S.ink, letterSpacing: -0.6 }}>
-            {rule ? "Edit" : "Add"} reminder
+            {rule ? t("reminder_edit.title_edit") : t("reminder_edit.title_add")}
           </Text>
           <Pressable
             onPress={onClose}
+            accessibilityLabel={t("reminder_edit.close")}
             style={{
               width: 36,
               height: 36,
@@ -194,26 +195,26 @@ export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate,
         </View>
 
         {/* Mode toggle — disambiguates the two reminder types. */}
-        <SectionLabel label="Type" />
+        <SectionLabel label={t("reminder_edit.type")} />
         <View style={{ flexDirection: "row", gap: 10, marginBottom: 24 }}>
           <ModeCard
             active={mode === "recurring"}
-            title="Recurring"
-            subtitle="Before every pickup"
+            title={t("reminder_edit.recurring")}
+            subtitle={t("reminder_edit.recurring_desc")}
             icon={<BellIcon color={mode === "recurring" ? "#fff" : S.ink} size={18} />}
             onPress={() => setMode("recurring")}
           />
           <ModeCard
             active={mode === "specific"}
-            title="One-off"
-            subtitle="A single chosen day"
+            title={t("reminder_edit.one_off")}
+            subtitle={t("reminder_edit.one_off_desc")}
             icon={<CalIcon color={mode === "specific" ? "#fff" : S.ink} size={18} />}
             onPress={() => setMode("specific")}
           />
         </View>
 
         {/* Stream selector */}
-        <SectionLabel label="Collection" />
+        <SectionLabel label={t("reminder_edit.collection")} />
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -271,7 +272,7 @@ export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate,
                   }}
                   numberOfLines={2}
                 >
-                  {cc.label}
+                  {wasteLabel(id)}
                 </Text>
               </Pressable>
             );
@@ -281,7 +282,7 @@ export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate,
         {/* When selector — only relevant for recurring reminders. */}
         {mode === "recurring" && (
           <>
-        <SectionLabel label="When" />
+        <SectionLabel label={t("reminder_edit.when")} />
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -342,12 +343,12 @@ export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate,
             sheet reads top-to-bottom: type → collection → date → time. */}
         {mode === "specific" && (
           <View style={{ marginBottom: 28 }}>
-            <SectionLabel label="Date" />
+            <SectionLabel label={t("reminder_edit.date")} />
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-              <DateStepper label="DAY" value={customDay} onChange={setCustomDay} min={1} max={31} />
-              <DateStepper label="MONTH" value={customMonth} onChange={setCustomMonth} min={1} max={12} />
+              <DateStepper label={t("reminder_edit.day")} value={customDay} onChange={setCustomDay} min={1} max={31} />
+              <DateStepper label={t("reminder_edit.month")} value={customMonth} onChange={setCustomMonth} min={1} max={12} />
               <DateStepper
-                label="YEAR"
+                label={t("reminder_edit.year")}
                 value={customYear}
                 onChange={setCustomYear}
                 min={today.getFullYear()}
@@ -367,13 +368,13 @@ export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate,
             marginBottom: 10,
           }}
         >
-          TIME
+          {t("reminder_edit.time")}
         </Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 16, marginBottom: 28 }}>
           {/* Hours */}
           <View style={{ alignItems: "center" }}>
             <Text style={{ fontSize: 11, fontWeight: "700", color: S.sec, marginBottom: 6 }}>
-              HOUR
+              {t("reminder_edit.hour")}
             </Text>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
               <StepButton label="-" onPress={() => setHour((h) => adjust(h, -1, 0, 23))} />
@@ -400,7 +401,7 @@ export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate,
           {/* Minutes */}
           <View style={{ alignItems: "center" }}>
             <Text style={{ fontSize: 11, fontWeight: "700", color: S.sec, marginBottom: 6 }}>
-              MINUTE
+              {t("reminder_edit.minute")}
             </Text>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
               <StepButton label="-" onPress={() => setMinute((m) => adjust(m, -1, 0, 59))} />
@@ -444,7 +445,7 @@ export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate,
           }}
         >
           <CheckIcon color="#fff" size={18} />
-          <Text style={{ fontSize: 16, fontWeight: "800", color: "#fff" }}>Save reminder</Text>
+          <Text style={{ fontSize: 16, fontWeight: "800", color: "#fff" }}>{t("reminder_edit.save")}</Text>
         </Pressable>
 
         <Pressable
@@ -472,7 +473,7 @@ export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate,
               textDecorationLine: testing ? "none" : "underline",
             }}
           >
-            {testing ? "Waiting for notification…" : "Send a test notification now"}
+            {testing ? t("reminder_edit.test_waiting") : t("reminder_edit.test_send")}
           </Text>
         </Pressable>
       </View>

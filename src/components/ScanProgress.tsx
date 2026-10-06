@@ -4,32 +4,34 @@ import { S } from "../theme/colors";
 import { BrandMark } from "./ui/BrandMark";
 import { CheckIcon } from "./icons/Icons";
 import type { ParseStage } from "../services/parseCalendar";
+import { useT } from "../context/LocaleContext";
+import type { StringKey } from "../i18n";
 
-const STEPS: Array<{ id: ParseStage; label: string }> = [
-  { id: "preparing", label: "Preparing your photo" },
-  { id: "anchoring", label: "Finding the months" },
-  { id: "understanding", label: "Understanding the layout" },
-  { id: "extracting", label: "Reading the collection dates" },
-  { id: "mapping", label: "Organising your calendar" },
+const STEPS: Array<{ id: ParseStage; labelKey: StringKey }> = [
+  { id: "preparing", labelKey: "scan.stage.preparing" },
+  { id: "anchoring", labelKey: "scan.stage.anchoring" },
+  { id: "understanding", labelKey: "scan.stage.understanding" },
+  { id: "extracting", labelKey: "scan.stage.extracting" },
+  { id: "mapping", labelKey: "scan.stage.mapping" },
 ];
 
 // Rotating tips shown at the bottom of the screen while the scan runs.
 // Keep these short, useful, and friendly. Order is randomised on each
 // scan so the same one doesn't appear first every time.
-const TIPS = [
-  "Sharp photos give sharper results. Hold the phone steady and tap once to focus.",
-  "Good lighting helps a lot — try a window or desk lamp. Avoid glare on glossy paper.",
-  "Got a multi-page calendar? You can scan all the pages in one go.",
-  "If you spot a missed date later, tap any day in the calendar to add or fix it.",
-  "Flatten folded calendars before scanning — creases can hide important text.",
-  "Calendars in German, French, Italian and English all work.",
-  "Make sure the whole calendar — including the column headers — fits in the frame.",
-  "Zones colour-coded? We'll figure them out as long as the legend is visible.",
-  "Tip rules like \"every Tuesday\" are expanded into real dates automatically.",
-  "You'll get to review and edit everything before saving.",
+const TIPS: StringKey[] = [
+  "scan.tip.steady",
+  "scan.tip.lighting",
+  "scan.tip.multi_page",
+  "scan.tip.fix_later",
+  "scan.tip.flatten",
+  "scan.tip.languages",
+  "scan.tip.frame",
+  "scan.tip.zones",
+  "scan.tip.rules",
+  "scan.tip.review",
 ];
 
-function shuffleTips(): string[] {
+function shuffleTips(): StringKey[] {
   const out = [...TIPS];
   for (let i = out.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -44,6 +46,7 @@ interface Props {
 }
 
 export function ScanProgress({ stage, detail }: Props) {
+  const { t } = useT();
   // Remember the most recent detail seen per stage so completed steps still
   // display their result ("Found 6 months: ...") instead of going silent.
   const [stageDetails, setStageDetails] = useState<Partial<Record<ParseStage, string>>>({});
@@ -115,10 +118,10 @@ export function ScanProgress({ stage, detail }: Props) {
       </Animated.View>
 
       <Text style={{ fontSize: 24, fontWeight: "800", color: S.ink, letterSpacing: -0.5, textAlign: "center" }}>
-        Reading your calendar
+        {t("scan.progress.title")}
       </Text>
       <Text style={{ fontSize: 14, color: S.sec, fontWeight: "500", marginTop: 6, textAlign: "center" }}>
-        This usually takes 20–40 seconds.
+        {t("scan.progress.duration")}
       </Text>
 
       {/* Progress bar */}
@@ -172,7 +175,7 @@ export function ScanProgress({ stage, detail }: Props) {
                     letterSpacing: -0.2,
                   }}
                 >
-                  {step.label}
+                  {t(step.labelKey)}
                 </Text>
                 {!isPending && stageDetails[step.id] && (
                   <Text style={{ fontSize: 12, color: S.sec, fontWeight: "500", marginTop: 2 }}>
@@ -205,7 +208,7 @@ export function ScanProgress({ stage, detail }: Props) {
             letterSpacing: 1.4,
           }}
         >
-          QUICK TIP
+          {t("scan.progress.quick_tip")}
         </Text>
         <Animated.View style={{ opacity: tipOpacity, marginTop: 5 }}>
           <Text
@@ -217,7 +220,7 @@ export function ScanProgress({ stage, detail }: Props) {
               textAlign: "center",
             }}
           >
-            {tipsRef.current[tipIndex]}
+            {t(tipsRef.current[tipIndex])}
           </Text>
         </Animated.View>
       </View>

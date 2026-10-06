@@ -6,20 +6,21 @@ import { CommunityCalendarsSheet } from "./CommunityCalendarsSheet";
 import { S } from "../theme/colors";
 import { CameraIcon, SearchIcon, BackIcon, ScanIcon, GlobeIcon, ChevRIcon, XIcon, PlusIcon } from "./icons/Icons";
 import type { ImageInput } from "../services/parseCalendar";
+import { useT } from "../context/LocaleContext";
 
 const OPTIONS = [
   {
     id: "scan",
-    label: "Scan paper calendar",
-    desc: "Snap one or more photos — we'll read the dates",
+    labelKey: "add.option.scan.label" as const,
+    descKey: "add.option.scan.desc" as const,
     Icon: ScanIcon,
     bg: "#F6DDD2",
     iconColor: "#4A1B10",
   },
   {
     id: "browse",
-    label: "Browse community calendars",
-    desc: "Find calendars shared near your location",
+    labelKey: "add.option.browse.label" as const,
+    descKey: "add.option.browse.desc" as const,
     Icon: GlobeIcon,
     bg: "#E5E6F6",
     iconColor: "#2C2E61",
@@ -47,6 +48,7 @@ function assetsToImageInputs(assets: ImagePicker.ImagePickerAsset[]): ImageInput
 }
 
 export function AddCalendarSheet({ visible, onClose, onScanConfirm, onRequestReopen }: Props) {
+  const { t } = useT();
   const [showScanOptions, setShowScanOptions] = useState(false);
   const [showCommunity, setShowCommunity] = useState(false);
   // Staged images: user can add several photos / gallery picks before
@@ -78,13 +80,13 @@ export function AddCalendarSheet({ visible, onClose, onScanConfirm, onRequestReo
   const handleTakePhoto = useCallback(async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert("Permission needed", "We need camera access to scan calendars.");
+      Alert.alert(t("common.permission_needed"), t("add.camera_permission_body"));
       return;
     }
     const result = await ImagePicker.launchCameraAsync({ quality: 1 });
     if (result.canceled || !result.assets.length) return;
     setStaged((prev) => [...prev, ...assetsToImageInputs(result.assets)]);
-  }, []);
+  }, [t]);
 
   // No permission prompt: the system photo picker (Android 13+, iOS 14+)
   // only hands over the photos the user picks.
@@ -154,14 +156,16 @@ export function AddCalendarSheet({ visible, onClose, onScanConfirm, onRequestReo
               <BackIcon color={S.ink} size={18} />
             </Pressable>
             <Text style={{ fontSize: 24, fontWeight: "800", color: S.ink, letterSpacing: -0.6 }}>
-              Scan calendar
+              {t("add.scan.title")}
             </Text>
           </View>
 
           <Text style={{ fontSize: 14, color: S.sec, fontWeight: "500", marginBottom: 18 }}>
             {staged.length === 0
-              ? "Take one or more photos of your paper calendar — front, back, multiple pages, whatever you have. We'll read them all together."
-              : `${staged.length} image${staged.length === 1 ? "" : "s"} added. Add more or continue.`}
+              ? t("add.scan.intro")
+              : staged.length === 1
+              ? t("add.scan.added_one")
+              : t("add.scan.added_other", { n: staged.length })}
           </Text>
 
           {/* Thumbnail strip — only shown after at least one image is staged */}
@@ -224,8 +228,8 @@ export function AddCalendarSheet({ visible, onClose, onScanConfirm, onRequestReo
           {staged.length === 0 ? (
             <View style={{ gap: 14 }}>
               {[
-                { onPress: handleTakePhoto, Icon: CameraIcon, bg: "#F6DDD2", iconColor: "#4A1B10", label: "Take a photo", desc: "Use your camera to capture the calendar" },
-                { onPress: handlePickGallery, Icon: SearchIcon, bg: "#E5E6F6", iconColor: "#2C2E61", label: "Pick from gallery", desc: "Select one or more photos you already have" },
+                { onPress: handleTakePhoto, Icon: CameraIcon, bg: "#F6DDD2", iconColor: "#4A1B10", label: t("add.scan.take_photo"), desc: t("add.scan.take_photo_desc") },
+                { onPress: handlePickGallery, Icon: SearchIcon, bg: "#E5E6F6", iconColor: "#2C2E61", label: t("add.scan.pick_gallery"), desc: t("add.scan.pick_gallery_desc") },
               ].map((opt, i) => (
                 <Pressable
                   key={i}
@@ -301,7 +305,7 @@ export function AddCalendarSheet({ visible, onClose, onScanConfirm, onRequestReo
                   })}
                 >
                   <CameraIcon color={S.ink} size={17} />
-                  <Text style={{ fontSize: 14, fontWeight: "800", color: S.ink }}>Camera</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "800", color: S.ink }}>{t("add.scan.camera")}</Text>
                 </Pressable>
                 <Pressable
                   onPress={handlePickGallery}
@@ -320,7 +324,7 @@ export function AddCalendarSheet({ visible, onClose, onScanConfirm, onRequestReo
                   })}
                 >
                   <PlusIcon color={S.ink} size={16} />
-                  <Text style={{ fontSize: 14, fontWeight: "800", color: S.ink }}>Gallery</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "800", color: S.ink }}>{t("add.scan.gallery")}</Text>
                 </Pressable>
               </View>
 
@@ -340,7 +344,9 @@ export function AddCalendarSheet({ visible, onClose, onScanConfirm, onRequestReo
               >
                 <ScanIcon color="#fff" size={18} />
                 <Text style={{ fontSize: 16, fontWeight: "800", color: "#fff", letterSpacing: 0.2 }}>
-                  Scan {staged.length} image{staged.length === 1 ? "" : "s"}
+                  {staged.length === 1
+                    ? t("add.scan.confirm_one")
+                    : t("add.scan.confirm_other", { n: staged.length })}
                 </Text>
               </Pressable>
             </View>
@@ -357,10 +363,10 @@ export function AddCalendarSheet({ visible, onClose, onScanConfirm, onRequestReo
     <SlideUpSheet visible={visible} onClose={handleClose}>
       <View style={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: 10 }}>
         <Text style={{ fontSize: 24, fontWeight: "800", color: S.ink, letterSpacing: -0.6 }}>
-          Add a calendar
+          {t("add.title")}
         </Text>
         <Text style={{ fontSize: 14, color: S.sec, fontWeight: "500", marginTop: 6, marginBottom: 22 }}>
-          How do you want to get your collection dates?
+          {t("add.subtitle")}
         </Text>
 
         <View style={{ gap: 14 }}>
@@ -398,10 +404,10 @@ export function AddCalendarSheet({ visible, onClose, onScanConfirm, onRequestReo
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 18, fontWeight: "800", color: S.ink, letterSpacing: -0.3 }}>
-                  {opt.label}
+                  {t(opt.labelKey)}
                 </Text>
                 <Text style={{ fontSize: 13.5, color: S.sec, fontWeight: "600", marginTop: 3, lineHeight: 18 }}>
-                  {opt.desc}
+                  {t(opt.descKey)}
                 </Text>
               </View>
               <View

@@ -4,6 +4,7 @@
 // weekday*() helpers, and handles persistence.
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getLocales } from "expo-localization";
 import { type WasteStreamId } from "../theme/colors";
 import { en, type StringKey } from "./locales/en";
 import { de } from "./locales/de";
@@ -39,6 +40,20 @@ export async function loadStoredLocale(): Promise<Locale | null> {
     if (v && SUPPORTED_LOCALES.includes(v as Locale)) return v as Locale;
   } catch {}
   return null;
+}
+
+/**
+ * The first of the phone's preferred languages that we support, or
+ * English. Used until the user picks a language themselves.
+ */
+export function deviceLocale(): Locale {
+  try {
+    for (const l of getLocales()) {
+      const code = l.languageCode?.toLowerCase();
+      if (code && SUPPORTED_LOCALES.includes(code as Locale)) return code as Locale;
+    }
+  } catch {}
+  return "en";
 }
 
 export async function persistLocale(locale: Locale): Promise<void> {

@@ -2,6 +2,7 @@ import { View, Text, Pressable } from "react-native";
 import { ST, type WasteStreamId } from "../theme/colors";
 import { StreamGlyph } from "./icons/StreamGlyph";
 import { ArrowURIcon } from "./icons/Icons";
+import { useT } from "../context/LocaleContext";
 
 interface Props {
   stream: WasteStreamId;
@@ -13,6 +14,7 @@ interface Props {
 
 export function StreamGridCard({ stream, rel, date, tall = false, onPress }: Props) {
   const s = ST[stream];
+  const { wasteLabel } = useT();
 
   return (
     <Pressable
@@ -54,7 +56,7 @@ export function StreamGridCard({ stream, rel, date, tall = false, onPress }: Pro
             marginTop: 5,
           }}
         >
-          {s.label}
+          {wasteLabel(stream)}
         </Text>
         <Text
           style={{

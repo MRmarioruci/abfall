@@ -454,6 +454,7 @@ function ScanCorners() {
 }
 
 function ScanMockup() {
+  const { t } = useT();
   return (
     <View style={{ width: 290, height: 360, alignItems: "center", justifyContent: "center" }}>
       <PhoneFrame width={230} height={340}>
@@ -509,7 +510,7 @@ function ScanMockup() {
                 }}
               >
                 <Text style={{ fontSize: 10, fontWeight: "800", color: S.ink, letterSpacing: 0.1 }}>
-                  Waste Calendar
+                  {t("onboarding.mock.waste_calendar")}
                 </Text>
                 <Text style={{ fontSize: 7, fontWeight: "700", color: S.sec, marginTop: 1 }}>
                   2026
@@ -603,10 +604,13 @@ function ScanMockup() {
 // badge marks the one already in use, suggesting both browse and contribute.
 
 function CommunityMockup() {
+  const { t } = useT();
+  const users = (name: string, n: number) => `${name} · ${t("onboarding.mock.users", { n })}`;
+  // Sample place and person names stay as-is; only the labels translate.
   const cards: { muni: string; year: string; sharer: string; initial: string; tint: string }[] = [
-    { muni: "Old Town", year: "2026 · Zone A", sharer: "Anna · 124 users", initial: "A", tint: ST.papier.c },
-    { muni: "Lakeside", year: "2026 · Zone B", sharer: "Marco · 88 users", initial: "M", tint: ST.gruengut.c },
-    { muni: "Hillcrest", year: "2026 · all zones", sharer: "Lea · 53 users", initial: "L", tint: ST.altmetall.c },
+    { muni: "Old Town", year: `2026 · ${t("day_edit.zone", { zone: "A" })}`, sharer: users("Anna", 124), initial: "A", tint: ST.papier.c },
+    { muni: "Lakeside", year: `2026 · ${t("day_edit.zone", { zone: "B" })}`, sharer: users("Marco", 88), initial: "M", tint: ST.gruengut.c },
+    { muni: "Hillcrest", year: `2026 · ${t("event_edit.all_zones")}`, sharer: users("Lea", 53), initial: "L", tint: ST.altmetall.c },
   ];
 
   return (
@@ -628,7 +632,7 @@ function CommunityMockup() {
           >
             <PinIcon color={S.ink} size={10} />
             <Text style={{ fontSize: 10, fontWeight: "800", color: S.ink, letterSpacing: -0.2 }}>
-              Your area
+              {t("onboarding.mock.your_area")}
             </Text>
           </View>
 
@@ -642,7 +646,7 @@ function CommunityMockup() {
               marginBottom: 8,
             }}
           >
-            COMMUNITY
+            {t("onboarding.mock.community")}
           </Text>
 
           {/* Community calendar cards */}
@@ -752,7 +756,7 @@ function CommunityMockup() {
 // Stacked reminder cards inside a phone frame, with a bell pinned to the top.
 
 function RemindersMockup() {
-  const { wasteLabel } = useT();
+  const { t, wasteLabel, whenLabel } = useT();
   const reminders: { stream: "papier" | "kehricht" | "gruengut"; when: string; time: string }[] = [
     { stream: "papier", when: "1 day before", time: "18:00" },
     { stream: "kehricht", when: "Evening before", time: "20:00" },
@@ -764,10 +768,10 @@ function RemindersMockup() {
       <PhoneFrame width={230} height={340}>
         <View style={{ padding: 14, flex: 1, backgroundColor: "#fff" }}>
           <Text style={{ fontSize: 10, fontWeight: "700", color: S.ter, letterSpacing: 1 }}>
-            REMINDERS
+            {t("onboarding.mock.reminders")}
           </Text>
           <Text style={{ fontSize: 16, fontWeight: "800", color: S.ink, marginTop: 2, letterSpacing: -0.3 }}>
-            Your nudges
+            {t("onboarding.mock.your_nudges")}
           </Text>
 
           <View style={{ marginTop: 14, gap: 8 }}>
@@ -802,7 +806,7 @@ function RemindersMockup() {
                       {wasteLabel(r.stream)}
                     </Text>
                     <Text style={{ fontSize: 9, fontWeight: "600", color: S.sec, marginTop: 1 }}>
-                      {r.when} · {r.time}
+                      {whenLabel(r.when)} · {r.time}
                     </Text>
                   </View>
                   {/* Mini switch */}
@@ -864,6 +868,7 @@ function RemindersMockup() {
 // hint at the category filtering on the real Map tab.
 
 function MapMockup() {
+  const { t, wasteLabel } = useT();
   const pins: { x: number; y: number; color: string; ink: string }[] = [
     { x: 32, y: 38, color: ST.papier.c, ink: ST.papier.ink },
     { x: 110, y: 30, color: ST.altmetall.c, ink: ST.altmetall.ink },
@@ -886,9 +891,9 @@ function MapMockup() {
             }}
           >
             {[
-              { label: "All", on: true },
-              { label: "Paper", on: false },
-              { label: "Glass", on: false },
+              { label: t("reminders.all"), on: true },
+              { label: wasteLabel("papier"), on: false },
+              { label: t("onboarding.mock.glass"), on: false },
             ].map((c, i) => (
               <View
                 key={i}

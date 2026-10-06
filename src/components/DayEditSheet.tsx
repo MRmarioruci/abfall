@@ -5,12 +5,7 @@ import { S, ST, STREAM_ORDER, type WasteStreamId } from "../theme/colors";
 import { StreamGlyph } from "./icons/StreamGlyph";
 import { CheckIcon } from "./icons/Icons";
 import type { CollectionEvent } from "../types/calendar";
-
-const WEEKDAYS_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const MONTHS_LONG = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
+import { useT } from "../context/LocaleContext";
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
 // Sheet uses up to 88% of screen — leaves a bit of backdrop visible at the top
@@ -27,6 +22,7 @@ interface Props {
 }
 
 export function DayEditSheet({ visible, onClose, date, currentEvents, zones, onSave }: Props) {
+  const { t, wasteLabel, weekdayLong, monthLong } = useT();
   const [typeZones, setTypeZones] = useState<Map<WasteStreamId, Set<string>>>(new Map());
 
   const hasZones = zones.length > 0;
@@ -44,8 +40,12 @@ export function DayEditSheet({ visible, onClose, date, currentEvents, zones, onS
   const heading = useMemo(() => {
     if (!date) return "";
     const d = new Date(date);
-    return `${WEEKDAYS_LONG[d.getDay()]}, ${d.getDate()} ${MONTHS_LONG[d.getMonth()]}`;
-  }, [date]);
+    return t("day_edit.date_medium", {
+      weekday: weekdayLong(d.getDay()),
+      day: d.getDate(),
+      month: monthLong(d.getMonth() + 1),
+    });
+  }, [date, t, weekdayLong, monthLong]);
 
   const totalSelected = Array.from(typeZones.values()).reduce((sum, s) => sum + s.size, 0);
 
@@ -92,7 +92,7 @@ export function DayEditSheet({ visible, onClose, date, currentEvents, zones, onS
         <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", paddingBottom: 4 }}>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 11, fontWeight: "800", color: S.ter, letterSpacing: 1.2 }}>
-              EDIT DAY
+              {t("day_edit.eyebrow")}
             </Text>
             <Text
               style={{
@@ -108,8 +108,10 @@ export function DayEditSheet({ visible, onClose, date, currentEvents, zones, onS
             </Text>
             <Text style={{ fontSize: 13, color: S.sec, fontWeight: "600", marginTop: 4 }}>
               {totalSelected === 0
-                ? "No collections set"
-                : `${totalSelected} collection${totalSelected === 1 ? "" : "s"} set`}
+                ? t("day_edit.none_set")
+                : totalSelected === 1
+                  ? t("day_edit.count_set_one")
+                  : t("day_edit.count_set_other", { n: totalSelected })}
             </Text>
           </View>
           {totalSelected > 0 && (
@@ -123,7 +125,7 @@ export function DayEditSheet({ visible, onClose, date, currentEvents, zones, onS
               }}
             >
               <Text style={{ fontSize: 12, fontWeight: "800", color: S.sec, letterSpacing: 0.3 }}>
-                CLEAR
+                {t("day_edit.clear")}
               </Text>
             </Pressable>
           )}
@@ -177,7 +179,7 @@ export function DayEditSheet({ visible, onClose, date, currentEvents, zones, onS
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 15, fontWeight: "800", color: S.ink, letterSpacing: -0.2 }}>
-                      {s.label}
+                      {wasteLabel(type)}
                     </Text>
                     {isActive && hasZones && (
                       <Text style={{ fontSize: 12, color: s.ink, fontWeight: "700", marginTop: 2 }}>
@@ -186,7 +188,7 @@ export function DayEditSheet({ visible, onClose, date, currentEvents, zones, onS
                     )}
                     {!isActive && (
                       <Text style={{ fontSize: 12, color: S.ter, fontWeight: "600", marginTop: 2 }}>
-                        {hasZones ? "Pick zones below" : "Tap to add"}
+                        {hasZones ? t("day_edit.pick_zones") : t("day_edit.tap_to_add")}
                       </Text>
                     )}
                   </View>
@@ -276,7 +278,11 @@ export function DayEditSheet({ visible, onClose, date, currentEvents, zones, onS
             }}
           >
             <Text style={{ fontSize: 17, fontWeight: "700", color: "#fff" }}>
-              {totalSelected === 0 ? "Save (no collections)" : `Save ${totalSelected} collection${totalSelected === 1 ? "" : "s"}`}
+              {totalSelected === 0
+                ? t("day_edit.save_none")
+                : totalSelected === 1
+                  ? t("day_edit.save_count_one")
+                  : t("day_edit.save_count_other", { n: totalSelected })}
             </Text>
           </Pressable>
         </View>

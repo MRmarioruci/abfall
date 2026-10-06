@@ -20,6 +20,8 @@ import {
   CATEGORY_COLORS,
 } from "../components/CollectionCenterMarker";
 import { useCalendars } from "../context/CalendarContext";
+import { useT } from "../context/LocaleContext";
+import type { StringKey } from "../i18n";
 import { geocodeLocation } from "../services/geocoding";
 import { fetchCollectionCentersInBounds, type Bbox } from "../services/collectionCenters";
 import type { CenterCategory, CollectionCenter } from "../types/collectionCenters";
@@ -33,13 +35,20 @@ const ALL_CATEGORIES: CenterCategory[] = [
   "generic",
 ];
 
-const CATEGORY_LABELS: Record<CenterCategory, string> = {
-  centre: "Centres",
-  glass: "Glass",
-  clothes: "Clothes",
-  plastic: "Plastic",
-  paper: "Paper",
-  generic: "Other",
+const CATEGORY_LABELS: Record<CenterCategory, StringKey> = {
+  centre: "map.category.centre",
+  glass: "map.category.glass",
+  clothes: "map.category.clothes",
+  plastic: "map.category.plastic",
+  paper: "map.category.paper",
+  generic: "map.category.generic",
+};
+
+// Known OSM recycling_type values → localized label. Anything else falls
+// back to the raw tag value, prettified.
+const RECYCLING_TYPE_LABELS: Record<string, StringKey> = {
+  centre: "map.type.centre",
+  container: "map.type.container",
 };
 
 // Fallback center: Zürich HB.
@@ -67,6 +76,10 @@ function regionToBbox(region: Region): Bbox {
     east: region.longitude + region.longitudeDelta / 2,
     west: region.longitude - region.longitudeDelta / 2,
   };
+}
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 function isZoomedInEnough(region: Region): boolean {
@@ -237,6 +250,7 @@ const CenterMarker = memo(
 export function CollectionCentersScreen() {
   const insets = useSafeAreaInsets();
   const { active } = useCalendars();
+  const { t } = useT();
   const mapRef = useRef<MapView>(null);
 
   const [initialRegion, setInitialRegion] = useState<Region | null>(null);
@@ -274,7 +288,7 @@ export function CollectionCentersScreen() {
     setActiveCategories(new Set(ALL_CATEGORIES));
   }, []);
 
-  const locationLabel = active?.location || active?.municipality || "Current location";
+  const locationLabel = active?.location || active?.municipality || t("map.current_location");
 
   // Initial load: resolve location, set region, and fetch the first viewport.
   useEffect(() => {
@@ -327,7 +341,8 @@ export function CollectionCentersScreen() {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load collection centers");
+          console.warn("[CollectionCenters] load failed:", err instanceof Error ? err.message : err);
+          setError(t("map.error_body"));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -375,7 +390,8 @@ export function CollectionCentersScreen() {
         }
       } catch (err) {
         if (!signal.aborted) {
-          setError(err instanceof Error ? err.message : "Failed to load collection centers");
+          console.warn("[CollectionCenters] load failed:", err instanceof Error ? err.message : err);
+          setError(t("map.error_body"));
         }
       } finally {
         if (!signal.aborted) setLoading(false);
@@ -397,7 +413,7 @@ export function CollectionCentersScreen() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Permission needed", "Location access is required to center the map on you.");
+        Alert.alert(t("common.permission_needed"), t("map.alert.location_required"));
         return;
       }
       const loc = await Location.getCurrentPositionAsync({});
@@ -408,7 +424,7 @@ export function CollectionCentersScreen() {
         longitudeDelta: 0.03,
       });
     } catch {
-      Alert.alert("Error", "Could not get your current location.");
+      Alert.alert(t("map.alert.error_title"), t("map.alert.location_failed"));
     }
   };
 
@@ -416,7 +432,7 @@ export function CollectionCentersScreen() {
     const encoded = encodeURIComponent(`${center.lat},${center.lon}`);
     const url = `https://www.google.com/maps/dir/?api=1&destination=${encoded}`;
     Linking.openURL(url).catch(() => {
-      Alert.alert("Error", "Could not open directions.");
+      Alert.alert(t("map.alert.error_title"), t("map.alert.directions_failed"));
     });
   };
 
@@ -464,8 +480,8 @@ export function CollectionCentersScreen() {
               letterSpacing: -0.8,
             }}
           >
-            Collection{" "}
-            <Text style={{ fontWeight: "800" }}>points</Text>
+            {t("map.title_lead")}{" "}
+            <Text style={{ fontWeight: "800" }}>{t("map.title_bold")}</Text>
           </Text>
           <Text
             style={{
@@ -506,14 +522,14 @@ export function CollectionCentersScreen() {
         >
           <CategoryChip
             active={allSelected}
-            label="All"
+            label={t("map.category.all")}
             onPress={selectAllCategories}
           />
           {ALL_CATEGORIES.map((cat) => (
             <CategoryChip
               key={cat}
               active={activeCategories.has(cat)}
-              label={CATEGORY_LABELS[cat]}
+              label={t(CATEGORY_LABELS[cat])}
               dotColor={CATEGORY_COLORS[cat]}
               onPress={() => toggleCategory(cat)}
             />
@@ -587,7 +603,7 @@ export function CollectionCentersScreen() {
               color: S.sec,
             }}
           >
-            Loading collection centers…
+            {t("map.loading")}
           </Text>
         </View>
       )}
@@ -613,7 +629,7 @@ export function CollectionCentersScreen() {
               textAlign: "center",
             }}
           >
-            Couldn't load collection centers
+            {t("map.error_title")}
           </Text>
           <Text
             style={{
@@ -642,7 +658,7 @@ export function CollectionCentersScreen() {
           }}
         >
           <Text style={{ fontSize: 12.5, fontWeight: "700", color: "#fff" }}>
-            Zoom in to load collection centers
+            {t("map.zoom_hint")}
           </Text>
         </View>
       )}
@@ -670,7 +686,7 @@ export function CollectionCentersScreen() {
         >
           <ActivityIndicator size="small" color={S.ink} />
           <Text style={{ fontSize: 12.5, fontWeight: "700", color: S.ink }}>
-            Updating map…
+            {t("map.updating")}
           </Text>
         </View>
       )}
@@ -694,9 +710,11 @@ export function CollectionCentersScreen() {
           }}
         >
           <Text style={{ fontSize: 12.5, fontWeight: "700", color: S.ink }}>
-            {visibleCenters.length} place{visibleCenters.length === 1 ? "" : "s"} nearby
+            {visibleCenters.length === 1
+              ? t("map.nearby_one")
+              : t("map.nearby_other", { n: visibleCenters.length })}
             {loadedCenters.length > visibleCenters.length
-              ? ` · ${loadedCenters.length} loaded`
+              ? ` · ${t("map.loaded", { n: loadedCenters.length })}`
               : ""}
           </Text>
         </View>
@@ -721,7 +739,7 @@ export function CollectionCentersScreen() {
           }}
         >
           <Text style={{ fontSize: 12.5, fontWeight: "700", color: S.ink }}>
-            {hiddenCount} more nearby — zoom in to see all
+            {t("map.hidden_more", { n: hiddenCount })}
           </Text>
         </View>
       )}
@@ -763,7 +781,7 @@ export function CollectionCentersScreen() {
                   letterSpacing: -0.3,
                 }}
               >
-                {selected.name || "Collection point"}
+                {selected.name || t("map.default_name")}
               </Text>
               <Text
                 style={{
@@ -771,12 +789,15 @@ export function CollectionCentersScreen() {
                   fontSize: 12,
                   color: S.sec,
                   fontWeight: "700",
-                  textTransform: "capitalize",
                 }}
               >
                 {selected.recyclingType
-                  ? selected.recyclingType.replace(/_/g, " ")
-                  : selected.category.replace("centre", "recycling centre")}
+                  ? RECYCLING_TYPE_LABELS[selected.recyclingType]
+                    ? t(RECYCLING_TYPE_LABELS[selected.recyclingType])
+                    : capitalize(selected.recyclingType.replace(/_/g, " "))
+                  : selected.category === "centre"
+                    ? t("map.type.centre")
+                    : t(CATEGORY_LABELS[selected.category])}
               </Text>
             </View>
           </View>
@@ -786,18 +807,18 @@ export function CollectionCentersScreen() {
             style={{ marginTop: 12, maxHeight: 160 }}
           >
             {selected.operator && (
-              <InfoRow label="Operator" value={selected.operator} />
+              <InfoRow label={t("map.info.operator")} value={selected.operator} />
             )}
             {selected.address && (
-              <InfoRow label="Address" value={selected.address} />
+              <InfoRow label={t("map.info.address")} value={selected.address} />
             )}
             {selected.openingHours && (
-              <InfoRow label="Opening hours" value={selected.openingHours} />
+              <InfoRow label={t("map.info.opening_hours")} value={selected.openingHours} />
             )}
             {selected.description && (
-              <InfoRow label="Details" value={selected.description} />
+              <InfoRow label={t("map.info.details")} value={selected.description} />
             )}
-            <InfoRow label="Accepts" value={selected.materialsLabel} />
+            <InfoRow label={t("map.info.accepts")} value={selected.materialsLabel} />
           </ScrollView>
 
           <Pressable
@@ -821,7 +842,7 @@ export function CollectionCentersScreen() {
                 color: "#fff",
               }}
             >
-              Directions
+              {t("map.directions")}
             </Text>
             <ArrowURIcon color="#fff" size={14} />
           </Pressable>
@@ -853,7 +874,7 @@ export function CollectionCentersScreen() {
               color: S.ink,
             }}
           >
-            No collection centers in this area
+            {t("map.empty_title")}
           </Text>
           <Text
             style={{
@@ -862,7 +883,7 @@ export function CollectionCentersScreen() {
               color: S.sec,
             }}
           >
-            Pan or zoom to explore another part of the map.
+            {t("map.empty_body")}
           </Text>
         </View>
       )}

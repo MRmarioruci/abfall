@@ -45,6 +45,8 @@ import { Recyclops } from "./Recyclops";
 import { ConfirmSheet } from "./ConfirmSheet";
 import { addReportedId, getReportedIds } from "../services/reported";
 import type { SavedCalendar } from "../types/calendar";
+import { useT } from "../context/LocaleContext";
+import type { StringKey } from "../i18n";
 
 interface Props {
   visible: boolean;
@@ -88,6 +90,7 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
   const insets = useSafeAreaInsets();
   const { active, addCalendar } = useCalendars();
   const toast = useToast();
+  const { t } = useT();
 
   // ONE search box. Seeded from the active calendar's location so the
   // first thing the user sees is "what's near me", but they can clear
@@ -98,8 +101,9 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
 
   const [results, setResults] = useState<CommunityCalendarSummary[] | null>(null);
   const [searching, setSearching] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
-  const [fallbackBanner, setFallbackBanner] = useState<string | null>(null);
+  // Stored as a key / raw query so the text re-renders on a language switch.
+  const [searchError, setSearchError] = useState<StringKey | null>(null);
+  const [fallbackQuery, setFallbackQuery] = useState<string | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   // Tracks whether the current results came from a free-text q or from
@@ -129,13 +133,13 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
       await reportCommunityCalendar(id, "user_report");
     } catch (err) {
       console.warn("[community] report failed:", err);
-      toast.show("Couldn't send report · try again");
+      toast.show(t("community.toast.report_failed"));
       return;
     }
     await addReportedId(id).catch(() => {});
     setReported((prev) => new Set(prev).add(id));
     setPreviewId(null);
-    toast.show("Reported · thanks for flagging it");
+    toast.show(t("community.toast.reported"));
   };
 
   // Auto-fill the search box from the active calendar's location on open
@@ -149,7 +153,7 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
       lastSearched.current = null;
       setResults(null);
       setSearchError(null);
-      setFallbackBanner(null);
+      setFallbackQuery(null);
       setNextCursor(null);
       setPreviewId(null);
       return;
@@ -166,10 +170,10 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
   useEffect(() => {
     if (!visible || !searchGuard.current) return;
     if (query.trim() === lastSearched.current) return;
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       runSearch(query);
     }, 350);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, visible]);
 
@@ -182,7 +186,7 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
     setSearching(true);
     setSearchError(null);
     setResults(null);
-    setFallbackBanner(null);
+    setFallbackQuery(null);
     setNextCursor(null);
     try {
       // Pass 1: fuzzy match on the single query string. Server ilike-ORs
@@ -214,17 +218,13 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
         setNextCursor(countryWide.nextCursor);
         lastQuery.current = {};
         if (trimmed) {
-          setFallbackBanner(
-            `No match for "${trimmed}" yet. Showing all calendars in ${DEFAULT_COUNTRY}.`,
-          );
+          setFallbackQuery(trimmed);
         }
         return;
       }
 
       // Truly empty database — nothing shared anywhere yet.
-      setSearchError(
-        "No community calendars shared yet. Be the first — share yours from the home screen.",
-      );
+      setSearchError("community.empty");
     } catch (err) {
       if (stale()) return;
       // Details go to the log; users get something they can act on.
@@ -232,11 +232,11 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
       if (err instanceof ApiError) {
         setSearchError(
           err.status === 429
-            ? "Too many searches. Wait a minute and try again."
-            : "Community calendars are unavailable right now. Try again later.",
+            ? "community.error.rate_limited"
+            : "community.error.unavailable",
         );
       } else {
-        setSearchError("No connection. Check your internet and try again.");
+        setSearchError("community.error.offline");
       }
     } finally {
       if (!stale()) setSearching(false);
@@ -262,7 +262,7 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
       setNextCursor(page.nextCursor);
     } catch (err) {
       console.warn("[community] load more failed:", err);
-      toast.show("Couldn't load more · try again");
+      toast.show(t("community.toast.load_more_failed"));
     } finally {
       setLoadingMore(false);
     }
@@ -275,7 +275,7 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
     try {
       const detail = await getCommunityCalendar(community.id);
       if (!detail) {
-        toast.show("Calendar no longer available");
+        toast.show(t("community.toast.unavailable"));
         return;
       }
       // Diagnostic log — remove once we confirm the pipeline is intact.
@@ -303,10 +303,10 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
       };
       await addCalendar(local);
       markCommunityCalendarUsed(detail.id);
-      toast.show("Calendar imported");
+      toast.show(t("community.toast.imported"));
       onClose();
     } catch {
-      toast.show("Import failed · try again");
+      toast.show(t("community.toast.import_failed"));
     } finally {
       setImporting(false);
     }
@@ -336,9 +336,9 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
         <ConfirmSheet
           visible={confirmReport}
           onClose={() => setConfirmReport(false)}
-          title="Report this calendar?"
-          body="Report calendars that are wrong, offensive or spam. It disappears from your results right away, and we review calendars that get reported."
-          confirmLabel="Report"
+          title={t("community.report.title")}
+          body={t("community.report.body")}
+          confirmLabel={t("community.report.label")}
           variant="danger"
           onConfirm={() => handleReport(summary.id)}
         />
@@ -367,10 +367,10 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 22, fontWeight: "800", color: S.ink, letterSpacing: -0.5 }}>
-              Community calendars
+              {t("community.title")}
             </Text>
             <Text style={{ fontSize: 12.5, color: S.sec, fontWeight: "600", marginTop: 1 }}>
-              Shared by other Abfall users
+              {t("community.subtitle")}
             </Text>
           </View>
         </View>
@@ -382,7 +382,7 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
             they type. */}
         <View style={{ marginBottom: 14 }}>
           <SearchField
-            placeholder="City, region, or calendar name"
+            placeholder={t("community.search_placeholder")}
             value={query}
             onChange={setQuery}
             onSubmit={() => runSearch(query)}
@@ -402,7 +402,7 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
             >
               <ActivityIndicator size="small" color={S.sec} />
               <Text style={{ fontSize: 13, color: S.sec, fontWeight: "600" }}>
-                Searching…
+                {t("community.searching")}
               </Text>
             </View>
           )}
@@ -428,7 +428,7 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
                   textAlign: "center",
                 }}
               >
-                {searchError}
+                {t(searchError)}
               </Text>
               {onScanCalendar && (
                 <Pressable
@@ -454,7 +454,7 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
                 >
                   <ScanIcon color="#fff" size={15} />
                   <Text style={{ fontSize: 14, fontWeight: "800", color: "#fff", letterSpacing: -0.2 }}>
-                    Scan your calendar instead
+                    {t("community.scan_instead")}
                   </Text>
                 </Pressable>
               )}
@@ -463,7 +463,7 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
 
           {visibleResults && visibleResults.length > 0 && (
             <>
-              {fallbackBanner && (
+              {fallbackQuery && (
                 <View
                   style={{
                     flexDirection: "row",
@@ -485,7 +485,7 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
                       lineHeight: 17,
                     }}
                   >
-                    {fallbackBanner}
+                    {t("community.no_match", { q: fallbackQuery, country: DEFAULT_COUNTRY })}
                   </Text>
                 </View>
               )}
@@ -526,7 +526,7 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
                       <ChevRIcon color={S.sec} size={12} />
                     )}
                     <Text style={{ fontSize: 13, fontWeight: "800", color: S.ink, letterSpacing: -0.2 }}>
-                      {loadingMore ? "Loading…" : "Show more"}
+                      {loadingMore ? t("community.loading") : t("community.show_more")}
                     </Text>
                   </Pressable>
                 )}
@@ -559,7 +559,7 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
                       letterSpacing: -0.1,
                     }}
                   >
-                    Don't see yours? Scan your own calendar
+                    {t("community.scan_own")}
                   </Text>
                 </Pressable>
               )}
@@ -580,10 +580,13 @@ function ResultRow({
   item: CommunityCalendarSummary;
   onPress: () => void;
 }) {
+  const { t } = useT();
   const initial = item.sharedByName?.charAt(0).toUpperCase() ?? "·";
   const meta = [
     item.region ? `${item.year} · ${item.region}` : String(item.year),
-    item.usesCount > 0 ? `${item.usesCount} use${item.usesCount === 1 ? "" : "s"}` : null,
+    item.usesCount > 0
+      ? t(item.usesCount === 1 ? "community.uses_one" : "community.uses_other", { n: item.usesCount })
+      : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -623,7 +626,7 @@ function ResultRow({
         </Text>
         <Text style={{ fontSize: 11.5, color: S.sec, fontWeight: "600", marginTop: 1 }}>
           {meta}
-          {item.sharedByName ? ` · by ${item.sharedByName}` : ""}
+          {item.sharedByName ? ` · ${t("community.by", { name: item.sharedByName })}` : ""}
         </Text>
       </View>
       <ChevRIcon color={S.ter} size={12} />
@@ -648,12 +651,14 @@ function PreviewBody({
   onReport: () => void;
   importing: boolean;
 }) {
+  const { t } = useT();
   return (
     <View style={{ paddingHorizontal: 20, paddingTop: 4 }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 18 }}>
         <Pressable
           onPress={onBack}
           hitSlop={10}
+          accessibilityLabel={t("community.back")}
           style={{
             width: 36,
             height: 36,
@@ -683,13 +688,25 @@ function PreviewBody({
           elevation: 3,
         }}
       >
-        <PreviewRow label="Title" value={summary.title} />
-        <PreviewRow label="Year" value={String(summary.year) + (summary.half ? ` · half ${summary.half}` : "")} />
-        <PreviewRow label="Region" value={summary.region ?? "—"} />
-        <PreviewRow label="Zones" value={summary.zones.join(", ") || "all"} />
-        <PreviewRow label="Language" value={summary.sourceLanguage ?? "—"} />
-        <PreviewRow label="Shared by" value={summary.sharedByName ?? "Anonymous"} />
-        <PreviewRow label="Uses" value={String(summary.usesCount)} last />
+        <PreviewRow label={t("community.preview.title")} value={summary.title} />
+        <PreviewRow
+          label={t("community.preview.year")}
+          value={
+            String(summary.year) +
+            (summary.half ? ` · ${t("community.preview.half", { n: summary.half })}` : "")
+          }
+        />
+        <PreviewRow label={t("community.preview.region")} value={summary.region ?? "—"} />
+        <PreviewRow
+          label={t("community.preview.zones")}
+          value={summary.zones.join(", ") || t("community.preview.zones_all")}
+        />
+        <PreviewRow label={t("community.preview.language")} value={summary.sourceLanguage ?? "—"} />
+        <PreviewRow
+          label={t("community.preview.shared_by")}
+          value={summary.sharedByName ?? t("community.preview.anonymous")}
+        />
+        <PreviewRow label={t("community.preview.uses")} value={String(summary.usesCount)} last />
       </View>
 
       <Pressable
@@ -717,7 +734,7 @@ function PreviewBody({
           <CheckIcon color="#fff" size={16} />
         )}
         <Text style={{ fontSize: 15.5, fontWeight: "800", color: "#fff", letterSpacing: -0.2 }}>
-          {importing ? "Importing…" : "Use this calendar"}
+          {importing ? t("community.importing") : t("community.use")}
         </Text>
       </Pressable>
 
@@ -727,7 +744,7 @@ function PreviewBody({
         style={{ alignSelf: "center", paddingVertical: 14, marginBottom: Math.max(insetsBottom, 8) }}
       >
         <Text style={{ fontSize: 13.5, fontWeight: "700", color: S.sec }}>
-          Report this calendar
+          {t("community.report_link")}
         </Text>
       </Pressable>
     </View>

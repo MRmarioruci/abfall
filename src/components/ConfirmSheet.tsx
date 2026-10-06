@@ -8,13 +8,14 @@ import { View, Text, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { S } from "../theme/colors";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
+import { useT } from "../context/LocaleContext";
 
 interface Props {
   visible: boolean;
   onClose: () => void;
   title: string;
   body: string;
-  /** Label on the destructive button. Defaults to "Confirm". */
+  /** Label on the destructive button. Defaults to the localized "Confirm". */
   confirmLabel?: string;
   /** Visual treatment for the confirm button. "danger" tints it red. */
   variant?: "default" | "danger";
@@ -26,11 +27,12 @@ export function ConfirmSheet({
   onClose,
   title,
   body,
-  confirmLabel = "Confirm",
+  confirmLabel,
   variant = "default",
   onConfirm,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useT();
 
   const handleConfirm = async () => {
     await onConfirm();
@@ -78,7 +80,7 @@ export function ConfirmSheet({
               justifyContent: "center",
             }}
           >
-            <Text style={{ fontSize: 15, fontWeight: "800", color: S.ink }}>Cancel</Text>
+            <Text style={{ fontSize: 15, fontWeight: "800", color: S.ink }}>{t("common.cancel")}</Text>
           </Pressable>
           <Pressable
             onPress={handleConfirm}
@@ -96,7 +98,7 @@ export function ConfirmSheet({
               elevation: 4,
             }}
           >
-            <Text style={{ fontSize: 15, fontWeight: "800", color: "#fff" }}>{confirmLabel}</Text>
+            <Text style={{ fontSize: 15, fontWeight: "800", color: "#fff" }}>{confirmLabel ?? t("confirm.confirm")}</Text>
           </Pressable>
         </View>
       </View>

@@ -2,6 +2,7 @@ import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import type { ParsedCalendarResult, CollectionEvent } from "../types/calendar";
 import { type WasteStreamId } from "../theme/colors";
 import { ApiError, runScanStep } from "./api";
+import { t, monthLong, monthShort } from "../i18n";
 
 // Two-step pipeline:
 //   Step 1: LLM reads the image and returns a NATURAL JSON of the calendar:
@@ -392,13 +393,13 @@ export async function parseCalendarImage(
 // network failures into something a user can act on.
 function toUserFacingError(e: unknown): Error {
   if (e instanceof ApiError) {
-    if (e.status === 429) return new Error("You've reached today's scan limit. Try again tomorrow.");
-    if (e.status === 413 || e.status === 400) return new Error("This photo couldn't be processed. Try a smaller or clearer photo.");
-    return new Error("Scanning is unavailable right now. Try again later.");
+    if (e.status === 429) return new Error(t("scan.error.limit"));
+    if (e.status === 413 || e.status === 400) return new Error(t("scan.error.unprocessable"));
+    return new Error(t("scan.error.unavailable"));
   }
   if (e instanceof TypeError) {
     // fetch() rejects with a TypeError when there's no connection.
-    return new Error("No connection. Check your internet and try again.");
+    return new Error(t("scan.error.offline"));
   }
   return e instanceof Error ? e : new Error(String(e));
 }
@@ -418,13 +419,13 @@ async function parseImages(
 
   for (let i = 0; i < images.length; i++) {
     const img = images[i];
-    const imgLabel = images.length > 1 ? ` (image ${i + 1}/${images.length})` : "";
+    const multi = images.length > 1;
 
     // Stage transitions only carry a `detail` when there's substantive new
     // info to share (e.g. the result of the step). The active step's label
     // is already shown by the UI — repeating it as a subtitle just looks
     // like the screen says the same thing twice.
-    onProgress?.({ stage: "preparing", detail: images.length > 1 ? `Image ${i + 1} of ${images.length}` : undefined });
+    onProgress?.({ stage: "preparing", detail: multi ? t("scan.progress.image_of", { i: i + 1, n: images.length }) : undefined });
     const prepared = await prepareImage(img.uri);
     console.log("[parseCalendar] image:", { width: prepared.width, height: prepared.height, kb: Math.round((prepared.base64!.length * 0.75) / 1024) });
 
@@ -437,18 +438,25 @@ async function parseImages(
     )).sort((a, b) => a - b);
     console.log("[parseCalendar] anchored:", anchoredMonths.map((m) => MONTH_NAMES[m]).join(", "), `year=${anchor.year || "?"}`);
     if (anchoredMonths.length === 0) {
-      throw new Error("Could not detect any month headers in the image. Try a clearer photo.");
+      throw new Error(t("scan.error.no_months"));
     }
     anchoredMonths.forEach((m) => allowedMonthSet.add(m));
     const anchorYear = anchor.year && anchor.year > 2000 ? anchor.year : new Date().getFullYear();
-    const monthsLabel = anchoredMonths.map((m) => MONTH_NAMES[m]).join(", ");
-    onProgress?.({ stage: "anchoring", detail: `Found ${anchoredMonths.length} month${anchoredMonths.length === 1 ? "" : "s"}: ${monthsLabel}` });
+    const monthsLabel = anchoredMonths.map((m) => monthLong(m)).join(", ");
+    onProgress?.({
+      stage: "anchoring",
+      detail: anchoredMonths.length === 1
+        ? t("scan.progress.found_months_one", { months: monthsLabel })
+        : t("scan.progress.found_months_other", { n: anchoredMonths.length, months: monthsLabel }),
+    });
 
     // STEP 1a — STRUCTURE PASS: get the model to describe the calendar's
     // layout, zones, color → zone map, and waste-type icons BEFORE asking it
     // to enumerate dates. Use a higher-resolution image so subtle zone
     // colors aren't smushed by JPEG compression.
-    onProgress?.({ stage: "understanding", detail: `Understanding the layout${imgLabel}` });
+    onProgress?.({ stage: "understanding", detail: multi
+      ? t("scan.progress.understanding_image", { i: i + 1, n: images.length })
+      : t("scan.progress.understanding") });
     console.log("[parseCalendar] === Step 1a: structure pass (hi-res) ===");
     let structure: CalendarStructure | undefined;
     try {
@@ -467,7 +475,16 @@ async function parseImages(
       const wasteCount = structure.wasteTypes.length;
       onProgress?.({
         stage: "understanding",
-        detail: `${wasteCount} waste type${wasteCount === 1 ? "" : "s"}${zoneCount > 0 ? `, ${zoneCount} zone${zoneCount === 1 ? "" : "s"}` : ""} found`,
+        detail: t("scan.progress.found_items", {
+          items: [
+            wasteCount === 1
+              ? t("scan.progress.waste_types_one")
+              : t("scan.progress.waste_types_other", { n: wasteCount }),
+            ...(zoneCount > 0
+              ? [zoneCount === 1 ? t("scan.progress.zones_one") : t("scan.progress.zones_other", { n: zoneCount })]
+              : []),
+          ].join(", "),
+        }),
       });
     } catch (e) {
       console.warn("[parseCalendar] structure pass failed, continuing without it:", e);
@@ -487,7 +504,9 @@ async function parseImages(
     // the first successful call — it's the same across all months.
     onProgress?.({
       stage: "extracting",
-      detail: `Reading ${anchoredMonths.length} month${anchoredMonths.length === 1 ? "" : "s"}…`,
+      detail: anchoredMonths.length === 1
+        ? t("scan.progress.reading_months_one")
+        : t("scan.progress.reading_months_other", { n: anchoredMonths.length }),
     });
     console.log("[parseCalendar] === Step 1b: raw extraction (per-month) ===");
 
@@ -498,7 +517,7 @@ async function parseImages(
       const m = anchoredMonths[mi];
       onProgress?.({
         stage: "extracting",
-        detail: `Reading ${MONTH_NAMES[m]} (${mi + 1}/${anchoredMonths.length})…`,
+        detail: t("scan.progress.reading_month", { month: monthLong(m), i: mi + 1, n: anchoredMonths.length }),
       });
       try {
         const monthRaw = await extractRaw(prepared.base64!, [m], anchorYear, structure);
@@ -545,10 +564,10 @@ async function parseImages(
       months: mergedMonths,
     };
     console.log(`[parseCalendar] raw merged: ${mergedMonths.length} months, ${runningLabelCount} labels total`);
-    onProgress?.({ stage: "extracting", detail: `Found ${runningLabelCount} markers across ${mergedMonths.length} months` });
+    onProgress?.({ stage: "extracting", detail: t("scan.progress.found_markers", { markers: runningLabelCount, months: mergedMonths.length }) });
 
     // STEP 2: code maps raw → CollectionEvent[]
-    onProgress?.({ stage: "mapping", detail: "Organising into your calendar" });
+    onProgress?.({ stage: "mapping", detail: t("scan.progress.organising") });
     console.log("[parseCalendar] === Step 2: mapping to events ===");
     const events = mapRawToEvents(raw, anchoredMonths, year);
     console.log(`[parseCalendar] mapped ${events.length} events`);
@@ -580,14 +599,13 @@ async function parseImages(
   console.log(`[parseCalendar] === Done: ${events.length} events (allowed months: ${Array.from(allowedMonthSet).sort().map((m) => MONTH_NAMES[m]).join(", ")}) ===`);
 
   // Build a descriptive default title: "{Municipality}, {Year} · Jan–Jun"
-  const SHORT_EN = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const sortedMonths = Array.from(allowedMonthSet).sort((a, b) => a - b);
   const rangePart = sortedMonths.length === 0
     ? ""
     : sortedMonths.length === 1
-    ? SHORT_EN[sortedMonths[0]]
-    : `${SHORT_EN[sortedMonths[0]]}–${SHORT_EN[sortedMonths[sortedMonths.length - 1]]}`;
-  const namePart = municipality || title || "Calendar";
+    ? monthShort(sortedMonths[0])
+    : `${monthShort(sortedMonths[0])}–${monthShort(sortedMonths[sortedMonths.length - 1])}`;
+  const namePart = municipality || title || t("scan.calendar_fallback");
   const computedTitle = rangePart
     ? `${namePart}, ${year} · ${rangePart}`
     : `${namePart}, ${year}`;

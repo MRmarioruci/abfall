@@ -1,4 +1,5 @@
 import type { CollectionCenter, CenterCategory } from "../types/collectionCenters";
+import { t, type StringKey } from "../i18n";
 
 const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
 const USER_AGENT = "Abfall/1.0 (Swiss waste-calendar app)";
@@ -21,18 +22,20 @@ const MATERIAL_KEYS = [
   "recycling:cooking_oil",
 ];
 
+// Built when the data is fetched (it isn't cached), so it's in the
+// language the app is using at that moment.
 function buildMaterialsLabel(tags: Record<string, string>): string {
   const parts: string[] = [];
   for (const key of MATERIAL_KEYS) {
     if (tags[key] === "yes" || tags[key] === "true") {
-      const label = key.replace("recycling:", "").replace(/_/g, " ");
-      parts.push(label);
+      const label = t(`material.${key.replace("recycling:", "")}` as StringKey);
+      if (!parts.includes(label)) parts.push(label);
     }
   }
   if (!parts.length) {
-    if (tags.amenity === "recycling_centre") return "Recycling centre";
-    if (tags.amenity === "recycling") return "Recycling point";
-    return "Collection point";
+    if (tags.amenity === "recycling_centre") return t("material.fallback.centre");
+    if (tags.amenity === "recycling") return t("material.fallback.point");
+    return t("material.fallback.collection");
   }
   return parts.join(", ");
 }

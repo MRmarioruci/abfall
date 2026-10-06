@@ -20,6 +20,8 @@ import { useEffect, useRef, useState } from "react";
 import { Animated, Dimensions, Easing, Pressable, Text, View } from "react-native";
 import Svg, { Circle, Ellipse, G, Path } from "react-native-svg";
 import { S, ST } from "../theme/colors";
+import { useT } from "../context/LocaleContext";
+import { t as translate, type StringKey } from "../i18n";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const AnimatedG = Animated.createAnimatedComponent(G);
@@ -30,75 +32,74 @@ const AnimatedG = Animated.createAnimatedComponent(G);
 // healthy dose of fourth-wall-break. Keep them short (fits the bubble),
 // punchy, and varied so consecutive picks don't feel samey.
 //
+// Entries are string keys (English copy in src/i18n/locales/en.ts); the
+// bubble translates at render so a language switch updates it.
+//
 // The picker downweights recent lines — see RECENT_HISTORY_LEN below.
-const RECYCLOPS_LINES = [
+const RECYCLOPS_LINES: StringKey[] = [
   // ── Grumpy / passive-aggressive ──────────────────────────────────
-  "I saw what you put in the bin. We need to talk.",
-  "Was that recyclable in the trash? Was it?",
-  "Three weeks. Three WEEKS without rinsing a jar.",
-  "I'm not mad. I am, actually. A bit.",
-  "Recycling truck came. You weren't ready. AGAIN.",
-  "Bin day was yesterday. Where were you, hm?",
-  "I sigh. Loudly. So you can hear it.",
-  "The landfill is laughing. At you. Right now.",
-  "Composting is right there. It's RIGHT THERE.",
-  "I waited by the door. You forgot.",
-  "I'm watching. With my one eye. Always watching.",
-  "You and I are going to have a chat about cardboard.",
-  "Plastic in paper again. Wow. Bold choice.",
-  "The recycling bin texted me. It misses you.",
-  "Don't make me come over there. (I can't. But emotionally.)",
-  "I keep a list. You're on it. (Mid-tier.)",
-  "Just standing here. Quietly disappointed.",
-  "I noticed the takeout box. We're addressing it later.",
-
+  "recyclops.line_01",
+  "recyclops.line_02",
+  "recyclops.line_03",
+  "recyclops.line_04",
+  "recyclops.line_05",
+  "recyclops.line_06",
+  "recyclops.line_07",
+  "recyclops.line_08",
+  "recyclops.line_09",
+  "recyclops.line_10",
+  "recyclops.line_11",
+  "recyclops.line_12",
+  "recyclops.line_13",
+  "recyclops.line_14",
+  "recyclops.line_15",
+  "recyclops.line_16",
+  "recyclops.line_17",
+  "recyclops.line_18",
   // ── Weird / surreal / quirky ─────────────────────────────────────
-  "Yesterday I dreamt I was a cardboard box.",
-  "Cardboard is, fundamentally, a state of mind.",
-  "Worms write me letters. Long ones.",
-  "Sometimes I just stand here. Just… standing.",
-  "Have you ever truly LOOKED at a plastic spoon?",
-  "Bottles whisper at night. They have opinions.",
-  "My therapist is a recycling truck. He's great.",
-  "I had a cousin once. She became a paper bag.",
-  "I exist in negative-seven dimensions.",
-  "What if pizza boxes had little feelings?",
-  "Glass thinks it's better than us. It is.",
-  "Aluminum is my best friend. Don't tell tin.",
-  "I do not remember being assembled.",
-  "Banana peel: waste or just napping?",
-  "A leaf told me a secret today.",
-  "Time is a flat compost heap.",
-  "Inside every can is another, smaller can.",
-
+  "recyclops.line_19",
+  "recyclops.line_20",
+  "recyclops.line_21",
+  "recyclops.line_22",
+  "recyclops.line_23",
+  "recyclops.line_24",
+  "recyclops.line_25",
+  "recyclops.line_26",
+  "recyclops.line_27",
+  "recyclops.line_28",
+  "recyclops.line_29",
+  "recyclops.line_30",
+  "recyclops.line_31",
+  "recyclops.line_32",
+  "recyclops.line_33",
+  "recyclops.line_34",
+  "recyclops.line_35",
   // ── Cheerful but unexpected ──────────────────────────────────────
-  "Look at you. Sorting. LOOK AT YOU.",
-  "Today is a tin-foil kind of day.",
-  "You recycled? I am thrilled. I am screaming.",
-  "Hello! I noticed you. Hi.",
-  "Imagine being a glass bottle. The FREEDOM.",
-  "Crush a can today. Live deliciously.",
-  "Tuesday. Recycling Tuesday. I'm vibrating.",
-  "Compost: nature's recycling. Also delicious.",
-
+  "recyclops.line_36",
+  "recyclops.line_37",
+  "recyclops.line_38",
+  "recyclops.line_39",
+  "recyclops.line_40",
+  "recyclops.line_41",
+  "recyclops.line_42",
+  "recyclops.line_43",
   // ── Meta / self-aware / fourth-wall ──────────────────────────────
-  "I'm a blob with feelings, OK?",
-  "One eye, infinite opinions.",
-  "Contractually obligated to bob. It's in my contract.",
-  "Is anyone reading these. Hello?",
-  "Watch me carry plot armor across the calendar.",
-  "If you scroll, I follow. It's my curse.",
-  "I get paid in compost. Don't ask.",
-  "I was rendered yesterday. Feels recent.",
-  "I rearrange things when you're not looking.",
-  "If you ignore me I keep talking. Be warned.",
-  "Tap me. Or don't. I'll judge silently.",
-
+  "recyclops.line_44",
+  "recyclops.line_45",
+  "recyclops.line_46",
+  "recyclops.line_47",
+  "recyclops.line_48",
+  "recyclops.line_49",
+  "recyclops.line_50",
+  "recyclops.line_51",
+  "recyclops.line_52",
+  "recyclops.line_53",
+  "recyclops.line_54",
   // ── Dark-humor / suspicious ──────────────────────────────────────
-  "Someone in this building isn't sorting. I know who.",
-  "The bin sees all.",
-  "I keep tabs on every bottle. Every. Single. One.",
-  "Don't trust the trash compactor. It's snitching.",
+  "recyclops.line_55",
+  "recyclops.line_56",
+  "recyclops.line_57",
+  "recyclops.line_58",
 ];
 
 // How many of the most-recent lines to avoid re-picking. Prevents the
@@ -227,9 +228,10 @@ export function Recyclops({ size = 76, onPress, onRequestSwap, walkRange = 60 }:
   const bubbleScale = useRef(new Animated.Value(0.7)).current;
 
   // Front/back state — drives whether you see his eye or his tushie.
+  const { t } = useT();
   const [facing, setFacing] = useState<"front" | "back">("front");
   // Current line in the speech bubble (null = nothing to say right now).
-  const [bubbleMsg, setBubbleMsg] = useState<string | null>(null);
+  const [bubbleMsg, setBubbleMsg] = useState<StringKey | null>(null);
 
   // Held in a ref so the parent passing a fresh inline callback each
   // render (it does — and firing it re-renders the parent) doesn't tear
@@ -353,7 +355,7 @@ export function Recyclops({ size = 76, onPress, onRequestSwap, walkRange = 60 }:
         if (speakCancelled) return;
         const line = pickLine();
         setBubbleMsg(line);
-        const hold = Math.min(4200, 1700 + line.length * 55);
+        const hold = Math.min(4200, 1700 + translate(line).length * 55);
         bubbleScale.setValue(0.7);
         Animated.parallel([
           Animated.timing(bubbleOpacity, { toValue: 1, duration: 200, easing: Easing.out(Easing.quad), useNativeDriver: true }),
@@ -683,7 +685,7 @@ export function Recyclops({ size = 76, onPress, onRequestSwap, walkRange = 60 }:
     >
       <Animated.View style={{ transform: [{ scale: bubbleScale }] }}>
         {bubbleMsg ? (
-          <SpeechBubble text={bubbleMsg} tailTranslateX={tailTranslateXAnim} />
+          <SpeechBubble text={t(bubbleMsg)} tailTranslateX={tailTranslateXAnim} />
         ) : null}
       </Animated.View>
     </Animated.View>

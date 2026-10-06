@@ -16,7 +16,6 @@ import {
   type NotificationDestination,
 } from "../services/notificationDelivery";
 import { useT } from "../context/LocaleContext";
-import type { StringKey } from "../i18n";
 
 interface Props {
   visible: boolean;
@@ -120,7 +119,7 @@ export function DestinationPicker({ visible, onClose, current, onPick }: Props) 
                       letterSpacing: -0.3,
                     }}
                   >
-                    {t(`destination.${d.id}.label` as StringKey)}
+                    {t(d.labelKey)}
                   </Text>
                   <Text
                     style={{
@@ -131,7 +130,7 @@ export function DestinationPicker({ visible, onClose, current, onPick }: Props) 
                       lineHeight: 17,
                     }}
                   >
-                    {t(`destination.${d.id}.desc` as StringKey)}
+                    {t(d.descKey)}
                   </Text>
                 </View>
                 {active && (

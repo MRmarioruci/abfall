@@ -13,6 +13,7 @@ import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
 import { Platform } from "react-native";
 import { isConnectedToGoogle, saveTokens, disconnectGoogle } from "../services/googleCalendar";
+import { t } from "../i18n";
 
 // Required so the auth pop-up dismisses cleanly on iOS Safari.
 WebBrowser.maybeCompleteAuthSession();
@@ -131,9 +132,9 @@ export function useGoogleAuth() {
   const signIn = async () => {
     if (busy) return;
     if (!isOAuthConfigured()) {
-      throw new Error(
-        "Google OAuth not configured — set EXPO_PUBLIC_GOOGLE_CLIENT_ID_* in .env",
-      );
+      // User-facing: surfaced in the "Google sign-in failed · {error}" toast.
+      console.warn("[googleAuth] OAuth not configured — set EXPO_PUBLIC_GOOGLE_CLIENT_ID_* in .env");
+      throw new Error(t("google.not_configured"));
     }
     setBusy(true);
     try {

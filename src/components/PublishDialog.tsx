@@ -26,6 +26,7 @@ import type { SavedCalendar } from "../types/calendar";
 import { ApiError, shareCalendar } from "../services/api";
 import { useCalendars } from "../context/CalendarContext";
 import { useToast } from "./ui/Toast";
+import { useT } from "../context/LocaleContext";
 
 const SHARE_NAME_KEY = "abfall_share_name";
 const DEFAULT_COUNTRY = "CH";
@@ -61,6 +62,7 @@ function derivePublishRegion(c: SavedCalendar): string {
 export function PublishDialog({ visible, onClose, calendar }: Props) {
   const insets = useSafeAreaInsets();
   const toast = useToast();
+  const { t } = useT();
   const { patchCalendar } = useCalendars();
   const [publishTitle, setPublishTitle] = useState("");
   const [shareName, setShareName] = useState("");
@@ -105,19 +107,19 @@ export function PublishDialog({ visible, onClose, calendar }: Props) {
         shareCode: detail.id,
         shareUrl: `https://abfall.app/c/${detail.id}`,
       });
-      toast.show("Published to community");
+      toast.show(t("publish.toast.published"));
       onClose();
     } catch (err) {
       console.warn("[publish] failed", err);
       if (err instanceof ApiError) {
         toast.show(
           err.status === 429
-            ? "You've published a lot today · try again tomorrow"
-            : "Publish failed · try again later",
+            ? t("publish.toast.rate_limited")
+            : t("publish.toast.failed"),
         );
       } else {
         const msg = err instanceof Error ? err.message : String(err);
-        toast.show(`Publish failed · ${msg}`);
+        toast.show(t("publish.toast.failed_detail", { error: msg }));
       }
     } finally {
       setPublishing(false);
@@ -157,7 +159,7 @@ export function PublishDialog({ visible, onClose, calendar }: Props) {
                 letterSpacing: -0.5,
               }}
             >
-              Publish calendar
+              {t("publish.title")}
             </Text>
             <Text
               style={{
@@ -167,13 +169,14 @@ export function PublishDialog({ visible, onClose, calendar }: Props) {
                 marginTop: 1,
               }}
             >
-              Share with people nearby
+              {t("publish.subtitle")}
             </Text>
           </View>
           <Pressable
             onPress={onClose}
             disabled={publishing}
             hitSlop={10}
+            accessibilityLabel={t("publish.close")}
             style={{
               width: 32,
               height: 32,
@@ -207,12 +210,12 @@ export function PublishDialog({ visible, onClose, calendar }: Props) {
               marginTop: 10,
             }}
           >
-            TITLE
+            {t("publish.field_title")}
           </Text>
           <TextInput
             value={publishTitle}
             onChangeText={setPublishTitle}
-            placeholder="Give it a clear name"
+            placeholder={t("publish.title_placeholder")}
             placeholderTextColor={S.ter}
             editable={!publishing}
             maxLength={120}
@@ -249,12 +252,12 @@ export function PublishDialog({ visible, onClose, calendar }: Props) {
               letterSpacing: 0.6,
             }}
           >
-            YOU
+            {t("publish.you")}
           </Text>
           <TextInput
             value={shareName}
             onChangeText={setShareName}
-            placeholder="Your name (optional)"
+            placeholder={t("publish.name_placeholder")}
             placeholderTextColor={S.ter}
             editable={!publishing}
             maxLength={40}
@@ -290,10 +293,10 @@ export function PublishDialog({ visible, onClose, calendar }: Props) {
             }}
             numberOfLines={1}
           >
-            {locator || "(set your city on the home screen first)"}
+            {locator || t("publish.no_city")}
           </Text>
           <Text style={{ fontSize: 12, color: S.ter, fontWeight: "700" }}>
-            {calendar.events.length} dates
+            {t(calendar.events.length === 1 ? "share.dates_one" : "share.dates_other", { n: calendar.events.length })}
           </Text>
         </View>
 
@@ -311,7 +314,7 @@ export function PublishDialog({ visible, onClose, calendar }: Props) {
               justifyContent: "center",
             }}
           >
-            <Text style={{ fontSize: 15, fontWeight: "800", color: S.ink }}>Cancel</Text>
+            <Text style={{ fontSize: 15, fontWeight: "800", color: S.ink }}>{t("common.cancel")}</Text>
           </Pressable>
           <Pressable
             onPress={handlePublish}
@@ -339,7 +342,7 @@ export function PublishDialog({ visible, onClose, calendar }: Props) {
               <CheckIcon color="#fff" size={15} />
             )}
             <Text style={{ fontSize: 15, fontWeight: "800", color: "#fff" }}>
-              {publishing ? "Publishing…" : "Publish"}
+              {publishing ? t("publish.publishing") : t("publish.publish")}
             </Text>
           </Pressable>
         </View>

@@ -3,6 +3,7 @@ import { View, Text, TextInput, Pressable, ActivityIndicator, ScrollView, Keyboa
 import { S } from "../theme/colors";
 import { PinIcon, XIcon } from "./icons/Icons";
 import { searchPlaces, type PlaceSuggestion } from "../services/geocoding";
+import { useT } from "../context/LocaleContext";
 
 interface Props {
   value: string;
@@ -22,10 +23,11 @@ interface Props {
 export function LocationSearchInput({
   value,
   onChange,
-  placeholder = "Start typing — Schlieren, Zürich…",
+  placeholder,
   suggestionsMaxHeight = 240,
   autoFocus = false,
 }: Props) {
+  const { t } = useT();
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [searching, setSearching] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -100,7 +102,7 @@ export function LocationSearchInput({
             // Delay so a suggestion tap registers before we hide the list
             setTimeout(() => setFocused(false), 120)
           }
-          placeholder={placeholder}
+          placeholder={placeholder ?? t("location.placeholder")}
           placeholderTextColor={S.ter}
           autoFocus={autoFocus}
           autoCorrect={false}
@@ -123,6 +125,7 @@ export function LocationSearchInput({
               setSuggestions([]);
             }}
             hitSlop={10}
+            accessibilityLabel={t("location.clear")}
             style={{
               width: 22,
               height: 22,
@@ -153,14 +156,14 @@ export function LocationSearchInput({
             <View style={{ padding: 14, flexDirection: "row", alignItems: "center", gap: 10 }}>
               <ActivityIndicator size="small" color={S.sec} />
               <Text style={{ fontSize: 13, fontWeight: "600", color: S.sec }}>
-                Searching places…
+                {t("location.searching")}
               </Text>
             </View>
           )}
           {suggestions.length === 0 && !searching && (
             <View style={{ padding: 14 }}>
               <Text style={{ fontSize: 13, fontWeight: "600", color: S.sec }}>
-                No matches — try a different spelling.
+                {t("location.no_matches_spelling")}
               </Text>
             </View>
           )}

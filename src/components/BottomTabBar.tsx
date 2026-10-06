@@ -2,6 +2,8 @@ import { View, Pressable, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { S } from "../theme/colors";
 import { HomeIcon, PinIcon, PlusIcon, BellIcon, UserIcon } from "./icons/Icons";
+import { useT } from "../context/LocaleContext";
+import type { StringKey } from "../i18n";
 
 interface Props {
   activeTab: string;
@@ -13,19 +15,20 @@ interface Props {
 }
 
 type TabDef =
-  | { id: string; Icon: React.ComponentType<{ color: string; size?: number }>; center?: false }
-  | { id: string; center: true; Icon?: undefined };
+  | { id: string; label: StringKey; Icon: React.ComponentType<{ color: string; size?: number }>; center?: false }
+  | { id: string; label: StringKey; center: true; Icon?: undefined };
 
 const TABS: TabDef[] = [
-  { id: "Home", Icon: HomeIcon },
-  { id: "Map", Icon: PinIcon },
-  { id: "add", center: true },
-  { id: "Reminders", Icon: BellIcon },
-  { id: "Profile", Icon: UserIcon },
+  { id: "Home", label: "tabs.home", Icon: HomeIcon },
+  { id: "Map", label: "tabs.map", Icon: PinIcon },
+  { id: "add", label: "tabs.add", center: true },
+  { id: "Reminders", label: "tabs.reminders", Icon: BellIcon },
+  { id: "Profile", label: "tabs.profile", Icon: UserIcon },
 ];
 
 export function BottomTabBar({ activeTab, onTabPress, onAddPress, badges }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useT();
 
   return (
     <View
@@ -52,6 +55,8 @@ export function BottomTabBar({ activeTab, onTabPress, onAddPress, badges }: Prop
             <View key={tab.id} style={{ flex: 1, alignItems: "center" }}>
               <Pressable
                 onPress={onAddPress}
+                accessibilityRole="button"
+                accessibilityLabel={t(tab.label)}
                 style={{
                   width: 60,
                   height: 60,
@@ -83,6 +88,9 @@ export function BottomTabBar({ activeTab, onTabPress, onAddPress, badges }: Prop
           <Pressable
             key={tab.id}
             onPress={() => onTabPress(tab.id)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: focused }}
+            accessibilityLabel={t(tab.label)}
             style={{
               flex: 1,
               height: 66,

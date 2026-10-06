@@ -17,6 +17,7 @@
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { SavedCalendar } from "../types/calendar";
+import type { StringKey } from "../i18n";
 import {
   scheduleRemindersForCalendar,
   cancelNotificationsForCalendar,
@@ -39,8 +40,10 @@ const DESTINATION_KEY = "abfall_notification_destination";
 
 export interface DestinationMeta {
   id: NotificationDestination;
-  label: string;
-  description: string;
+  /** i18n key for the display name — resolve with t() at render. */
+  labelKey: StringKey;
+  /** i18n key for the one-line description — resolve with t() at render. */
+  descKey: StringKey;
 }
 
 // Selectable destinations. "none" is still a valid stored value (used by
@@ -50,18 +53,18 @@ export interface DestinationMeta {
 export const DESTINATIONS: DestinationMeta[] = [
   {
     id: "abfall",
-    label: "Inside Abfall",
-    description: "Get push notifications from the app itself.",
+    labelKey: "destination.abfall.label",
+    descKey: "destination.abfall.desc",
   },
   {
     id: "phone",
-    label: "Phone calendar",
-    description: "Pickups appear on your iOS / Android calendar with alarms.",
+    labelKey: "destination.phone.label",
+    descKey: "destination.phone.desc",
   },
   {
     id: "google",
-    label: "Google Calendar",
-    description: "Pushes events to your Google account; alarms set there.",
+    labelKey: "destination.google.label",
+    descKey: "destination.google.desc",
   },
 ];
 

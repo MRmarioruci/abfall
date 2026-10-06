@@ -3,6 +3,7 @@ import { SlideUpSheet } from "./ui/SlideUpSheet";
 import { S } from "../theme/colors";
 import { CheckIcon, GlobeIcon } from "./icons/Icons";
 import type { SavedCalendar } from "../types/calendar";
+import { useT } from "../context/LocaleContext";
 
 interface Props {
   visible: boolean;
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export function PostScanShareDialog({ visible, calendar, onShare, onSkip }: Props) {
+  const { t } = useT();
   if (!calendar) return null;
 
   return (
@@ -49,7 +51,7 @@ export function PostScanShareDialog({ visible, calendar, onShare, onSkip }: Prop
         </View>
 
         <Text style={{ fontSize: 26, fontWeight: "800", color: S.ink, letterSpacing: -0.6, marginTop: 16 }}>
-          Calendar saved
+          {t("share.post_scan.saved")}
         </Text>
         <Text
           style={{ fontSize: 14, color: S.sec, fontWeight: "600", marginTop: 4, textAlign: "center" }}
@@ -58,7 +60,7 @@ export function PostScanShareDialog({ visible, calendar, onShare, onSkip }: Prop
           {calendar.title}
         </Text>
         <Text style={{ fontSize: 12, color: S.ter, fontWeight: "600", marginTop: 2 }}>
-          {calendar.events.length} dates
+          {t(calendar.events.length === 1 ? "share.dates_one" : "share.dates_other", { n: calendar.events.length })}
           {calendar.location ? ` · ${calendar.location}` : ""}
         </Text>
 
@@ -89,15 +91,15 @@ export function PostScanShareDialog({ visible, calendar, onShare, onSkip }: Prop
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 11, fontWeight: "800", color: S.ter, letterSpacing: 1.2 }}>
-                WILL PUBLISH TO COMMUNITY
+                {t("share.post_scan.eyebrow")}
               </Text>
               <Text style={{ fontSize: 15, fontWeight: "800", color: S.ink, letterSpacing: -0.2, marginTop: 2 }}>
-                Neighbours nearby can find this
+                {t("share.post_scan.title")}
               </Text>
             </View>
           </View>
           <Text style={{ fontSize: 12.5, color: S.sec, fontWeight: "600", marginTop: 10, lineHeight: 17 }}>
-            By default, calendars you add are shared so people in your area can use them too. You can change this anytime from the share menu.
+            {t("share.post_scan.body")}
           </Text>
         </View>
 
@@ -123,7 +125,7 @@ export function PostScanShareDialog({ visible, calendar, onShare, onSkip }: Prop
         >
           <CheckIcon color="#fff" size={16} />
           <Text style={{ fontSize: 17, fontWeight: "700", color: "#fff" }}>
-            Sounds good
+            {t("share.post_scan.confirm")}
           </Text>
         </Pressable>
 
@@ -138,7 +140,7 @@ export function PostScanShareDialog({ visible, calendar, onShare, onSkip }: Prop
           }}
         >
           <Text style={{ fontSize: 15, fontWeight: "700", color: S.sec }}>
-            Actually, keep private
+            {t("share.post_scan.keep_private")}
           </Text>
         </Pressable>
       </View>

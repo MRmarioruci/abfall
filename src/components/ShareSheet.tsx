@@ -10,6 +10,7 @@ import type { SavedCalendar } from "../types/calendar";
 import { useCalendars } from "../context/CalendarContext";
 import { useToast } from "./ui/Toast";
 import { deleteCommunityCalendar } from "../services/api";
+import { useT } from "../context/LocaleContext";
 
 interface Props {
   visible: boolean;
@@ -36,6 +37,7 @@ function makeShareCode(id: string): string {
 export function ShareSheet({ visible, onClose, calendar }: Props) {
   const { patchCalendar } = useCalendars();
   const toast = useToast();
+  const { t } = useT();
   // Publish UI lives in its own dialog now — this just controls its
   // visibility. Same dialog is used everywhere a "publish" action lives.
   const [showPublishDialog, setShowPublishDialog] = useState(false);
@@ -51,15 +53,19 @@ export function ShareSheet({ visible, onClose, calendar }: Props) {
   const shareCode = calendar.shareCode || makeShareCode(calendar.id);
   const shareUrl = calendar.shareUrl || `https://abfall.app/c/${shareCode}`;
   const isPublished = !!calendar.shared;
+  const collectionDates = t(
+    calendar.events.length === 1 ? "share.collection_dates_one" : "share.collection_dates_other",
+    { n: calendar.events.length },
+  );
 
   const handleNativeShare = async () => {
     try {
       const message = [
         calendar.title,
         calendar.location ? `📍 ${calendar.location}` : null,
-        `${calendar.events.length} collection dates`,
+        collectionDates,
         "",
-        `Open in Abfall: ${shareUrl}`,
+        t("share.message.open", { url: shareUrl }),
       ]
         .filter(Boolean)
         .join("\n");
@@ -73,7 +79,7 @@ export function ShareSheet({ visible, onClose, calendar }: Props) {
     // Clipboard isn't wired yet (expo-clipboard not installed). Show the
     // link in a toast so the user can read it; once we wire clipboard the
     // message becomes accurate.
-    toast.show(`Link: ${shareUrl}`);
+    toast.show(t("share.toast.link", { url: shareUrl }));
   };
 
   const handleConfirmUnpublish = async () => {
@@ -84,7 +90,7 @@ export function ShareSheet({ visible, onClose, calendar }: Props) {
         await deleteCommunityCalendar(calendar.shareCode);
       } catch (err) {
         console.warn("[share] unpublish failed", err);
-        toast.show("Couldn't unpublish · try again");
+        toast.show(t("share.toast.unpublish_failed"));
         return;
       }
     }
@@ -93,7 +99,7 @@ export function ShareSheet({ visible, onClose, calendar }: Props) {
       shareCode: undefined,
       shareUrl: undefined,
     });
-    toast.show("Removed from community");
+    toast.show(t("share.toast.unpublished"));
   };
 
   const togglePublish = () => {
@@ -112,7 +118,7 @@ export function ShareSheet({ visible, onClose, calendar }: Props) {
       <View style={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: 8 }}>
         {/* Header */}
         <Text style={{ fontSize: 11, fontWeight: "800", color: S.ter, letterSpacing: 1.2 }}>
-          SHARE CALENDAR
+          {t("share.eyebrow")}
         </Text>
         <Text style={{ fontSize: 22, fontWeight: "800", color: S.ink, letterSpacing: -0.5, marginTop: 4 }} numberOfLines={1}>
           {calendar.title}
@@ -126,7 +132,7 @@ export function ShareSheet({ visible, onClose, calendar }: Props) {
           </View>
         )}
         <Text style={{ fontSize: 13, color: S.ter, fontWeight: "600", marginTop: 4 }}>
-          {calendar.events.length} collection dates
+          {collectionDates}
         </Text>
 
         {/* HERO — Community publish */}
@@ -155,15 +161,15 @@ export function ShareSheet({ visible, onClose, calendar }: Props) {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 11, fontWeight: "800", color: S.ter, letterSpacing: 1.2 }}>
-                {isPublished ? "PUBLISHED" : "PUBLISH TO COMMUNITY"}
+                {isPublished ? t("share.published_eyebrow") : t("share.publish_eyebrow")}
               </Text>
               <Text style={{ fontSize: 17, fontWeight: "800", color: S.ink, letterSpacing: -0.3, marginTop: 3 }}>
-                {isPublished ? "Live for neighbours" : "Help your neighbours"}
+                {isPublished ? t("share.live_title") : t("share.help_title")}
               </Text>
               <Text style={{ fontSize: 12.5, color: S.sec, fontWeight: "600", marginTop: 3, lineHeight: 17 }}>
                 {isPublished
-                  ? "Anyone nearby can find and import this calendar by location."
-                  : "Make this calendar discoverable so people in your area can find it."}
+                  ? t("share.live_body")
+                  : t("share.help_body")}
               </Text>
             </View>
           </View>
@@ -197,14 +203,14 @@ export function ShareSheet({ visible, onClose, calendar }: Props) {
                 letterSpacing: 0.2,
               }}
             >
-              {isPublished ? "Published — tap to unpublish" : "Publish now"}
+              {isPublished ? t("share.unpublish_button") : t("share.publish_now")}
             </Text>
           </Pressable>
         </View>
 
         {/* Secondary: QR + link */}
         <Text style={{ fontSize: 11, fontWeight: "800", color: S.ter, letterSpacing: 1.2, marginTop: 22 }}>
-          OR SHARE DIRECTLY
+          {t("share.direct")}
         </Text>
 
         {/* QR + link combined card */}
@@ -240,14 +246,14 @@ export function ShareSheet({ visible, onClose, calendar }: Props) {
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <LinkIcon color={S.sec} size={13} />
               <Text style={{ fontSize: 11, fontWeight: "800", color: S.ter, letterSpacing: 1.2 }}>
-                SHARE LINK
+                {t("share.link")}
               </Text>
             </View>
             <Text style={{ fontSize: 13, color: S.ink, fontWeight: "700", marginTop: 4 }} numberOfLines={1}>
               {shareUrl}
             </Text>
             <Text style={{ fontSize: 11, color: S.ter, fontWeight: "600", marginTop: 3 }}>
-              Code {shareCode}
+              {t("share.code", { code: shareCode })}
             </Text>
             <View style={{ flexDirection: "row", gap: 6, marginTop: 8 }}>
               <Pressable
@@ -260,7 +266,7 @@ export function ShareSheet({ visible, onClose, calendar }: Props) {
                   alignItems: "center",
                 }}
               >
-                <Text style={{ fontSize: 12, fontWeight: "800", color: S.ink }}>Copy</Text>
+                <Text style={{ fontSize: 12, fontWeight: "800", color: S.ink }}>{t("share.copy")}</Text>
               </Pressable>
               <Pressable
                 onPress={handleNativeShare}
@@ -276,7 +282,7 @@ export function ShareSheet({ visible, onClose, calendar }: Props) {
                 }}
               >
                 <ShareIcon color="#fff" size={12} />
-                <Text style={{ fontSize: 12, fontWeight: "800", color: "#fff" }}>Share</Text>
+                <Text style={{ fontSize: 12, fontWeight: "800", color: "#fff" }}>{t("share.share")}</Text>
               </Pressable>
             </View>
           </View>
@@ -293,9 +299,9 @@ export function ShareSheet({ visible, onClose, calendar }: Props) {
     <ConfirmSheet
       visible={confirmUnpublish}
       onClose={() => setConfirmUnpublish(false)}
-      title="Unpublish this calendar?"
-      body="It's removed from the community so nobody new can find it. People who already imported it keep their own copy."
-      confirmLabel="Unpublish"
+      title={t("share.unpublish.title")}
+      body={t("share.unpublish.body")}
+      confirmLabel={t("share.unpublish.label")}
       variant="danger"
       onConfirm={handleConfirmUnpublish}
     />

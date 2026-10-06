@@ -6,11 +6,13 @@ import { CheckIcon, XIcon, ShareIcon } from "./icons/Icons";
 import { useCalendars } from "../context/CalendarContext";
 import { ShareSheet } from "./ShareSheet";
 import type { SavedCalendar } from "../types/calendar";
+import { useT } from "../context/LocaleContext";
+import type { StringKey } from "../i18n";
 
-const SOURCE_LABELS: Record<string, string> = {
-  scan: "Scanned",
-  manual: "Manual",
-  community: "Community",
+const SOURCE_LABELS: Record<string, StringKey> = {
+  scan: "switcher.source.scan",
+  manual: "switcher.source.manual",
+  community: "switcher.source.community",
 };
 
 interface Props {
@@ -19,6 +21,7 @@ interface Props {
 }
 
 export function CalendarSwitcher({ visible, onClose }: Props) {
+  const { t } = useT();
   const { calendars, switchCalendar, removeCalendar } = useCalendars();
   const [shareTarget, setShareTarget] = useState<SavedCalendar | null>(null);
 
@@ -40,7 +43,7 @@ export function CalendarSwitcher({ visible, onClose }: Props) {
             letterSpacing: -0.5,
           }}
         >
-          My calendars
+          {t("switcher.title")}
         </Text>
         <Text
           style={{
@@ -52,8 +55,8 @@ export function CalendarSwitcher({ visible, onClose }: Props) {
           }}
         >
           {calendars.length > 0
-            ? "Tap to switch your active calendar"
-            : "No calendars yet — scan one to get started"}
+            ? t("switcher.subtitle")
+            : t("switcher.empty")}
         </Text>
 
         <View style={{ gap: 10 }}>
@@ -107,7 +110,7 @@ export function CalendarSwitcher({ visible, onClose }: Props) {
                         }}
                       >
                         <Text style={{ fontSize: 11, fontWeight: "700", color: S.sec }}>
-                          {zone}
+                          {zone === "all" ? t("event_edit.all_zones") : zone}
                         </Text>
                       </View>
                     )}
@@ -118,13 +121,19 @@ export function CalendarSwitcher({ visible, onClose }: Props) {
                     </Text>
                   )}
                   <Text style={{ fontSize: 12, color: S.ter, fontWeight: "500", marginTop: 2 }}>
-                    {period} · {SOURCE_LABELS[cal.source]} · {cal.events.length} dates
+                    {period}
+                    {SOURCE_LABELS[cal.source] ? ` · ${t(SOURCE_LABELS[cal.source])}` : ""}
+                    {" · "}
+                    {cal.events.length === 1
+                      ? t("switcher.dates_one")
+                      : t("switcher.dates_other", { n: cal.events.length })}
                   </Text>
                 </View>
                 <View style={{ flexDirection: "row", gap: 10, marginTop: 20 }}>
                   <Pressable
                     hitSlop={8}
                     onPress={() => setShareTarget(cal)}
+                    accessibilityLabel={t("switcher.share")}
                     style={{
                       width: 32,
                       height: 32,
@@ -140,6 +149,7 @@ export function CalendarSwitcher({ visible, onClose }: Props) {
                     <Pressable
                       hitSlop={8}
                       onPress={() => removeCalendar(cal.id)}
+                      accessibilityLabel={t("switcher.remove")}
                       style={{
                         width: 32,
                         height: 32,
