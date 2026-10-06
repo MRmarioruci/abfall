@@ -1,6 +1,6 @@
 import "./global.css";
 import { useEffect, useState } from "react";
-import * as Notifications from "expo-notifications";
+import { Notifications } from "./src/services/notificationsModule";
 import { StatusBar } from "expo-status-bar";
 import { NavigationContainer } from "@react-navigation/native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -13,7 +13,7 @@ import { hasOnboarded, markOnboarded } from "./src/services/onboarding";
 import { LocaleProvider } from "./src/context/LocaleContext";
 import { deviceLocale, loadStoredLocale, type Locale } from "./src/i18n";
 
-Notifications.setNotificationHandler({
+Notifications?.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldShowBanner: true,

@@ -1,5 +1,5 @@
 import { Platform } from "react-native";
-import * as Notifications from "expo-notifications";
+import { Notifications } from "./notificationsModule";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ST } from "../theme/colors";
 import { t, wasteLabel, weekdayLong, monthShort } from "../i18n";
@@ -15,20 +15,24 @@ interface StoredIds {
 }
 
 export async function requestNotificationPermissions(): Promise<boolean> {
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  const N = Notifications;
+  if (!N) return false;
+  const { status: existingStatus } = await N.getPermissionsAsync();
   let finalStatus = existingStatus;
   if (existingStatus !== "granted") {
-    const { status } = await Notifications.requestPermissionsAsync();
+    const { status } = await N.requestPermissionsAsync();
     finalStatus = status;
   }
   return finalStatus === "granted";
 }
 
 async function ensureAndroidChannel() {
+  const N = Notifications;
+  if (!N) return;
   if (Platform.OS !== "android") return;
-  await Notifications.setNotificationChannelAsync("default", {
+  await N.setNotificationChannelAsync("default", {
     name: t("notif.channel"),
-    importance: Notifications.AndroidImportance.HIGH,
+    importance: N.AndroidImportance.HIGH,
     vibrationPattern: [0, 250, 250, 250],
     lightColor: "#211F1C",
   });
@@ -93,6 +97,8 @@ function buildNotificationContent(
 export async function scheduleRemindersForCalendar(
   calendar: SavedCalendar,
 ): Promise<number> {
+  const N = Notifications;
+  if (!N) return 0;
   // Always start fresh for this calendar.
   await cancelNotificationsForCalendar(calendar.id);
 
@@ -100,7 +106,7 @@ export async function scheduleRemindersForCalendar(
   // the OS permission dialog on app launch is jarring; the prompt should only
   // appear in response to an explicit user action (saving a reminder, toggling
   // one on). If we don't have permission yet, just skip.
-  const { status } = await Notifications.getPermissionsAsync();
+  const { status } = await N.getPermissionsAsync();
   if (status !== "granted") {
     console.log("[notifications] permission not granted, skipping schedule");
     return 0;
@@ -126,10 +132,10 @@ export async function scheduleRemindersForCalendar(
     console.log(
       `[notifications] scheduling "${title}" at ${triggerDate.toISOString()}`,
     );
-    const id = await Notifications.scheduleNotificationAsync({
+    const id = await N.scheduleNotificationAsync({
       content: { title, body, data },
       trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        type: N.SchedulableTriggerInputTypes.DATE,
         date: triggerDate,
       },
     });
@@ -191,15 +197,19 @@ export async function scheduleRemindersForCalendar(
 }
 
 export async function cancelNotificationsForCalendar(calendarId: string): Promise<void> {
+  const N = Notifications;
+  if (!N) return;
   const ids = await getNotificationIds(calendarId);
   for (const id of ids) {
-    await Notifications.cancelScheduledNotificationAsync(id);
+    await N.cancelScheduledNotificationAsync(id);
   }
   await storeNotificationIds(calendarId, []);
 }
 
 export async function cancelAllNotifications(): Promise<void> {
-  await Notifications.cancelAllScheduledNotificationsAsync();
+  const N = Notifications;
+  if (!N) return;
+  await N.cancelAllScheduledNotificationsAsync();
   await AsyncStorage.removeItem(NOTIFICATION_IDS_KEY);
 }
 
@@ -261,16 +271,18 @@ export function getNextTriggerForRule(
  * button in the reminder editor.
  */
 export async function sendTestNotification(): Promise<boolean> {
+  const N = Notifications;
+  if (!N) return false;
   const granted = await requestNotificationPermissions();
   if (!granted) return false;
   await ensureAndroidChannel();
-  await Notifications.scheduleNotificationAsync({
+  await N.scheduleNotificationAsync({
     content: {
       title: t("notif.test.title"),
       body: t("notif.test.body"),
     },
     trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+      type: N.SchedulableTriggerInputTypes.TIME_INTERVAL,
       seconds: 3,
     },
   });
