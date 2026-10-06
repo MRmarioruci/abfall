@@ -4,10 +4,12 @@
 // reorder, you see his cute little tushie.
 //
 // Behaviors:
-//   • Bobbing + look-around + blinking — base idle
-//   • Random tricks every 6–12s: wiggle, happy jump, yawn, double-blink
-//   • Every ~18–28s: walk to a random spot, turn back (tushie!), do the
-//     swap, turn back to front, walk home
+//   • Bobbing + blinking — always on, underneath everything
+//   • One routine, one thing at a time: a quiet idle beat (sometimes a
+//     glance around), then an action — a trick (wiggle, happy jump, yawn,
+//     double-blink), a speech-bubble line (only at home, facing you), or
+//     a wander: walk to a spot, turn back (tushie!), do the swap, turn
+//     back to front, walk home. Never the same action twice in a row.
 //   • Tap → happy bounce on top of whatever else is happening
 //
 // The parent supplies:
@@ -240,7 +242,9 @@ export function Recyclops({ size = 76, onPress, onRequestSwap, walkRange = 60 }:
   onRequestSwapRef.current = onRequestSwap;
 
   useEffect(() => {
-    // Bobbing — gentle sine wave, runs forever.
+    // ── Ambient life ──────────────────────────────────────────────────
+    // Bobbing and blinking run continuously underneath everything else;
+    // they're background life, not "actions".
     const bobLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(bob, { toValue: 1, duration: 1400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
@@ -249,38 +253,52 @@ export function Recyclops({ size = 76, onPress, onRequestSwap, walkRange = 60 }:
     );
     bobLoop.start();
 
-    let lookCancelled = false;
-    const animateLook = (x: number, y: number, duration: number) =>
-      Animated.parallel([
-        Animated.timing(lookX, { toValue: x, duration, useNativeDriver: false }),
-        Animated.timing(lookY, { toValue: y, duration, useNativeDriver: false }),
-      ]);
-    const lookLoop = () => {
-      if (lookCancelled) return;
-      Animated.sequence([
-        Animated.delay(1800),
-        animateLook(54, 39, 400),
-        Animated.delay(900),
-        animateLook(46, 45, 400),
-        Animated.delay(900),
-        animateLook(50, 42, 350),
-      ]).start(() => lookLoop());
-    };
-    lookLoop();
+    let cancelled = false;
+    const timers = new Set<ReturnType<typeof setTimeout>>();
+    const running = new Set<Animated.CompositeAnimation>();
 
-    let blinkCancelled = false;
-    const blinkLoop = () => {
-      if (blinkCancelled) return;
-      Animated.sequence([
-        Animated.delay(2400 + Math.random() * 2000),
-        Animated.timing(blink, { toValue: 1, duration: 80, useNativeDriver: false }),
-        Animated.timing(blink, { toValue: 0, duration: 110, useNativeDriver: false }),
-      ]).start(() => blinkLoop());
+    // Promise helpers for the sequencer. Both resolve early (and the
+    // sequencer then bails out) once the component unmounts.
+    const wait = (ms: number) =>
+      new Promise<void>((resolve) => {
+        const id = setTimeout(() => {
+          timers.delete(id);
+          resolve();
+        }, ms);
+        timers.add(id);
+      });
+    const play = (anim: Animated.CompositeAnimation) =>
+      new Promise<void>((resolve) => {
+        running.add(anim);
+        anim.start(() => {
+          running.delete(anim);
+          resolve();
+        });
+      });
+    const between = (min: number, max: number) => min + Math.random() * (max - min);
+
+    const blinkLoop = async () => {
+      while (!cancelled) {
+        await wait(between(2400, 4400));
+        if (cancelled) return;
+        await play(
+          Animated.sequence([
+            Animated.timing(blink, { toValue: 1, duration: 80, useNativeDriver: false }),
+            Animated.timing(blink, { toValue: 0, duration: 110, useNativeDriver: false }),
+          ]),
+        );
+      }
     };
     blinkLoop();
 
-    // ── Tricks (idle animations) ──────────────────────────────────────
-    let tricksCancelled = false;
+    // ── Building blocks ───────────────────────────────────────────────
+    const look = (x: number, y: number, duration: number) =>
+      Animated.parallel([
+        Animated.timing(lookX, { toValue: x, duration, easing: Easing.inOut(Easing.quad), useNativeDriver: false }),
+        Animated.timing(lookY, { toValue: y, duration, easing: Easing.inOut(Easing.quad), useNativeDriver: false }),
+      ]);
+    const lookCenter = () => look(50, 42, 300);
+
     const wiggle = () =>
       Animated.sequence([
         Animated.timing(tilt, { toValue: 1, duration: 180, useNativeDriver: true }),
@@ -314,32 +332,47 @@ export function Recyclops({ size = 76, onPress, onRequestSwap, walkRange = 60 }:
         Animated.timing(blink, { toValue: 0, duration: 90, useNativeDriver: false }),
       ]);
     const tricks = [wiggle, happyJump, yawn, doubleBlink];
+    let lastTrick = -1;
 
-    const tricksLoop = () => {
-      if (tricksCancelled) return;
-      const pick = tricks[Math.floor(Math.random() * tricks.length)]!;
-      Animated.sequence([Animated.delay(6000 + Math.random() * 6000), pick()]).start(
-        () => tricksLoop(),
+    const stepBounce = () =>
+      Animated.sequence([
+        Animated.timing(walkBounce, { toValue: -3, duration: 140, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(walkBounce, { toValue: 0, duration: 140, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+      ]);
+    const walkTo = (toX: number, durationMs: number) => {
+      // Smooth X translation with overlapping step bounces.
+      const stepCount = Math.max(2, Math.round(durationMs / 280));
+      return Animated.parallel([
+        Animated.timing(walkX, { toValue: toX, duration: durationMs, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.sequence(Array.from({ length: stepCount }, () => stepBounce())),
+      ]);
+    };
+
+    const turnAround = async (toFacing: "front" | "back") => {
+      // Squash horizontally to a thin sliver (as if rotating edge-on),
+      // swap the drawing at the thinnest point, then unfurl the other
+      // side. A little hop rides along so it feels springy, not flat.
+      await play(
+        Animated.parallel([
+          Animated.timing(turnScaleX, { toValue: 0.1, duration: 220, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+          Animated.timing(jump, { toValue: -8, duration: 220, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        ]),
+      );
+      if (cancelled) return;
+      setFacing(toFacing);
+      await play(
+        Animated.parallel([
+          Animated.timing(turnScaleX, { toValue: 1, duration: 260, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+          Animated.spring(jump, { toValue: 0, useNativeDriver: true, damping: 6, stiffness: 160 }),
+        ]),
       );
     };
-    tricksLoop();
 
-    // ── Speech bubble ─────────────────────────────────────────────────
-    // Every so often he pipes up with a random one-liner: pop the bubble
-    // in, hold for a length-scaled reading beat, fade out, then schedule
-    // the next. First line comes quickly so it's obviously alive.
-    let speakCancelled = false;
-    let speakTimer: ReturnType<typeof setTimeout> | undefined;
-    let firstSpeak = true;
-    // Ring buffer of recently-used indices so we don't repeat anything
-    // from the last N picks. Way more effective than "avoid the previous
-    // one" — that one would alternate A B A B forever with a 2-line list.
+    // Ring buffer of recently-used lines so nothing from the last N picks
+    // repeats. Way more effective than "avoid the previous one".
     const recentIdxs: number[] = [];
     const pickLine = () => {
       let idx = Math.floor(Math.random() * RECYCLOPS_LINES.length);
-      // Try a few times to find an idx not in the recent history. If we
-      // somehow can't (history >= pool size, won't happen here), give up
-      // and use whatever we landed on.
       for (let i = 0; i < 12 && recentIdxs.includes(idx); i++) {
         idx = Math.floor(Math.random() * RECYCLOPS_LINES.length);
       }
@@ -347,156 +380,129 @@ export function Recyclops({ size = 76, onPress, onRequestSwap, walkRange = 60 }:
       if (recentIdxs.length > RECENT_HISTORY_LEN) recentIdxs.shift();
       return RECYCLOPS_LINES[idx]!;
     };
-    const speakCycle = () => {
-      if (speakCancelled) return;
-      const wait = firstSpeak ? 3000 + Math.random() * 2000 : 9000 + Math.random() * 7000;
-      firstSpeak = false;
-      speakTimer = setTimeout(() => {
-        if (speakCancelled) return;
-        const line = pickLine();
-        setBubbleMsg(line);
-        const hold = Math.min(4200, 1700 + translate(line).length * 55);
-        bubbleScale.setValue(0.7);
+
+    // ── Actions — one runs at a time ──────────────────────────────────
+
+    // A quiet beat at home. Sometimes he glances somewhere and back.
+    const idle = async () => {
+      const ms = between(1400, 2800);
+      if (Math.random() < 0.6) {
+        const lead = ms * 0.3;
+        await wait(lead);
+        if (cancelled) return;
+        await play(look(between(43, 57), between(37, 47), 380));
+        await wait(between(500, 900));
+        if (cancelled) return;
+        await play(lookCenter());
+        await wait(Math.max(0, ms - lead - 1200));
+      } else {
+        await wait(ms);
+      }
+    };
+
+    const trick = async () => {
+      let i = Math.floor(Math.random() * tricks.length);
+      if (i === lastTrick) i = (i + 1) % tricks.length;
+      lastTrick = i;
+      await play(tricks[i]!());
+    };
+
+    // Only ever called at home, facing front: he looks up toward the
+    // bubble, "says" the line, holds for a length-scaled reading beat,
+    // then looks back as it fades.
+    const talk = async () => {
+      const line = pickLine();
+      setBubbleMsg(line);
+      bubbleScale.setValue(0.7);
+      await play(
         Animated.parallel([
+          look(46, 37, 260),
           Animated.timing(bubbleOpacity, { toValue: 1, duration: 200, easing: Easing.out(Easing.quad), useNativeDriver: true }),
           Animated.spring(bubbleScale, { toValue: 1, useNativeDriver: true, damping: 8, stiffness: 170 }),
-        ]).start(() => {
-          if (speakCancelled) return;
-          speakTimer = setTimeout(() => {
-            if (speakCancelled) return;
-            Animated.parallel([
-              Animated.timing(bubbleOpacity, { toValue: 0, duration: 240, easing: Easing.in(Easing.quad), useNativeDriver: true }),
-              Animated.timing(bubbleScale, { toValue: 0.75, duration: 240, useNativeDriver: true }),
-            ]).start(() => {
-              if (speakCancelled) return;
-              setBubbleMsg(null);
-              speakCycle();
-            });
-          }, hold);
-        });
-      }, wait);
-    };
-    speakCycle();
-
-    // ── Walking + swap routine ────────────────────────────────────────
-    //
-    // Sequence:
-    //   1. Walk to a random offset (with little step-bounces)
-    //   2. Pause
-    //   3. Jump + turn around → back view (tushie!)
-    //   4. Tell the parent to swap (onRequestSwap)
-    //   5. Hold the back pose briefly
-    //   6. Jump + turn around → front view
-    //   7. Walk home, resume idle
-    //
-    let walkCancelled = false;
-
-    const stepBounce = () =>
-      Animated.sequence([
-        Animated.timing(walkBounce, { toValue: -3, duration: 140, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-        Animated.timing(walkBounce, { toValue: 0, duration: 140, easing: Easing.in(Easing.quad), useNativeDriver: true }),
-      ]);
-
-    const walkTo = (toX: number, durationMs: number) => {
-      // Combine smooth X translation with overlapping step bounces.
-      const stepCount = Math.max(2, Math.round(durationMs / 280));
-      const bounces = Animated.sequence(
-        Array.from({ length: stepCount }, () => stepBounce()),
+        ]),
       );
-      return Animated.parallel([
-        Animated.timing(walkX, {
-          toValue: toX,
-          duration: durationMs,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        bounces,
-      ]);
-    };
-
-    const turnAround = (toFacing: "front" | "back") =>
-      new Promise<void>((resolve) => {
-        // Squash horizontally to a thin sliver (as if rotating edge-on),
-        // swap the drawing at the thinnest point, then unfurl the other
-        // side. A little hop rides along so it feels springy, not flat.
+      if (cancelled) return;
+      await wait(Math.min(4200, 1700 + translate(line).length * 55));
+      if (cancelled) return;
+      await play(
         Animated.parallel([
-          Animated.timing(turnScaleX, { toValue: 0.1, duration: 220, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
-          Animated.timing(jump, { toValue: -8, duration: 220, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-        ]).start(() => {
-          // At the sliver: swap which side is showing.
-          setFacing(toFacing);
-          Animated.parallel([
-            Animated.timing(turnScaleX, { toValue: 1, duration: 260, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-            Animated.spring(jump, { toValue: 0, useNativeDriver: true, damping: 6, stiffness: 160 }),
-          ]).start(() => resolve());
-        });
-      });
-
-    let isFirstWalk = true;
-    const swapLoop = async () => {
-      if (walkCancelled || walkRange <= 0) return;
-      // First walk fires fast (1.5–3s) so the behavior is visible
-      // shortly after mount; subsequent walks pace at 4–7s.
-      const delay = isFirstWalk ? 1500 + Math.random() * 1500 : 4000 + Math.random() * 3000;
-      isFirstWalk = false;
-      await new Promise<void>((r) => {
-        setTimeout(r, delay);
-      });
-      if (walkCancelled) return;
-
-      // Always negative — Recyclops's home is at the right edge of the
-      // calendar, so he walks LEFT into the visible area to visit
-      // labels, never right (which would push him off the card).
-      const target = -Math.random() * walkRange;
-
-      // 1. Walk to a random spot along the bottom
-      await new Promise<void>((r) =>
-        walkTo(target, 900 + Math.random() * 400).start(() => r()),
+          lookCenter(),
+          Animated.timing(bubbleOpacity, { toValue: 0, duration: 240, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+          Animated.timing(bubbleScale, { toValue: 0.75, duration: 240, useNativeDriver: true }),
+        ]),
       );
-      if (walkCancelled) return;
-      // 2. Brief pause "looking around"
-      await new Promise<void>((r) => setTimeout(r, 300));
-      // 3. Turn around to show the tushie
-      await turnAround("back");
-      if (walkCancelled) return;
-      // 4. Raise both hands — he's reaching up to fiddle with the labels
-      await new Promise<void>((r) =>
-        Animated.spring(armRaise, { toValue: 1, useNativeDriver: false, damping: 9, stiffness: 140 }).start(() => r()),
-      );
-      if (walkCancelled) return;
-      // 5. Ask the parent to swap two labels — this is the "magic" beat
-      onRequestSwapRef.current?.();
-      // 6. Hold the raised back pose so the user notices the swap
-      await new Promise<void>((r) => setTimeout(r, 900));
-      // 7. Lower the hands again before turning back
-      await new Promise<void>((r) =>
-        Animated.timing(armRaise, { toValue: 0, duration: 240, easing: Easing.in(Easing.cubic), useNativeDriver: false }).start(() => r()),
-      );
-      if (walkCancelled) return;
-      // 8. Turn back to front
-      await turnAround("front");
-      if (walkCancelled) return;
-      // 7. Walk home
-      await new Promise<void>((r) =>
-        walkTo(0, 900 + Math.random() * 400).start(() => r()),
-      );
-      // Loop indefinitely
-      if (!walkCancelled) swapLoop();
+      if (!cancelled) setBubbleMsg(null);
     };
 
-    if (walkRange > 0) swapLoop();
+    // Walk left (his home is the card's right edge, so never right),
+    // turn around (tushie!), reach up and ask the parent to swap two
+    // labels, then turn back and walk home.
+    const wander = async () => {
+      const target = -between(0.35, 1) * walkRange;
+      await play(walkTo(target, between(900, 1300)));
+      if (cancelled) return;
+      await wait(300);
+      if (cancelled) return;
+      await turnAround("back");
+      if (cancelled) return;
+      await play(Animated.spring(armRaise, { toValue: 1, useNativeDriver: false, damping: 9, stiffness: 140 }));
+      if (cancelled) return;
+      onRequestSwapRef.current?.();
+      // Hold the raised back pose so the user notices the swap.
+      await wait(900);
+      if (cancelled) return;
+      await play(Animated.timing(armRaise, { toValue: 0, duration: 240, easing: Easing.in(Easing.cubic), useNativeDriver: false }));
+      if (cancelled) return;
+      await turnAround("front");
+      if (cancelled) return;
+      await play(walkTo(0, between(900, 1300)));
+    };
+
+    // ── The routine ───────────────────────────────────────────────────
+    // idle → action → idle → action … Opens with a wander (so the swap
+    // shows up soon after mount) and a line, then picks by weight,
+    // never the same action twice in a row.
+    type Action = "trick" | "talk" | "wander";
+    const ACTIONS: Record<Action, () => Promise<void>> = { trick, talk, wander };
+    const WEIGHTS: [Action, number][] = [
+      ["wander", walkRange > 0 ? 4 : 0],
+      ["talk", 3],
+      ["trick", 3],
+    ];
+    const opening: Action[] = walkRange > 0 ? ["wander", "talk"] : ["talk"];
+    let last: Action | null = null;
+
+    const next = (): Action => {
+      const scripted = opening.shift();
+      if (scripted) return scripted;
+      const options = WEIGHTS.filter(([a, w]) => w > 0 && a !== last);
+      const total = options.reduce((sum, [, w]) => sum + w, 0);
+      let r = Math.random() * total;
+      for (const [a, w] of options) {
+        if ((r -= w) < 0) return a;
+      }
+      return options[0]![0];
+    };
+
+    const routine = async () => {
+      while (!cancelled) {
+        await idle();
+        if (cancelled) return;
+        const action = next();
+        last = action;
+        await ACTIONS[action]();
+      }
+    };
+    routine();
 
     return () => {
+      cancelled = true;
       bobLoop.stop();
-      lookCancelled = true;
-      blinkCancelled = true;
-      tricksCancelled = true;
-      walkCancelled = true;
-      speakCancelled = true;
-      if (speakTimer) clearTimeout(speakTimer);
+      running.forEach((a) => a.stop());
+      timers.forEach((id) => clearTimeout(id));
     };
     // Animation values are stable refs; only walkRange should restart the
-    // loop. onRequestSwap is read through a ref (above) on purpose.
+    // routine. onRequestSwap is read through a ref (above) on purpose.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [walkRange]);
 
