@@ -173,7 +173,7 @@ export function CheckIcon({ color, size = 16 }: IconProps) {
 
 // Google "G" logo — uses Google's signature four colors. Ignores the
 // `color` prop because the logo is multi-color by design.
-export function GoogleIcon({ size = 18 }: IconProps) {
+export function GoogleIcon({ size = 18 }: { size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 48 48">
       <Path
