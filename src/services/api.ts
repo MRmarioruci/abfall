@@ -269,6 +269,20 @@ export async function markCommunityCalendarUsed(id: string): Promise<void> {
 }
 
 /**
+ * Unpublish a calendar this device shared. The server only allows the
+ * uploading device; a 404 means it's already gone (or was never ours),
+ * which leaves the same end state, so it isn't treated as an error.
+ */
+export async function deleteCommunityCalendar(id: string): Promise<void> {
+  try {
+    await request(`/v1/calendars/${id}`, { method: "DELETE" });
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return;
+    throw err;
+  }
+}
+
+/**
  * Flag a community calendar as bad content. The server auto-hides rows
  * above a report threshold; idempotent per-device.
  */

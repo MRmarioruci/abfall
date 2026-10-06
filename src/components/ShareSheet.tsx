@@ -9,6 +9,7 @@ import { ShareIcon, LinkIcon, GlobeIcon, PinIcon, CheckIcon } from "./icons/Icon
 import type { SavedCalendar } from "../types/calendar";
 import { useCalendars } from "../context/CalendarContext";
 import { useToast } from "./ui/Toast";
+import { deleteCommunityCalendar } from "../services/api";
 
 interface Props {
   visible: boolean;
@@ -76,8 +77,23 @@ export function ShareSheet({ visible, onClose, calendar }: Props) {
   };
 
   const handleConfirmUnpublish = async () => {
-    await patchCalendar(calendar.id, { shared: false });
-    toast.show("Marked as unpublished");
+    // shareCode holds the server id once published. Calendars marked
+    // shared by older builds may not have one; those were never uploaded.
+    if (calendar.shareCode) {
+      try {
+        await deleteCommunityCalendar(calendar.shareCode);
+      } catch (err) {
+        console.warn("[share] unpublish failed", err);
+        toast.show("Couldn't unpublish · try again");
+        return;
+      }
+    }
+    await patchCalendar(calendar.id, {
+      shared: false,
+      shareCode: undefined,
+      shareUrl: undefined,
+    });
+    toast.show("Removed from community");
   };
 
   const togglePublish = () => {
@@ -277,9 +293,9 @@ export function ShareSheet({ visible, onClose, calendar }: Props) {
     <ConfirmSheet
       visible={confirmUnpublish}
       onClose={() => setConfirmUnpublish(false)}
-      title="Mark as unpublished?"
-      body="Your calendar stays on the community server (we don't have a remove-from-server feature yet). It just won't show as 'published' here. Anyone who already imported it keeps their copy."
-      confirmLabel="Mark unpublished"
+      title="Unpublish this calendar?"
+      body="It's removed from the community so nobody new can find it. People who already imported it keep their own copy."
+      confirmLabel="Unpublish"
       variant="danger"
       onConfirm={handleConfirmUnpublish}
     />

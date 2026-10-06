@@ -34,6 +34,7 @@ import {
   searchCommunityCalendars,
   getCommunityCalendar,
   markCommunityCalendarUsed,
+  reportCommunityCalendar,
   ApiError,
   type CommunityCalendarSummary,
 } from "../services/api";
@@ -41,6 +42,8 @@ import { useCalendars } from "../context/CalendarContext";
 import { useToast } from "./ui/Toast";
 import { generateCalendarId } from "../services/storage";
 import { Recyclops } from "./Recyclops";
+import { ConfirmSheet } from "./ConfirmSheet";
+import { addReportedId, getReportedIds } from "../services/reported";
 import type { SavedCalendar } from "../types/calendar";
 
 interface Props {
@@ -112,6 +115,28 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
   // Preview screen state.
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
+  const [confirmReport, setConfirmReport] = useState(false);
+
+  // Calendars this device reported stay out of its results.
+  const [reported, setReported] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (visible) getReportedIds().then(setReported);
+  }, [visible]);
+  const visibleResults = results?.filter((r) => !reported.has(r.id)) ?? null;
+
+  const handleReport = async (id: string) => {
+    try {
+      await reportCommunityCalendar(id, "user_report");
+    } catch (err) {
+      console.warn("[community] report failed:", err);
+      toast.show("Couldn't send report · try again");
+      return;
+    }
+    await addReportedId(id).catch(() => {});
+    setReported((prev) => new Set(prev).add(id));
+    setPreviewId(null);
+    toast.show("Reported · thanks for flagging it");
+  };
 
   // Auto-fill the search box from the active calendar's location on open
   // and fire the initial search. searchGuard prevents double-firing on
@@ -297,15 +322,27 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
   if (previewSummary) {
     const summary = previewSummary;
     return (
-      <SlideUpSheet visible={visible} onClose={onClose}>
-        <PreviewBody
-          summary={summary}
-          insetsBottom={insets.bottom}
-          onBack={() => setPreviewId(null)}
-          onImport={() => handleImport(summary)}
-          importing={importing}
+      <>
+        <SlideUpSheet visible={visible} onClose={onClose}>
+          <PreviewBody
+            summary={summary}
+            insetsBottom={insets.bottom}
+            onBack={() => setPreviewId(null)}
+            onImport={() => handleImport(summary)}
+            onReport={() => setConfirmReport(true)}
+            importing={importing}
+          />
+        </SlideUpSheet>
+        <ConfirmSheet
+          visible={confirmReport}
+          onClose={() => setConfirmReport(false)}
+          title="Report this calendar?"
+          body="Report calendars that are wrong, offensive or spam. It disappears from your results right away, and we review calendars that get reported."
+          confirmLabel="Report"
+          variant="danger"
+          onConfirm={() => handleReport(summary.id)}
         />
-      </SlideUpSheet>
+      </>
     );
   }
 
@@ -424,7 +461,7 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
             </View>
           )}
 
-          {results && results.length > 0 && (
+          {visibleResults && visibleResults.length > 0 && (
             <>
               {fallbackBanner && (
                 <View
@@ -458,7 +495,7 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
                 showsVerticalScrollIndicator
                 nestedScrollEnabled
               >
-                {results.map((r) => (
+                {visibleResults.map((r) => (
                   <ResultRow key={r.id} item={r} onPress={() => handleOpenPreview(r.id)} />
                 ))}
 
@@ -601,12 +638,14 @@ function PreviewBody({
   insetsBottom,
   onBack,
   onImport,
+  onReport,
   importing,
 }: {
   summary: CommunityCalendarSummary;
   insetsBottom: number;
   onBack: () => void;
   onImport: () => void;
+  onReport: () => void;
   importing: boolean;
 }) {
   return (
@@ -664,7 +703,6 @@ function PreviewBody({
           backgroundColor: S.ink,
           borderRadius: 99,
           paddingVertical: 15,
-          marginBottom: Math.max(insetsBottom, 8),
           opacity: importing ? 0.7 : 1,
           shadowColor: S.ink,
           shadowOffset: { width: 0, height: 8 },
@@ -680,6 +718,16 @@ function PreviewBody({
         )}
         <Text style={{ fontSize: 15.5, fontWeight: "800", color: "#fff", letterSpacing: -0.2 }}>
           {importing ? "Importing…" : "Use this calendar"}
+        </Text>
+      </Pressable>
+
+      <Pressable
+        onPress={onReport}
+        hitSlop={8}
+        style={{ alignSelf: "center", paddingVertical: 14, marginBottom: Math.max(insetsBottom, 8) }}
+      >
+        <Text style={{ fontSize: 13.5, fontWeight: "700", color: S.sec }}>
+          Report this calendar
         </Text>
       </Pressable>
     </View>
