@@ -281,3 +281,29 @@ export async function reportCommunityCalendar(
     body: JSON.stringify({ reason }),
   });
 }
+
+// ─── calendar scanning ─────────────────────────────────────────────────
+
+export type ScanStepRequest =
+  | { step: "anchor"; image: string }
+  | { step: "structure"; image: string }
+  | {
+      step: "extract";
+      image: string;
+      months: number[];
+      year: number;
+      structure?: unknown;
+    };
+
+/**
+ * Run one step of the calendar-scanning pipeline on the server, which
+ * holds the prompts and model key. `image` is a base64 JPEG. Returns the
+ * model's JSON for that step; the caller knows its shape.
+ */
+export async function runScanStep<T>(body: ScanStepRequest): Promise<T> {
+  const res = await request<{ result: T }>("/v1/scan", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  return res.result;
+}
