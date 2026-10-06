@@ -14,12 +14,6 @@ module.exports = ({ config }) => ({
   // Used by expo-auth-session as the OAuth redirect scheme so Google's
   // callback can reach the app on iOS/Android.
   scheme: "abfall",
-  // NativeWind v4 → react-native-css-interop → reanimated 4 + worklets
-  // all hard-require the new architecture. Every other dep here (Expo SDK 54
-  // modules, react-native-maps, react-native-svg, react-native-screens,
-  // safe-area-context, react-navigation 7) is new-arch ready, so flipping
-  // this on is the path of least resistance.
-  newArchEnabled: true,
   ios: {
     supportsTablet: true,
     infoPlist: {
