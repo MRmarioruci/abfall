@@ -1,0 +1,281 @@
+// Mobile-side HTTP client for the abfall-api backend (Vercel + Supabase).
+//
+// All requests carry two anonymous identity headers:
+//   X-App-Key:   bundled build-time public key, gates casual scrapers
+//   X-Device-Id: per-install UUID v4 from `getDeviceId()`
+//
+// The backend HMACs the device id before storing it, so even though we
+// hand the raw value over the wire, the DB only sees the hash. See the
+// abfall-api repo for the full server-side contract.
+
+import { getDeviceId } from "./deviceId";
+import type { CollectionEvent, SavedCalendar } from "../types/calendar";
+
+const BASE_URL =
+  process.env.EXPO_PUBLIC_API_BASE_URL ?? "https://api.abfall.example";
+const APP_KEY = process.env.EXPO_PUBLIC_API_KEY ?? "PLACEHOLDER_APP_KEY";
+
+// ─── public types — mirror the server zod schemas ──────────────────────
+
+export interface CommunityCalendarSummary {
+  id: string;
+  title: string;
+  country: string;
+  region: string | null;
+  city: string;
+  zones: string[];
+  year: number;
+  half: number | null;
+  sourceLanguage: string | null;
+  sharedByName: string | null;
+  usesCount: number;
+  createdAt: string;
+}
+
+export interface CommunityCalendarDetail extends CommunityCalendarSummary {
+  events: CollectionEvent[];
+}
+
+export interface SearchResult {
+  results: CommunityCalendarSummary[];
+  nextCursor: string | null;
+}
+
+export interface SearchFilters {
+  country: string;
+  region?: string;
+  city?: string;
+  year?: number;
+  /** Free-text search across title, city, and region. ilike + wildcards. */
+  q?: string;
+  after?: string;
+}
+
+// ─── core request helper ───────────────────────────────────────────────
+
+class ApiError extends Error {
+  constructor(public status: number, public body: unknown, message: string) {
+    super(message);
+  }
+}
+
+export { ApiError };
+
+async function request<T>(
+  path: string,
+  init: RequestInit = {},
+): Promise<T> {
+  const method = init.method ?? "GET";
+  const deviceId = await getDeviceId();
+  const url = `${BASE_URL}${path}`;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "X-App-Key": APP_KEY,
+    "X-Device-Id": deviceId,
+    ...((init.headers as Record<string, string>) ?? {}),
+  };
+
+  // Verbose request log — sees the URL, method, and body size so we
+  // can tell at a glance whether the call left the device intact.
+  const bodyLen = typeof init.body === "string" ? init.body.length : 0;
+  console.log(`[api] → ${method} ${url}${bodyLen ? ` body=${bodyLen}b` : ""}`);
+
+  let res: Response;
+  try {
+    res = await fetch(url, { ...init, headers });
+  } catch (err) {
+    // Network-layer failure (DNS, offline, TLS, etc). The error usually
+    // says "Network request failed" on RN — log the full shape so we
+    // can distinguish hosts unreachable from CORS preflight from etc.
+    console.warn(`[api] ✗ ${method} ${url} threw before response`, err);
+    throw err;
+  }
+
+  // Try to parse JSON regardless of status — server error responses
+  // always carry a JSON body with `error` + optional `detail`.
+  let body: unknown = null;
+  const text = await res.text();
+  if (text) {
+    try {
+      body = JSON.parse(text);
+    } catch {
+      // Non-JSON body (CDN-level error or proxy noise) — leave as text.
+      body = text;
+    }
+  }
+
+  console.log(
+    `[api] ← ${method} ${url} ${res.status} ${text.length}b`,
+    // Stringify on error so React Native's console actually prints the
+    // nested zod fieldErrors instead of truncating them as `[Array]`.
+    res.status >= 400 ? JSON.stringify(body, null, 2) : "",
+  );
+
+  if (!res.ok) {
+    const msg =
+      typeof body === "object" && body && "error" in body
+        ? String((body as { error: unknown }).error)
+        : res.statusText || `HTTP ${res.status}`;
+    throw new ApiError(res.status, body, msg);
+  }
+
+  return body as T;
+}
+
+// ─── endpoint functions ────────────────────────────────────────────────
+
+/**
+ * Search community-shared calendars near a location. `country` is
+ * required; everything else narrows the result set. Returns up to 20
+ * summaries plus a `nextCursor` to fetch the next page.
+ */
+export function searchCommunityCalendars(
+  filters: SearchFilters,
+): Promise<SearchResult> {
+  const params = new URLSearchParams();
+  params.set("country", filters.country);
+  if (filters.region) params.set("region", filters.region);
+  if (filters.city) params.set("city", filters.city);
+  if (filters.year) params.set("year", String(filters.year));
+  if (filters.q) params.set("q", filters.q);
+  if (filters.after) params.set("after", filters.after);
+  return request(`/v1/calendars?${params.toString()}`);
+}
+
+/**
+ * Fetch one community calendar with its full events payload. Returns
+ * null if the row doesn't exist or has been hidden by moderation.
+ */
+export async function getCommunityCalendar(
+  id: string,
+): Promise<CommunityCalendarDetail | null> {
+  try {
+    const body = await request<{ calendar: CommunityCalendarDetail }>(
+      `/v1/calendars/${id}`,
+    );
+    return body.calendar;
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+/**
+ * Share the active calendar publicly. Maps the local `SavedCalendar`
+ * shape (which still uses Swiss-flavored field names) to the server's
+ * generic country/region/city payload.
+ *
+ * Returns the inserted (or pre-existing, deduped) community record.
+ */
+export async function shareCalendar(args: {
+  calendar: SavedCalendar;
+  country: string;
+  sharedByName?: string;
+  sourceLanguage?: string;
+}): Promise<CommunityCalendarDetail> {
+  const { calendar, country, sharedByName, sourceLanguage } = args;
+
+  // Trim + omit empty strings — the server zod schema treats "" as a
+  // present-but-invalid value (fails min(1)). `optional()` only excuses
+  // missing fields, not empty ones.
+  const cleanStr = (s: string | undefined | null): string | undefined => {
+    if (typeof s !== "string") return undefined;
+    const t = s.trim();
+    return t.length > 0 ? t : undefined;
+  };
+
+  // City is required server-side. Fall back to the free-text location
+  // (e.g. "Schlieren, ZH" → "Schlieren") if municipality is missing.
+  const cityFromLocation = calendar.location
+    ? calendar.location.split(",")[0]
+    : undefined;
+  const city = cleanStr(calendar.municipality) ?? cleanStr(cityFromLocation);
+  if (!city) {
+    throw new Error("Set your city on the home screen before publishing.");
+  }
+
+  const zones =
+    calendar.zones && calendar.zones.length > 0
+      ? calendar.zones.map((z) => cleanStr(z) ?? "all")
+      : calendar.zone
+      ? [cleanStr(calendar.zone) ?? "all"]
+      : ["all"];
+
+  // Coerce each event into the shape the server expects: valid date,
+  // trimmed type, non-empty zone, and time/note dropped if invalid.
+  // Filters out events that can't be repaired (bad date format).
+  const events = calendar.events
+    .map((e) => {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(e.date)) return null;
+      const type = cleanStr(e.type);
+      if (!type) return null;
+      const time =
+        e.time && /^\d{2}:\d{2}$/.test(e.time) ? e.time : undefined;
+      const cleaned: Record<string, unknown> = {
+        date: e.date,
+        type,
+        zone: cleanStr(e.zone) ?? "all",
+      };
+      if (time) cleaned.time = time;
+      const note = cleanStr(e.note);
+      if (note) cleaned.note = note;
+      return cleaned;
+    })
+    .filter((e): e is Record<string, unknown> => e !== null);
+
+  if (events.length === 0) {
+    throw new Error("No valid events to publish.");
+  }
+
+  const payload = {
+    title: cleanStr(calendar.title) ?? "Untitled calendar",
+    country,
+    region: cleanStr(calendar.canton),
+    city,
+    zones,
+    year: calendar.year,
+    half: calendar.half,
+    events,
+    sourceLanguage: cleanStr(sourceLanguage),
+    sharedByName: cleanStr(sharedByName),
+  };
+
+  // Diagnostic so we can see what the local calendar actually contains
+  // when something goes wrong server-side. Logged at debug volume only.
+  console.log(
+    `[share] payload city=${payload.city} region=${payload.region ?? "-"} events=${events.length} dropped=${calendar.events.length - events.length}`,
+  );
+
+  const body = await request<{ calendar: CommunityCalendarDetail }>(
+    "/v1/calendars",
+    { method: "POST", body: JSON.stringify(payload) },
+  );
+  return body.calendar;
+}
+
+/**
+ * Fire-and-forget signal that this device just imported a community
+ * calendar. Increments the `usesCount` users see in browse listings.
+ * Failures are swallowed — this is engagement telemetry, not critical.
+ */
+export async function markCommunityCalendarUsed(id: string): Promise<void> {
+  try {
+    await request(`/v1/calendars/${id}/use`, { method: "POST" });
+  } catch (err) {
+    console.warn("[api] markCommunityCalendarUsed failed:", err);
+  }
+}
+
+/**
+ * Flag a community calendar as bad content. The server auto-hides rows
+ * above a report threshold; idempotent per-device.
+ */
+export async function reportCommunityCalendar(
+  id: string,
+  reason?: string,
+): Promise<{ reportsCount: number; hidden: boolean }> {
+  return request(`/v1/calendars/${id}/report`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}

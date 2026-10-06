@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Abfall — Brand Mark</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root{
+    --stage:#E7D6CB; --card:#FFFFFF; --tile:#F4ECE4; --ink:#211F1C;
+    --sec:rgba(33,31,28,0.52); --ter:rgba(33,31,28,0.34); --line:rgba(40,28,18,0.08);
+    --papier:#C3C6EC; --karton:#EFCB49; --kehricht:#E69A80; --gruengut:#AECB93; --metall:#9CC9C2;
+    --shadow:0 18px 40px rgba(150,118,96,0.16); --shadowSm:0 8px 20px rgba(150,118,96,0.13);
+  }
+  html,body{ background:radial-gradient(130% 110% at 50% 0%, #F0E3D8 0%, #E7D6CB 52%, #DFC9BC 100%); -webkit-font-smoothing:antialiased; font-family:'Hanken Grotesk',sans-serif; color:var(--ink); min-height:100vh; }
+  .wrap{ max-width:1080px; margin:0 auto; padding:56px 40px 90px; }
+
+  .kicker{ font-size:12px; font-weight:800; letter-spacing:2.4px; color:var(--ter); text-transform:uppercase; }
+  h1{ font-size:46px; font-weight:500; letter-spacing:-1.4px; line-height:1.02; margin-top:14px; text-wrap:balance; }
+  h1 b{ font-weight:800; }
+  .lede{ margin-top:16px; font-size:16.5px; line-height:1.5; color:var(--sec); max-width:620px; font-weight:500; }
+
+  .sectitle{ font-size:12px; font-weight:800; letter-spacing:1.8px; color:var(--ter); text-transform:uppercase; margin:0 0 16px; }
+
+  /* hero */
+  .hero{ margin-top:40px; display:grid; grid-template-columns:1.15fr 1fr; gap:24px; }
+  .hero .primary{ background:var(--ink); border-radius:34px; aspect-ratio:1.25/1; display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow); }
+  .hero .side{ display:flex; flex-direction:column; gap:24px; }
+  .lockcard{ flex:1; background:var(--card); border-radius:28px; box-shadow:var(--shadow); display:flex; flex-direction:column; justify-content:center; gap:22px; padding:34px; }
+  .lock{ display:flex; align-items:center; gap:14px; }
+  .lock .m{ width:48px; height:48px; border-radius:14px; background:var(--ink); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .lock .w{ font-size:27px; font-weight:800; letter-spacing:-0.8px; white-space:nowrap; }
+  .lock .w span{ font-weight:500; color:var(--sec); }
+  .lockstack{ display:flex; flex-direction:column; align-items:center; gap:12px; padding-top:22px; border-top:1px solid var(--line); }
+  .lockstack .m{ width:60px; height:60px; border-radius:18px; background:var(--ink); display:flex; align-items:center; justify-content:center; }
+  .lockstack .w{ font-size:24px; font-weight:800; letter-spacing:-0.7px; }
+  .lockstack .w span{ font-weight:500; color:var(--sec); }
+  .lockstack .sub{ font-size:11px; font-weight:800; letter-spacing:2.6px; color:var(--ter); text-transform:uppercase; }
+
+  /* variants */
+  .block{ margin-top:30px; background:var(--card); border-radius:28px; box-shadow:var(--shadow); padding:30px 32px 34px; }
+  .vrow{ display:grid; grid-template-columns:repeat(4,1fr); gap:18px; }
+  .tile{ aspect-ratio:1.3/1; border-radius:20px; display:flex; align-items:center; justify-content:center; }
+  .tile.ink{ background:var(--ink); }
+  .tile.light{ background:var(--tile); }
+  .tile.stage{ background:var(--stage); }
+  .tile.mono{ background:#fff; border:1px solid var(--line); }
+  .vlabel{ margin-top:11px; font-size:12px; font-weight:700; color:var(--sec); text-align:center; }
+  .vcol{ display:flex; flex-direction:column; }
+
+  /* scale row */
+  .scaler{ display:flex; align-items:flex-end; gap:34px; flex-wrap:wrap; }
+  .scell{ display:flex; flex-direction:column; align-items:center; gap:12px; }
+  .squ{ background:var(--ink); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .slab{ font-size:11px; font-weight:700; color:var(--ter); font-variant-numeric:tabular-nums; }
+
+  .note{ margin-top:30px; background:rgba(174,203,147,0.18); border:1px solid rgba(120,150,90,0.22); border-radius:22px; padding:22px 26px; font-size:14.5px; line-height:1.55; color:var(--ink); font-weight:500; }
+  .note b{ font-weight:800; }
+
+  @media (max-width:760px){ .hero{ grid-template-columns:1fr; } .vrow{ grid-template-columns:repeat(2,1fr); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">Abfall Scanner · Brand Mark</div>
+  <h1>The <b>Stream stack</b>.</h1>
+  <p class="lede">Five rounded bars in the five waste-stream colours already living in the app, with a small leaf sprouting from the top — sorted waste becoming growth. The most ownable, system-native mark of the set.</p>
+
+  <!-- hero + lockups -->
+  <div class="hero">
+    <div class="primary" id="primary"></div>
+    <div class="side">
+      <div class="lockcard">
+        <div class="lock"><div class="m" id="lh"></div><div class="w">Abfall <span>Scanner</span></div></div>
+        <div class="lockstack">
+          <div class="m" id="ls"></div>
+          <div class="w">Abfall <span>Scanner</span></div>
+          <div class="sub">Sort it right</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- surface variants -->
+  <div class="block">
+    <p class="sectitle">Surfaces</p>
+    <div class="vrow">
+      <div class="vcol"><div class="tile ink" id="v1"></div><div class="vlabel">Primary · on ink</div></div>
+      <div class="vcol"><div class="tile light" id="v2"></div><div class="vlabel">On light surface</div></div>
+      <div class="vcol"><div class="tile stage" id="v3"></div><div class="vlabel">On warm canvas</div></div>
+      <div class="vcol"><div class="tile mono" id="v4"></div><div class="vlabel">Mono · single ink</div></div>
+    </div>
+  </div>
+
+  <!-- scale -->
+  <div class="block">
+    <p class="sectitle">Holds at every size</p>
+    <div class="scaler" id="scaler"></div>
+  </div>
+
+  <div class="note"><b>Next:</b> I can drop this straight into the app header in place of the current four-petal mark, or build a developer-ready set (SVG files, favicon, app-icon, clear-space + mono specs). Just say the word.</div>
+</div>
+
+<script>
+// ── Stream stack mark — 0 0 48 48 viewBox. mono = optional single colour. ──
+function stack(mono){
+  const cols = mono ? Array(5).fill(mono) : ['var(--papier)','var(--karton)','var(--kehricht)','var(--gruengut)','var(--metall)'];
+  const w = [20,30,24,32,18];
+  const bars = cols.map((col,i)=>{ const ww=w[i]; const x=24-ww/2; const y=12.5+i*6; return `<rect x="${x}" y="${y}" width="${ww}" height="4.6" rx="2.3" fill="${col}"/>`; }).join('');
+  const leafFill = mono || 'var(--gruengut)';
+  const veinOp = mono ? 0 : 0.45;
+  const leaf = `<g transform="translate(33.5 2.5)"><path d="M11 0C4.5 0 0 4.2 0 11 6.5 11 11 6.8 11 0Z" fill="${leafFill}"/><path d="M1.6 9.4C3.8 6.4 6.4 4.2 9.4 2.6" fill="none" stroke="var(--ink)" stroke-width="0.9" stroke-linecap="round" opacity="${veinOp}"/></g>`;
+  return bars + leaf;
+}
+const svg = (size, mono) => `<svg width="${size}" height="${size}" viewBox="0 0 48 48">${stack(mono)}</svg>`;
+
+document.getElementById('primary').innerHTML = svg(150);
+document.getElementById('lh').innerHTML = svg(30);
+document.getElementById('ls').innerHTML = svg(38);
+document.getElementById('v1').innerHTML = svg(66);
+document.getElementById('v2').innerHTML = svg(66);
+document.getElementById('v3').innerHTML = svg(66);
+document.getElementById('v4').innerHTML = svg(66, 'var(--ink)');
+
+// scale row — badge sizes shrinking, colour preserved
+const sizes = [
+  { box:96, glyph:62, label:'96px' },
+  { box:64, glyph:42, label:'64px' },
+  { box:44, glyph:29, label:'44px' },
+  { box:32, glyph:21, label:'32px' },
+  { box:20, glyph:14, label:'20px · favicon' },
+];
+document.getElementById('scaler').innerHTML = sizes.map(s =>
+  `<div class="scell"><div class="squ" style="width:${s.box}px;height:${s.box}px;border-radius:${Math.round(s.box*0.28)}px">${svg(s.glyph)}</div><div class="slab">${s.label}</div></div>`
+).join('');
+</script>
+
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="48" rx="12" fill="#E7D6CB"/><g transform="translate(12 12) scale(0.5)"><rect x="2" y="12.5" width="20" height="4.6" rx="2.3" fill="#C3C6EC" transform="translate(2 0)"/><rect x="-1" y="18.5" width="30" height="4.6" rx="2.3" fill="#EFCB49" transform="translate(2 0)"/><rect x="2" y="24.5" width="24" height="4.6" rx="2.3" fill="#E69A80" transform="translate(2 0)"/><rect x="-2" y="30.5" width="32" height="4.6" rx="2.3" fill="#AECB93" transform="translate(2 0)"/><rect x="5" y="36.5" width="18" height="4.6" rx="2.3" fill="#9CC9C2" transform="translate(2 0)"/></g></svg>
+</template>
+</body>
+</html>
