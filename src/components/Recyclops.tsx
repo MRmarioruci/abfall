@@ -1,32 +1,47 @@
-// Recyclops — the app's mascot. Lives inside the calendar card, does
-// idle animations, occasionally walks over to the legend and asks the
-// parent to swap two color labels. When he turns around to do the
-// reorder, you see his cute little tushie.
+// Recyclops — the app's mascot (the team calls him Basti). Lives inside
+// the calendar card, idles, does little tricks, talks, and every so often
+// walks over to the legend, turns around (tushie!) and reaches up to swap
+// two color labels.
 //
-// Behaviors:
-//   • Bobbing + blinking — always on, underneath everything
-//   • One routine, one thing at a time: a quiet idle beat (sometimes a
-//     glance around), then an action — a trick (wiggle, happy jump, yawn,
-//     double-blink), a speech-bubble line (only at home, facing you), or
-//     a wander: walk to a spot, turn back (tushie!), do the swap, turn
-//     back to front, walk home. Never the same action twice in a row.
-//   • Tap → happy bounce on top of whatever else is happening
+// He's a rig, not a flat drawing: body, arms, legs, eye, lid, brow, mouth
+// and the leaf on his head are separate parts computed from a pose
+// (./recyclops/rig.ts) and redrawn every frame on the UI thread with
+// Reanimated. Breathing, walk steps, arm swing, mouth flaps while talking
+// and the leaf's spring all run in one frame callback; everything else
+// is tweened by a single routine that does one thing at a time:
+//   idle beat (sometimes a glance) → trick | talk | wander → idle → …
+// Never the same action twice in a row; he only talks at home, facing you.
 //
 // The parent supplies:
-//   • `onRequestSwap` — fired during the back-turned phase so the parent
-//     can reorder its own data (e.g. CalendarMonth legend order)
-//   • `homeX` — pixel offset from his "home position" (defaults to 0)
-//   • `walkRange` — how far left/right he can roam (default 60)
+//   • `onRequestSwap` — fired while he's turned away with his hands up, so
+//     the parent can reorder its own data (e.g. CalendarMonth legend order)
+//   • `walkRange` — how far left he can roam, in px (0 keeps him at home)
+//   • `onPress` — tap handler; he also does a happy hop
 
 import { useEffect, useRef, useState } from "react";
-import { Animated, Dimensions, Easing, Pressable, Text, View } from "react-native";
+import { Dimensions, Pressable, Text, View } from "react-native";
+import Animated, {
+  Easing,
+  useAnimatedProps,
+  useAnimatedStyle,
+  useDerivedValue,
+  useFrameCallback,
+  useSharedValue,
+  withSpring,
+  withTiming,
+  type EasingFunction,
+  type SharedValue,
+} from "react-native-reanimated";
 import Svg, { Circle, Ellipse, G, Path } from "react-native-svg";
 import { S, ST } from "../theme/colors";
 import { useT } from "../context/LocaleContext";
 import { t as translate, type StringKey } from "../i18n";
+import { REST_POSE, rig, type Pose, type Rig } from "./recyclops/rig";
 
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
-const AnimatedG = Animated.createAnimatedComponent(G);
+const APath = Animated.createAnimatedComponent(Path);
+const ACircle = Animated.createAnimatedComponent(Circle);
+const AEllipse = Animated.createAnimatedComponent(Ellipse);
+const AG = Animated.createAnimatedComponent(G);
 
 // Stuff Recyclops occasionally pipes up with, shown in a speech bubble
 // above his head. Mood is mixed: grumpy/passive-aggressive about your
@@ -115,30 +130,20 @@ const RECENT_HISTORY_LEN = 8;
 // bounds, even on narrow phones).
 const BUBBLE_WIDTH = Math.round(Dimensions.get("window").width * 0.5);
 
-// Speech bubble: light-on-dark card so it pops against the dark
-// calendar. Tail sits near the bubble's right edge so it points down
-// at Recyclops's head — he's anchored to the right side of his parent
-// and the bubble grows leftward from there.
-function SpeechBubble({
-  text,
-  tailTranslateX,
-}: {
-  text: string;
-  // Tail moves via transform.translateX (not a layout `right` prop) so
-  // the native animated driver can animate it. translateX is a negative
-  // distance from the bubble's right edge: 0 = at the right, more
-  // negative = further left along the bubble bottom.
-  tailTranslateX: number | Animated.AnimatedInterpolation<number>;
-}) {
+const BODY = ST.gruengut.c;
+const INK = ST.gruengut.ink;
+const BELLY = "#C9DDB5";
+const LEAF = "#7FB069";
+const CHEEK = "rgba(232,128,120,0.45)";
+const TAU = Math.PI * 2;
+
+// Speech bubble: light-on-dark card so it pops against the dark calendar.
+// The tail slides along the bottom edge to stay over his head as he walks.
+function SpeechBubble({ text, tailStyle }: { text: string; tailStyle: object }) {
   return (
     <View style={{ width: BUBBLE_WIDTH }}>
       <View
         style={{
-          // alignSelf: "stretch" makes absolutely sure the white card
-          // fills the wrapper's full BUBBLE_WIDTH, so the Text inside
-          // — which has textAlign: "center" — actually centers across
-          // the bubble instead of sizing to its own content and clinging
-          // to one edge.
           alignSelf: "stretch",
           backgroundColor: "#fff",
           paddingHorizontal: 13,
@@ -157,10 +162,6 @@ function SpeechBubble({
             fontSize: 10.5,
             fontWeight: "700",
             lineHeight: 14,
-            // Center the text so short lines aren't pushed against either
-            // edge of the wide bubble. With BUBBLE_WIDTH ≈ 50% of the
-            // screen, right- or left-alignment makes short one-liners
-            // float far from the visual center.
             textAlign: "center",
             letterSpacing: -0.1,
           }}
@@ -168,25 +169,23 @@ function SpeechBubble({
           {text}
         </Text>
       </View>
-      {/* Downward tail — CSS-triangle technique. Pinned to the right
-          edge of the bubble (`right: 0`); horizontal motion is via
-          transform.translateX which the native animated driver actually
-          supports (unlike the `right` layout prop). */}
       <Animated.View
-        style={{
-          position: "absolute",
-          bottom: -7,
-          right: 0,
-          width: 0,
-          height: 0,
-          borderLeftWidth: 7,
-          borderRightWidth: 7,
-          borderTopWidth: 8,
-          borderLeftColor: "transparent",
-          borderRightColor: "transparent",
-          borderTopColor: "#fff",
-          transform: [{ translateX: tailTranslateX }],
-        }}
+        style={[
+          {
+            position: "absolute",
+            bottom: -7,
+            right: 0,
+            width: 0,
+            height: 0,
+            borderLeftWidth: 7,
+            borderRightWidth: 7,
+            borderTopWidth: 8,
+            borderLeftColor: "transparent",
+            borderRightColor: "transparent",
+            borderTopColor: "#fff",
+          },
+          tailStyle,
+        ]}
       />
     </View>
   );
@@ -194,71 +193,155 @@ function SpeechBubble({
 
 interface Props {
   size?: number;
-  /** Tap reaction — purely visual flourish. */
+  /** Tap handler — he also does a happy hop. */
   onPress?: () => void;
-  /** Called during the back-turned moment so the parent can rearrange
-   *  whatever Recyclops is "fiddling with" off-screen. */
+  /** Called while he's turned away with his hands up, so the parent can
+   *  rearrange whatever he's "fiddling with". */
   onRequestSwap?: () => void;
-  /** How far horizontally Recyclops will wander from his home position
-   *  (in viewport px, both directions). Set to 0 to keep him stationary. */
+  /** How far left (px) he wanders from home. 0 keeps him stationary. */
   walkRange?: number;
 }
 
+type PoseValues = { [K in keyof Pose]: SharedValue<number> };
+const POSE_KEYS = Object.keys(REST_POSE) as (keyof Pose)[];
+
+function usePoseValues(): PoseValues {
+  const values = {} as PoseValues;
+  // Fixed key list, so the hook order never changes between renders.
+  for (const k of POSE_KEYS) {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    values[k] = useSharedValue(REST_POSE[k]);
+  }
+  return values;
+}
+
+type PathPart = "body" | "belly" | "armL" | "armR" | "legL" | "legR" | "upperLid" | "happyEye" | "brow" | "mouth" | "leafStem" | "leafBlade" | "tushSeam";
+type PointPart = "handL" | "handR" | "footL" | "footR" | "pupil" | "shine" | "cheekL" | "cheekR" | "tushL" | "tushR";
+
+function usePathProps(R: SharedValue<Rig>, part: PathPart) {
+  return useAnimatedProps(() => ({ d: R.value[part] || "M 0 0" }));
+}
+function usePointProps(R: SharedValue<Rig>, part: PointPart) {
+  return useAnimatedProps(() => ({ cx: R.value[part].cx, cy: R.value[part].cy }));
+}
+
 export function Recyclops({ size = 76, onPress, onRequestSwap, walkRange = 60 }: Props) {
-  // Transform-side animation values — driven natively for 60fps.
-  const bob = useRef(new Animated.Value(0)).current;
-  const jump = useRef(new Animated.Value(0)).current;
-  const tilt = useRef(new Animated.Value(0)).current;
-  const stretch = useRef(new Animated.Value(1)).current;
-  const walkX = useRef(new Animated.Value(0)).current;
-  const walkBounce = useRef(new Animated.Value(0)).current;
-  // Horizontal squash used to fake a 3D turn: 1 → ~0.1 (thin profile,
-  // where we swap the drawing) → 1. Native driver (it's a View scaleX).
-  const turnScaleX = useRef(new Animated.Value(1)).current;
-
-  // SVG-prop animation values — JS driver, cheap small SVGs so OK.
-  const lookX = useRef(new Animated.Value(50)).current;
-  const lookY = useRef(new Animated.Value(42)).current;
-  const blink = useRef(new Animated.Value(0)).current;
-  // Arm raise — 0 = hanging at rest, 1 = both hands raised. He lifts his
-  // hands while turned away (reaching up to fiddle with the labels).
-  // Drives an SVG rotation, so JS driver.
-  const armRaise = useRef(new Animated.Value(0)).current;
-
-  // Speech bubble — pop-in scale + fade, both native.
-  const bubbleOpacity = useRef(new Animated.Value(0)).current;
-  const bubbleScale = useRef(new Animated.Value(0.7)).current;
-
-  // Front/back state — drives whether you see his eye or his tushie.
   const { t } = useT();
-  const [facing, setFacing] = useState<"front" | "back">("front");
-  // Current line in the speech bubble (null = nothing to say right now).
+  const P = usePoseValues();
+
+  // Whole-body motion (px / degrees), applied to the wrapping view.
+  const x = useSharedValue(0);
+  const y = useSharedValue(0);
+  const lean = useSharedValue(0);
+  const turnX = useSharedValue(1);
+  const back = useSharedValue(0);
+  const bob = useSharedValue(0);
+
+  // Drivers read by the frame callback.
+  const walking = useSharedValue(0);
+  const walkDir = useSharedValue(0);
+  const armsBusy = useSharedValue(0);
+  const talking = useSharedValue(0);
+  const leafVel = useSharedValue(0);
+
+  const bubbleOpacity = useSharedValue(0);
+  const bubbleScale = useSharedValue(0.7);
   const [bubbleMsg, setBubbleMsg] = useState<StringKey | null>(null);
 
-  // Held in a ref so the parent passing a fresh inline callback each
-  // render (it does — and firing it re-renders the parent) doesn't tear
-  // down and restart the whole animation loop mid-walk.
+  // Read through a ref so the parent's fresh inline callback each render
+  // doesn't restart the routine mid-walk.
   const onRequestSwapRef = useRef(onRequestSwap);
   onRequestSwapRef.current = onRequestSwap;
 
-  useEffect(() => {
-    // ── Ambient life ──────────────────────────────────────────────────
-    // Bobbing and blinking run continuously underneath everything else;
-    // they're background life, not "actions".
-    const bobLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(bob, { toValue: 1, duration: 1400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(bob, { toValue: 0, duration: 1400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ]),
-    );
-    bobLoop.start();
+  // ── Continuous motion, every frame on the UI thread ──────────────────
+  useFrameCallback((frame) => {
+    const now = frame.timestamp;
+    const k = Math.min(3, (frame.timeSincePreviousFrame ?? 16.7) / 16.7);
 
+    P.breathe.value = (Math.sin(now / 900) + 1) / 2;
+
+    const walk = walking.value;
+    if (walk > 0) P.stepPhase.value = (now / 520) % 1;
+    P.stepAmt.value = walk;
+    // Arms swing opposite the legs, unless an action is using them.
+    if (walk > 0 && armsBusy.value === 0) {
+      const swing = Math.sin(P.stepPhase.value * TAU) * 22 * walk;
+      P.armL.value = 18 + swing;
+      P.armR.value = 18 - swing;
+    }
+    bob.value = -walk * Math.abs(Math.sin(P.stepPhase.value * TAU)) * 1.6;
+
+    if (talking.value > 0) {
+      P.mouthOpen.value = (0.35 + 0.35 * Math.sin(now / 70) * Math.sin(now / 173)) * talking.value;
+    }
+
+    // The leaf trails behind: a damped spring toward an angle set by the
+    // lean, the walk and squash/stretch.
+    const target = -lean.value * 1.6 - walkDir.value * walk * 14 - (P.squash.value - 1) * 60;
+    leafVel.value = (leafVel.value + (target - P.leaf.value) * 0.12 * k) * Math.pow(0.82, k);
+    P.leaf.value += leafVel.value * k;
+  });
+
+  const R = useDerivedValue<Rig>(() => {
+    const pose = {} as Pose;
+    for (const key of POSE_KEYS) pose[key] = P[key].value;
+    return rig(pose);
+  });
+
+  const body = usePathProps(R, "body");
+  const belly = usePathProps(R, "belly");
+  const armL = usePathProps(R, "armL");
+  const armR = usePathProps(R, "armR");
+  const legL = usePathProps(R, "legL");
+  const legR = usePathProps(R, "legR");
+  const upperLid = usePathProps(R, "upperLid");
+  const happyEyePath = usePathProps(R, "happyEye");
+  const brow = usePathProps(R, "brow");
+  const mouth = usePathProps(R, "mouth");
+  const leafStem = usePathProps(R, "leafStem");
+  const leafBlade = usePathProps(R, "leafBlade");
+  const tushSeam = usePathProps(R, "tushSeam");
+  const handL = usePointProps(R, "handL");
+  const handR = usePointProps(R, "handR");
+  const footL = usePointProps(R, "footL");
+  const footR = usePointProps(R, "footR");
+  const pupil = usePointProps(R, "pupil");
+  const shine = usePointProps(R, "shine");
+  const cheekL = usePointProps(R, "cheekL");
+  const cheekR = usePointProps(R, "cheekR");
+  const tushL = usePointProps(R, "tushL");
+  const tushR = usePointProps(R, "tushR");
+  const eye = useAnimatedProps(() => ({ cx: R.value.eye.cx, cy: R.value.eye.cy }));
+  const happyEye = useAnimatedProps(() => ({
+    opacity: Math.max(0, Math.min(1, (P.happy.value - 0.5) * 3)),
+  }));
+  const frontSide = useAnimatedProps(() => ({ opacity: back.value > 0.5 ? 0 : 1 }));
+  const backSide = useAnimatedProps(() => ({ opacity: back.value > 0.5 ? 1 : 0 }));
+
+  const bodyStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: x.value },
+      { translateY: y.value + bob.value },
+      { rotate: `${lean.value}deg` },
+      { scaleX: turnX.value },
+    ],
+  }));
+  const bubbleStyle = useAnimatedStyle(() => ({
+    opacity: bubbleOpacity.value,
+    transform: [{ scale: bubbleScale.value }],
+  }));
+  // Tail centre sits (size/2 - x) from the bubble's right edge; clamped
+  // so it never slides off the bubble.
+  const tailStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: Math.max(-(BUBBLE_WIDTH - 14), Math.min(0, x.value - (size / 2 - 7))) },
+    ],
+  }));
+
+  // ── The routine ─────────────────────────────────────────────────────
+  useEffect(() => {
     let cancelled = false;
     const timers = new Set<ReturnType<typeof setTimeout>>();
-    const running = new Set<Animated.CompositeAnimation>();
-
-    // Promise helpers for the sequencer. Both resolve early (and the
-    // sequencer then bails out) once the component unmounts.
     const wait = (ms: number) =>
       new Promise<void>((resolve) => {
         const id = setTimeout(() => {
@@ -267,109 +350,129 @@ export function Recyclops({ size = 76, onPress, onRequestSwap, walkRange = 60 }:
         }, ms);
         timers.add(id);
       });
-    const play = (anim: Animated.CompositeAnimation) =>
-      new Promise<void>((resolve) => {
-        running.add(anim);
-        anim.start(() => {
-          running.delete(anim);
-          resolve();
-        });
-      });
     const between = (min: number, max: number) => min + Math.random() * (max - min);
+    const all = (...steps: Promise<void>[]) => Promise.all(steps).then(() => {});
 
+    const EASE = Easing.inOut(Easing.quad);
+    /** Tween a value and resolve when it's done. */
+    const to = (sv: SharedValue<number>, value: number, ms: number, easing: EasingFunction = EASE) => {
+      sv.value = withTiming(value, { duration: ms, easing });
+      return wait(ms);
+    };
+    const settle = Easing.out(Easing.back(1.6));
+
+    // Blinks run on their own, but skip while the lid is already in use.
     const blinkLoop = async () => {
       while (!cancelled) {
         await wait(between(2400, 4400));
-        if (cancelled) return;
-        await play(
-          Animated.sequence([
-            Animated.timing(blink, { toValue: 1, duration: 80, useNativeDriver: false }),
-            Animated.timing(blink, { toValue: 0, duration: 110, useNativeDriver: false }),
-          ]),
-        );
+        if (cancelled || P.lid.value > 0.05 || P.happy.value > 0.05) continue;
+        await to(P.lid, 1, 70);
+        await to(P.lid, 0, 110);
       }
     };
     blinkLoop();
 
-    // ── Building blocks ───────────────────────────────────────────────
-    const look = (x: number, y: number, duration: number) =>
-      Animated.parallel([
-        Animated.timing(lookX, { toValue: x, duration, easing: Easing.inOut(Easing.quad), useNativeDriver: false }),
-        Animated.timing(lookY, { toValue: y, duration, easing: Easing.inOut(Easing.quad), useNativeDriver: false }),
-      ]);
-    const lookCenter = () => look(50, 42, 300);
-
-    const wiggle = () =>
-      Animated.sequence([
-        Animated.timing(tilt, { toValue: 1, duration: 180, useNativeDriver: true }),
-        Animated.timing(tilt, { toValue: -1, duration: 300, useNativeDriver: true }),
-        Animated.timing(tilt, { toValue: 1, duration: 280, useNativeDriver: true }),
-        Animated.timing(tilt, { toValue: 0, duration: 220, useNativeDriver: true }),
-      ]);
-    const happyJump = () =>
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(jump, { toValue: -14, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-          Animated.timing(stretch, { toValue: 0.9, duration: 220, useNativeDriver: true }),
-        ]),
-        Animated.parallel([
-          Animated.spring(jump, { toValue: 0, useNativeDriver: true, damping: 6, stiffness: 160 }),
-          Animated.timing(stretch, { toValue: 1, duration: 280, useNativeDriver: true }),
-        ]),
-      ]);
-    const yawn = () =>
-      Animated.sequence([
-        Animated.timing(stretch, { toValue: 1.15, duration: 360, useNativeDriver: true }),
-        Animated.delay(180),
-        Animated.timing(stretch, { toValue: 1, duration: 420, useNativeDriver: true }),
-      ]);
-    const doubleBlink = () =>
-      Animated.sequence([
-        Animated.timing(blink, { toValue: 1, duration: 70, useNativeDriver: false }),
-        Animated.timing(blink, { toValue: 0, duration: 90, useNativeDriver: false }),
-        Animated.delay(120),
-        Animated.timing(blink, { toValue: 1, duration: 70, useNativeDriver: false }),
-        Animated.timing(blink, { toValue: 0, duration: 90, useNativeDriver: false }),
-      ]);
-    const tricks = [wiggle, happyJump, yawn, doubleBlink];
-    let lastTrick = -1;
-
-    const stepBounce = () =>
-      Animated.sequence([
-        Animated.timing(walkBounce, { toValue: -3, duration: 140, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-        Animated.timing(walkBounce, { toValue: 0, duration: 140, easing: Easing.in(Easing.quad), useNativeDriver: true }),
-      ]);
-    const walkTo = (toX: number, durationMs: number) => {
-      // Smooth X translation with overlapping step bounces.
-      const stepCount = Math.max(2, Math.round(durationMs / 280));
-      return Animated.parallel([
-        Animated.timing(walkX, { toValue: toX, duration: durationMs, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-        Animated.sequence(Array.from({ length: stepCount }, () => stepBounce())),
-      ]);
+    // ── Moves ─────────────────────────────────────────────────────────
+    const walkTo = async (toX: number) => {
+      const dir = Math.sign(toX - x.value);
+      if (dir === 0) return;
+      walkDir.value = dir;
+      await all(to(P.lookX, dir, 200), to(lean, dir * 4, 250));
+      walking.value = 1;
+      await to(x, toX, Math.abs(toX - x.value) * 9 + 300);
+      walking.value = 0;
+      walkDir.value = 0;
+      await all(to(lean, 0, 300, settle), to(P.armL, 18, 220), to(P.armR, 18, 220), to(P.lookX, 0, 300));
     };
 
-    const turnAround = async (toFacing: "front" | "back") => {
-      // Squash horizontally to a thin sliver (as if rotating edge-on),
-      // swap the drawing at the thinnest point, then unfurl the other
-      // side. A little hop rides along so it feels springy, not flat.
-      await play(
-        Animated.parallel([
-          Animated.timing(turnScaleX, { toValue: 0.1, duration: 220, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
-          Animated.timing(jump, { toValue: -8, duration: 220, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-        ]),
+    const hop = async (height: number) => {
+      await to(P.squash, 0.84, 140, Easing.out(Easing.cubic)); // anticipation
+      await all(
+        to(P.squash, 1.12, 140),
+        to(y, -height, 220, Easing.out(Easing.quad)),
+        to(P.armL, 70, 200),
+        to(P.armR, 70, 200),
       );
+      await all(to(P.squash, 1, 120), to(y, 0, 220, Easing.in(Easing.quad)));
+      await all(to(P.squash, 0.82, 90, Easing.out(Easing.quad)), to(P.armL, 18, 250), to(P.armR, 18, 250)); // land
+      await to(P.squash, 1, 260, settle);
+    };
+
+    const turn = async (toBack: boolean) => {
+      await all(to(turnX, 0.08, 180, Easing.in(Easing.cubic)), to(y, -5, 180, Easing.out(Easing.quad)));
       if (cancelled) return;
-      setFacing(toFacing);
-      await play(
-        Animated.parallel([
-          Animated.timing(turnScaleX, { toValue: 1, duration: 260, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-          Animated.spring(jump, { toValue: 0, useNativeDriver: true, damping: 6, stiffness: 160 }),
-        ]),
+      back.value = toBack ? 1 : 0;
+      await all(to(turnX, 1, 220, Easing.out(Easing.cubic)), to(y, 0, 220, Easing.in(Easing.quad)));
+    };
+
+    const lookCenter = () => all(to(P.lookX, 0, 300), to(P.lookY, 0, 300));
+
+    // ── Actions ───────────────────────────────────────────────────────
+    const idle = async () => {
+      const ms = between(1400, 2800);
+      if (Math.random() < 0.6) {
+        await wait(ms * 0.3);
+        if (cancelled) return;
+        await all(to(P.lookX, between(-1, 1), 380), to(P.lookY, between(-0.8, 0.6), 380));
+        await wait(between(500, 900));
+        if (cancelled) return;
+        await lookCenter();
+        await wait(Math.max(0, ms * 0.7 - 1200));
+      } else {
+        await wait(ms);
+      }
+    };
+
+    const happyHop = async () => {
+      await all(to(P.happy, 1, 160), to(P.smile, 1, 160), to(P.browUp, 0.6, 160));
+      await hop(Math.max(8, size * 0.24));
+      await all(to(P.happy, 0, 260), to(P.smile, 0.5, 260), to(P.browUp, 0, 260));
+    };
+
+    const wiggle = async () => {
+      for (const deg of [8, -8, 6, 0]) await to(lean, deg, 200);
+    };
+
+    const yawn = async () => {
+      await all(
+        to(P.squash, 1.1, 500), to(P.lid, 0.6, 500), to(P.mouthOpen, 1, 500), to(P.smile, 0, 500),
+        to(P.browUp, -0.3, 500), to(P.armL, 60, 500), to(P.armR, 60, 500),
+      );
+      await wait(400);
+      await all(
+        to(P.squash, 1, 500), to(P.lid, 0, 400), to(P.mouthOpen, 0, 400), to(P.smile, 0.5, 400),
+        to(P.browUp, 0, 400), to(P.armL, 18, 500), to(P.armR, 18, 500),
       );
     };
 
-    // Ring buffer of recently-used lines so nothing from the last N picks
-    // repeats. Way more effective than "avoid the previous one".
+    const wave = async () => {
+      armsBusy.value = 1;
+      await all(to(P.armR, 150, 260, Easing.out(Easing.cubic)), to(P.happy, 0.7, 200), to(P.smile, 1, 200));
+      for (let i = 0; i < 3 && !cancelled; i++) {
+        await to(P.armR, 120, 160);
+        await to(P.armR, 155, 160);
+      }
+      await all(to(P.armR, 18, 300), to(P.happy, 0, 300), to(P.smile, 0.5, 300));
+      armsBusy.value = 0;
+    };
+
+    const doubleBlink = async () => {
+      for (let i = 0; i < 2; i++) {
+        await to(P.lid, 1, 70);
+        await to(P.lid, 0, 90);
+        await wait(120);
+      }
+    };
+
+    const tricks = [happyHop, wiggle, yawn, wave, doubleBlink];
+    let lastTrick = -1;
+    const trick = async () => {
+      let i = Math.floor(Math.random() * tricks.length);
+      if (i === lastTrick) i = (i + 1) % tricks.length;
+      lastTrick = i;
+      await tricks[i]!();
+    };
+
     const recentIdxs: number[] = [];
     const pickLine = () => {
       let idx = Math.floor(Math.random() * RECYCLOPS_LINES.length);
@@ -381,87 +484,49 @@ export function Recyclops({ size = 76, onPress, onRequestSwap, walkRange = 60 }:
       return RECYCLOPS_LINES[idx]!;
     };
 
-    // ── Actions — one runs at a time ──────────────────────────────────
-
-    // A quiet beat at home. Sometimes he glances somewhere and back.
-    const idle = async () => {
-      const ms = between(1400, 2800);
-      if (Math.random() < 0.6) {
-        const lead = ms * 0.3;
-        await wait(lead);
-        if (cancelled) return;
-        await play(look(between(43, 57), between(37, 47), 380));
-        await wait(between(500, 900));
-        if (cancelled) return;
-        await play(lookCenter());
-        await wait(Math.max(0, ms - lead - 1200));
-      } else {
-        await wait(ms);
-      }
-    };
-
-    const trick = async () => {
-      let i = Math.floor(Math.random() * tricks.length);
-      if (i === lastTrick) i = (i + 1) % tricks.length;
-      lastTrick = i;
-      await play(tricks[i]!());
-    };
-
-    // Only ever called at home, facing front: he looks up toward the
-    // bubble, "says" the line, holds for a length-scaled reading beat,
-    // then looks back as it fades.
+    // Only called at home, facing front: he looks up at the bubble and
+    // his mouth moves while the line is up.
     const talk = async () => {
       const line = pickLine();
       setBubbleMsg(line);
-      bubbleScale.setValue(0.7);
-      await play(
-        Animated.parallel([
-          look(46, 37, 260),
-          Animated.timing(bubbleOpacity, { toValue: 1, duration: 200, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-          Animated.spring(bubbleScale, { toValue: 1, useNativeDriver: true, damping: 8, stiffness: 170 }),
-        ]),
-      );
+      bubbleScale.value = 0.7;
+      bubbleOpacity.value = withTiming(1, { duration: 200, easing: Easing.out(Easing.quad) });
+      bubbleScale.value = withSpring(1, { damping: 8, stiffness: 170 });
+      await all(to(P.browUp, 0.5, 220), to(P.lookY, -0.6, 220), to(P.lookX, -0.4, 220));
       if (cancelled) return;
+      talking.value = 1;
       await wait(Math.min(4200, 1700 + translate(line).length * 55));
+      talking.value = 0;
       if (cancelled) return;
-      await play(
-        Animated.parallel([
-          lookCenter(),
-          Animated.timing(bubbleOpacity, { toValue: 0, duration: 240, easing: Easing.in(Easing.quad), useNativeDriver: true }),
-          Animated.timing(bubbleScale, { toValue: 0.75, duration: 240, useNativeDriver: true }),
-        ]),
-      );
+      bubbleOpacity.value = withTiming(0, { duration: 240, easing: Easing.in(Easing.quad) });
+      bubbleScale.value = withTiming(0.75, { duration: 240 });
+      await all(to(P.mouthOpen, 0, 150), to(P.browUp, 0, 300), lookCenter());
       if (!cancelled) setBubbleMsg(null);
     };
 
-    // Walk left (his home is the card's right edge, so never right),
-    // turn around (tushie!), reach up and ask the parent to swap two
-    // labels, then turn back and walk home.
+    // Walk left (home is the card's right edge), turn around, reach up and
+    // fiddle while the parent swaps two labels, then turn back and go home.
     const wander = async () => {
-      const target = -between(0.35, 1) * walkRange;
-      await play(walkTo(target, between(900, 1300)));
+      await walkTo(-between(0.35, 1) * walkRange);
       if (cancelled) return;
-      await wait(300);
+      await wait(250);
+      await turn(true);
       if (cancelled) return;
-      await turnAround("back");
-      if (cancelled) return;
-      await play(Animated.spring(armRaise, { toValue: 1, useNativeDriver: false, damping: 9, stiffness: 140 }));
-      if (cancelled) return;
+      armsBusy.value = 1;
+      await all(to(P.armL, 165, 300, settle), to(P.armR, 165, 300, settle));
       onRequestSwapRef.current?.();
-      // Hold the raised back pose so the user notices the swap.
-      await wait(900);
+      for (let i = 0; i < 2 && !cancelled; i++) {
+        await all(to(P.armL, 150, 150), to(P.armR, 175, 150));
+        await all(to(P.armL, 175, 150), to(P.armR, 150, 150));
+      }
+      await all(to(P.armL, 18, 260), to(P.armR, 18, 260));
+      armsBusy.value = 0;
       if (cancelled) return;
-      await play(Animated.timing(armRaise, { toValue: 0, duration: 240, easing: Easing.in(Easing.cubic), useNativeDriver: false }));
+      await turn(false);
       if (cancelled) return;
-      await turnAround("front");
-      if (cancelled) return;
-      await play(walkTo(0, between(900, 1300)));
+      await walkTo(0);
     };
 
-    // ── The routine ───────────────────────────────────────────────────
-    // idle → action → idle → action … Opens with a wander (so the swap
-    // shows up soon after mount) and a line, then picks by weight,
-    // never the same action twice in a row.
     type Action = "trick" | "talk" | "wander";
     const ACTIONS: Record<Action, () => Promise<void>> = { trick, talk, wander };
     const WEIGHTS: [Action, number][] = [
@@ -469,9 +534,9 @@ export function Recyclops({ size = 76, onPress, onRequestSwap, walkRange = 60 }:
       ["talk", 3],
       ["trick", 3],
     ];
+    // Opens with a wander (so the swap shows up soon) and a line.
     const opening: Action[] = walkRange > 0 ? ["wander", "talk"] : ["talk"];
     let last: Action | null = null;
-
     const next = (): Action => {
       const scripted = opening.shift();
       if (scripted) return scripted;
@@ -484,224 +549,99 @@ export function Recyclops({ size = 76, onPress, onRequestSwap, walkRange = 60 }:
       return options[0]![0];
     };
 
-    const routine = async () => {
+    (async () => {
       while (!cancelled) {
         await idle();
         if (cancelled) return;
-        const action = next();
-        last = action;
-        await ACTIONS[action]();
+        last = next();
+        await ACTIONS[last]();
       }
-    };
-    routine();
+    })();
 
     return () => {
       cancelled = true;
-      bobLoop.stop();
-      running.forEach((a) => a.stop());
       timers.forEach((id) => clearTimeout(id));
     };
-    // Animation values are stable refs; only walkRange should restart the
-    // routine. onRequestSwap is read through a ref (above) on purpose.
+    // Shared values are stable; only walkRange/size should restart it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [walkRange]);
+  }, [walkRange, size]);
 
   const handlePress = () => {
     onPress?.();
-    Animated.sequence([
-      Animated.parallel([
-        Animated.timing(jump, { toValue: -18, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        Animated.timing(stretch, { toValue: 0.85, duration: 200, useNativeDriver: true }),
-      ]),
-      Animated.parallel([
-        Animated.spring(jump, { toValue: 0, useNativeDriver: true, damping: 5, stiffness: 180 }),
-        Animated.timing(stretch, { toValue: 1, duration: 300, useNativeDriver: true }),
-      ]),
-    ]).start();
+    // A quick happy hop on top of whatever he's doing.
+    const h = Math.max(10, size * 0.3);
+    P.happy.value = withTiming(1, { duration: 120 });
+    P.squash.value = withTiming(0.85, { duration: 110 }, () => {
+      P.squash.value = withSpring(1, { damping: 6, stiffness: 180 });
+    });
+    y.value = withTiming(-h, { duration: 200, easing: Easing.out(Easing.cubic) }, () => {
+      y.value = withSpring(0, { damping: 6, stiffness: 180 });
+      P.happy.value = withTiming(0, { duration: 500 });
+    });
   };
 
-  const baseTranslateY = bob.interpolate({ inputRange: [0, 1], outputRange: [0, -5] });
-  const totalTranslateY = Animated.add(Animated.add(baseTranslateY, jump), walkBounce);
-  const rotate = tilt.interpolate({ inputRange: [-1, 0, 1], outputRange: ["-10deg", "0deg", "10deg"] });
-
-  // Raising his hands = lift the whole arm mostly straight up (with a
-  // small outward splay), driven through an animated `transform` array.
-  //
-  // We deliberately do NOT use an origin-based rotation here: under the
-  // JS driver on the new architecture, the per-frame setNativeProps
-  // payload only carries the *animated* keys, so static originX/originY
-  // get dropped and the group would pivot about the viewBox corner (0,0)
-  // instead of the shoulder — a violent jitter. A translate carries its
-  // own values every frame, and a near-vertical lift keeps both hands
-  // inside the 0–100 viewBox for the entire motion (no edge clipping).
-  const RAISE_UP = 28; // viewBox units the hands travel upward
-  const leftArmTX = armRaise.interpolate({ inputRange: [0, 1], outputRange: [0, -2] });
-  const rightArmTX = armRaise.interpolate({ inputRange: [0, 1], outputRange: [0, 2] });
-  const armTY = armRaise.interpolate({ inputRange: [0, 1], outputRange: [0, -RAISE_UP] });
-
-  const bodyColor = ST.gruengut.c;
-  const darkInk = ST.gruengut.ink;
-  const cheekColor = ST.gruengut.ink + "22"; // tushie cheeks — slightly tinted ring
-
-  // Eyelid drops over the eye on blink.
-  const eyelidCY = blink.interpolate({ inputRange: [0, 1], outputRange: [22, 42] });
-
-  const inner = (
-    <Animated.View
-      style={{
-        transform: [
-          { translateX: walkX },
-          { translateY: totalTranslateY },
-          { rotate },
-          { scaleX: turnScaleX },
-          { scaleY: stretch },
-        ],
-      }}
-    >
-      <Svg width={size} height={size} viewBox="0 0 100 100">
-        {/* Ground shadow */}
-        <Ellipse cx={50} cy={98} rx={28} ry={2.5} fill="rgba(0,0,0,0.10)" />
-
-        {/* Legs — body-colored stems poking out from under the body,
-            outlined so they read as limbs rather than shadow blobs. */}
-        <Ellipse cx={40} cy={86} rx={4.5} ry={7} fill={bodyColor} stroke={darkInk} strokeWidth={1.5} />
-        <Ellipse cx={60} cy={86} rx={4.5} ry={7} fill={bodyColor} stroke={darkInk} strokeWidth={1.5} />
-
-        {/* Feet — sit at the ends of the legs as little shoes. */}
-        <Ellipse cx={40} cy={94} rx={7} ry={3} fill={darkInk} />
-        <Ellipse cx={60} cy={94} rx={7} ry={3} fill={darkInk} />
-
-        {/* Arms — full limbs hanging from the shoulders, each in its own
-            group that lifts straight up (with a touch of splay) when he
-            raises his hands (see armRaise / armTY). Outlined so they read
-            as arms (not shadow) and big enough to see. Drawn before the
-            body so the shoulder tucks under the silhouette and only the
-            outer limb shows. */}
-        <AnimatedG transform={[{ translateX: leftArmTX }, { translateY: armTY }]}>
-          <Ellipse cx={13} cy={61} rx={6.5} ry={13} fill={bodyColor} stroke={darkInk} strokeWidth={1.5} transform="rotate(-6 13 61)" />
-          <Circle cx={11} cy={73} r={6.5} fill={bodyColor} stroke={darkInk} strokeWidth={1.5} />
-        </AnimatedG>
-        <AnimatedG transform={[{ translateX: rightArmTX }, { translateY: armTY }]}>
-          <Ellipse cx={87} cy={61} rx={6.5} ry={13} fill={bodyColor} stroke={darkInk} strokeWidth={1.5} transform="rotate(6 87 61)" />
-          <Circle cx={89} cy={73} r={6.5} fill={bodyColor} stroke={darkInk} strokeWidth={1.5} />
-        </AnimatedG>
-
-        {/* Body — round blob, drawn after the arms so it sits in front
-            of where the arms attach (cleaner silhouette). */}
-        <Path
-          d="M 16 56
-             C 16 30, 34 16, 50 16
-             C 66 16, 84 30, 84 56
-             C 84 78, 70 86, 50 86
-             C 30 86, 16 78, 16 56 Z"
-          fill={bodyColor}
-        />
-
-        {/* ── Front-only ───────────────────────────────────────────── */}
-        <G opacity={facing === "front" ? 1 : 0}>
-          {/* Tiny recycling-arrow trio on the belly */}
-          <Path
-            d="M 41 70
-               L 45 70 L 43 67 Z
-               M 50 76
-               L 53 73 L 50 70 Z
-               M 59 67
-               L 55 67 L 57 70 Z"
-            fill="rgba(255,255,255,0.55)"
-          />
-
-          {/* Eye white */}
-          <Circle cx={50} cy={42} r={20} fill="#fff" />
-          {/* Eye outline */}
-          <Circle cx={50} cy={42} r={20} fill="none" stroke={darkInk} strokeWidth={2.2} />
-
-          {/* Pupil */}
-          <AnimatedCircle cx={lookX} cy={lookY} r={9} fill={darkInk} />
-          {/* Eye shine */}
-          <AnimatedCircle
-            cx={Animated.subtract(lookX, 3)}
-            cy={Animated.subtract(lookY, 3)}
-            r={3}
-            fill="#fff"
-          />
-
-          {/* Eyelid — slides down over the eye on blink */}
-          <AnimatedCircle cx={50} cy={eyelidCY} r={20} fill={bodyColor} />
-          <AnimatedCircle
-            cx={50}
-            cy={eyelidCY}
-            r={20}
-            fill="none"
-            stroke={darkInk}
-            strokeWidth={2.2}
-          />
-        </G>
-
-        {/* ── Back-only ────────────────────────────────────────────── */}
-        <G opacity={facing === "back" ? 1 : 0}>
-          {/* Tushie cheeks — two cute round bumps at the back-bottom.
-              Stroke gives the seam in the middle a soft edge. */}
-          <Circle cx={42} cy={72} r={11} fill={bodyColor} stroke={cheekColor} strokeWidth={2} />
-          <Circle cx={58} cy={72} r={11} fill={bodyColor} stroke={cheekColor} strokeWidth={2} />
-          {/* Small "tail" — the seam between the cheeks, hinting at the
-              gluteal cleft without being explicit. Subtle. */}
-          <Path
-            d="M 50 65 L 50 80"
-            stroke={darkInk}
-            strokeWidth={1.5}
-            strokeLinecap="round"
-            opacity={0.35}
-          />
-        </G>
-      </Svg>
-    </Animated.View>
-  );
-
-  // Bubble floats above Recyclops, right-anchored so it never spills
-  // past the right edge. The bubble itself stays still; only the *tail*
-  // slides along its bottom edge to track Recyclops's head as he walks.
-  //
-  // The tail is anchored at the bubble's right edge (`right: 0`) and
-  // shifted leftward via transform.translateX. Negative translateX =
-  // further left. Math:
-  //   tail's center should sit (size/2 - walkX) from the bubble's
-  //   right edge. The tail is 14px wide, so the left edge of the tail
-  //   is at right_offset = (size/2 - 7) - walkX from the bubble's right.
-  //   As translateX, that's `-((size/2 - 7) - walkX) = walkX - (size/2 - 7)`.
-  //
-  // Clamped via interpolate so the tail can't slide past either edge of
-  // the bubble (which would look like the tail detached from him).
-  const tailTranslateXAnim = Animated.subtract(
-    walkX,
-    new Animated.Value(size / 2 - 7),
-  ).interpolate({
-    inputRange: [-(BUBBLE_WIDTH - 14), 0],
-    outputRange: [-(BUBBLE_WIDTH - 14), 0],
-    extrapolate: "clamp",
-  });
-  const bubble = (
-    <Animated.View
-      pointerEvents="none"
-      style={{
-        position: "absolute",
-        right: 0,
-        bottom: size - 6,
-        opacity: bubbleOpacity,
-      }}
-    >
-      <Animated.View style={{ transform: [{ scale: bubbleScale }] }}>
-        {bubbleMsg ? (
-          <SpeechBubble text={t(bubbleMsg)} tailTranslateX={tailTranslateXAnim} />
-        ) : null}
-      </Animated.View>
-    </Animated.View>
-  );
+  const height = Math.round(size * 1.08);
 
   return (
     <View style={{ alignItems: "center" }}>
-      {bubble}
+      <Animated.View
+        pointerEvents="none"
+        style={[{ position: "absolute", right: 0, bottom: height - 4 }, bubbleStyle]}
+      >
+        {bubbleMsg ? <SpeechBubble text={t(bubbleMsg)} tailStyle={tailStyle} /> : null}
+      </Animated.View>
       <View>
-        {inner}
+        <Animated.View style={[{ transformOrigin: "50% 95%" }, bodyStyle]}>
+          <Svg width={size} height={height} viewBox="0 -8 100 108" style={{ overflow: "visible" }}>
+            <Ellipse cx={50} cy={97} rx={26} ry={2.6} fill="rgba(0,0,0,0.14)" />
+
+            {/* Legs and feet */}
+            <APath animatedProps={legL} stroke={INK} strokeWidth={9.5} strokeLinecap="round" />
+            <APath animatedProps={legR} stroke={INK} strokeWidth={9.5} strokeLinecap="round" />
+            <APath animatedProps={legL} stroke={BODY} strokeWidth={6.5} strokeLinecap="round" />
+            <APath animatedProps={legR} stroke={BODY} strokeWidth={6.5} strokeLinecap="round" />
+            <AEllipse animatedProps={footL} rx={7.5} ry={3.4} fill={INK} />
+            <AEllipse animatedProps={footR} rx={7.5} ry={3.4} fill={INK} />
+
+            {/* Arms, behind the body so the shoulders tuck in */}
+            <APath animatedProps={armL} stroke={INK} strokeWidth={11} strokeLinecap="round" />
+            <APath animatedProps={armR} stroke={INK} strokeWidth={11} strokeLinecap="round" />
+            <APath animatedProps={armL} stroke={BODY} strokeWidth={8} strokeLinecap="round" />
+            <APath animatedProps={armR} stroke={BODY} strokeWidth={8} strokeLinecap="round" />
+            <ACircle animatedProps={handL} r={5.8} fill={BODY} stroke={INK} strokeWidth={1.6} />
+            <ACircle animatedProps={handR} r={5.8} fill={BODY} stroke={INK} strokeWidth={1.6} />
+
+            {/* Leaf */}
+            <APath animatedProps={leafStem} stroke={INK} strokeWidth={2.4} fill="none" strokeLinecap="round" />
+            <APath animatedProps={leafBlade} fill={LEAF} stroke={INK} strokeWidth={1.8} strokeLinejoin="round" />
+
+            <APath animatedProps={body} fill={BODY} stroke={INK} strokeWidth={2.2} />
+
+            {/* Front: belly and face */}
+            <AG animatedProps={frontSide}>
+              <APath animatedProps={belly} fill={BELLY} />
+              <ACircle animatedProps={eye} r={15} fill="#fff" />
+              <ACircle animatedProps={pupil} r={7} fill={INK} />
+              <ACircle animatedProps={shine} r={2.6} fill="#fff" />
+              <APath animatedProps={upperLid} fill={BODY} stroke={INK} strokeWidth={2.2} strokeLinejoin="round" />
+              <ACircle animatedProps={eye} r={15} fill="none" stroke={INK} strokeWidth={2.2} />
+              <AG animatedProps={happyEye}>
+                <APath animatedProps={happyEyePath} fill="none" stroke={INK} strokeWidth={3.4} strokeLinecap="round" />
+              </AG>
+              <APath animatedProps={brow} fill="none" stroke={INK} strokeWidth={3.4} strokeLinecap="round" />
+              <AEllipse animatedProps={cheekL} rx={4.2} ry={2.6} fill={CHEEK} />
+              <AEllipse animatedProps={cheekR} rx={4.2} ry={2.6} fill={CHEEK} />
+              <APath animatedProps={mouth} fill={INK} stroke={INK} strokeWidth={1.8} strokeLinejoin="round" />
+            </AG>
+
+            {/* Back: tushie */}
+            <AG animatedProps={backSide}>
+              <ACircle animatedProps={tushL} r={9.5} fill={BODY} stroke={INK} strokeWidth={1.6} strokeOpacity={0.35} />
+              <ACircle animatedProps={tushR} r={9.5} fill={BODY} stroke={INK} strokeWidth={1.6} strokeOpacity={0.35} />
+              <APath animatedProps={tushSeam} stroke={INK} strokeWidth={1.5} strokeLinecap="round" opacity={0.35} />
+            </AG>
+          </Svg>
+        </Animated.View>
         {onPress ? (
           <Pressable
             onPress={handlePress}
