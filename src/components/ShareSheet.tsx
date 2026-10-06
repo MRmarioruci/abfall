@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { View, Text, Pressable, Share } from "react-native";
 import QRCode from "react-native-qrcode-svg";
+import * as Clipboard from "expo-clipboard";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
 import { ConfirmSheet } from "./ConfirmSheet";
 import { PublishDialog } from "./PublishDialog";
@@ -10,28 +11,13 @@ import type { SavedCalendar } from "../types/calendar";
 import { useCalendars } from "../context/CalendarContext";
 import { useToast } from "./ui/Toast";
 import { deleteCommunityCalendar } from "../services/api";
+import { shareUrlFor } from "../lib/shareLinks";
 import { useT } from "../context/LocaleContext";
 
 interface Props {
   visible: boolean;
   onClose: () => void;
   calendar: SavedCalendar | null;
-}
-
-function makeShareCode(id: string): string {
-  // Stable, short share code derived from the calendar id. The real backend
-  // (Supabase) will issue these — this is just so the UI has something to show.
-  const seed = id + "abfall";
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
-  const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-  let n = Math.abs(h);
-  let code = "";
-  for (let i = 0; i < 6; i++) {
-    code += alphabet[n % alphabet.length];
-    n = Math.floor(n / alphabet.length);
-  }
-  return code;
 }
 
 export function ShareSheet({ visible, onClose, calendar }: Props) {
@@ -47,11 +33,10 @@ export function ShareSheet({ visible, onClose, calendar }: Props) {
 
   if (!calendar) return null;
 
-  // If the calendar has a server-assigned share code (set after publish)
-  // use that for the share URL. Otherwise generate a stable local one so
-  // the QR/link section shows something meaningful even before publish.
-  const shareCode = calendar.shareCode || makeShareCode(calendar.id);
-  const shareUrl = calendar.shareUrl || `https://abfall.app/c/${shareCode}`;
+  // shareCode is the server id, set once the calendar is published. The
+  // link is rebuilt from it rather than read from the stored shareUrl,
+  // which older builds pointed at a domain that isn't ours.
+  const shareUrl = calendar.shareCode ? shareUrlFor(calendar.shareCode) : null;
   const isPublished = !!calendar.shared;
   const collectionDates = t(
     calendar.events.length === 1 ? "share.collection_dates_one" : "share.collection_dates_other",
@@ -59,6 +44,7 @@ export function ShareSheet({ visible, onClose, calendar }: Props) {
   );
 
   const handleNativeShare = async () => {
+    if (!shareUrl) return;
     try {
       const message = [
         calendar.title,
@@ -75,11 +61,10 @@ export function ShareSheet({ visible, onClose, calendar }: Props) {
     }
   };
 
-  const handleCopyLink = () => {
-    // Clipboard isn't wired yet (expo-clipboard not installed). Show the
-    // link in a toast so the user can read it; once we wire clipboard the
-    // message becomes accurate.
-    toast.show(t("share.toast.link", { url: shareUrl }));
+  const handleCopyLink = async () => {
+    if (!shareUrl) return;
+    await Clipboard.setStringAsync(shareUrl);
+    toast.show(t("share.toast.copied"));
   };
 
   const handleConfirmUnpublish = async () => {
@@ -213,7 +198,12 @@ export function ShareSheet({ visible, onClose, calendar }: Props) {
           {t("share.direct")}
         </Text>
 
-        {/* QR + link combined card */}
+        {/* QR + link combined card — only once there's a real link */}
+        {!shareUrl ? (
+          <Text style={{ marginTop: 8, fontSize: 13, color: S.sec, fontWeight: "600" }}>
+            {t("share.link_after_publish")}
+          </Text>
+        ) : (
         <View
           style={{
             marginTop: 8,
@@ -252,9 +242,6 @@ export function ShareSheet({ visible, onClose, calendar }: Props) {
             <Text style={{ fontSize: 13, color: S.ink, fontWeight: "700", marginTop: 4 }} numberOfLines={1}>
               {shareUrl}
             </Text>
-            <Text style={{ fontSize: 11, color: S.ter, fontWeight: "600", marginTop: 3 }}>
-              {t("share.code", { code: shareCode })}
-            </Text>
             <View style={{ flexDirection: "row", gap: 6, marginTop: 8 }}>
               <Pressable
                 onPress={handleCopyLink}
@@ -287,6 +274,7 @@ export function ShareSheet({ visible, onClose, calendar }: Props) {
             </View>
           </View>
         </View>
+        )}
       </View>
     </SlideUpSheet>
 

@@ -220,11 +220,9 @@ export const en = {
   "share.publish_now": "Publish now",
   "share.direct": "OR SHARE DIRECTLY",
   "share.link": "SHARE LINK",
-  "share.code": "Code {code}",
   "share.copy": "Copy",
   "share.share": "Share",
   "share.message.open": "Open in Abfall: {url}",
-  "share.toast.link": "Link: {url}",
   "share.toast.unpublish_failed": "Couldn't unpublish · try again",
   "share.toast.unpublished": "Removed from community",
   "share.unpublish.title": "Unpublish this calendar?",
@@ -517,6 +515,15 @@ export const en = {
   "scan.review.save": "Save calendar",
   "scan.review.save_failed_title": "Couldn't save calendar",
   "scan.review.save_failed_body": "Please try again.",
+
+  // ─── links ───
+  "share.link_after_publish": "Publish this calendar to get a link and QR code you can share.",
+  "share.toast.copied": "Link copied",
+  "link.import.title": "Add “{title}”?",
+  "link.import.body": "Shared calendar for {place} with {n} collection dates. It becomes your active calendar.",
+  "link.import.confirm": "Add calendar",
+  "link.not_found": "This shared calendar is no longer available",
+  "link.failed": "Couldn't open the shared calendar · try again",
 } as const;
 
 export type StringKey = keyof typeof en;

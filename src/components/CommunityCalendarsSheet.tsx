@@ -20,7 +20,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
 import { S, ST } from "../theme/colors";
-import { parseISODate } from "../lib/dates";
 import {
   BackIcon,
   SearchIcon,
@@ -40,7 +39,7 @@ import {
 } from "../services/api";
 import { useCalendars } from "../context/CalendarContext";
 import { useToast } from "./ui/Toast";
-import { generateCalendarId } from "../services/storage";
+import { communityToSaved } from "../services/communityImport";
 import { Recyclops } from "./Recyclops";
 import { ConfirmSheet } from "./ConfirmSheet";
 import { addReportedId, getReportedIds } from "../services/reported";
@@ -278,29 +277,7 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
         toast.show(t("community.toast.unavailable"));
         return;
       }
-      // Diagnostic log — remove once we confirm the pipeline is intact.
-      console.log("[community] imported", detail.id, "events:", detail.events.length);
-      const local: SavedCalendar = {
-        // Always a fresh unique id — re-importing the same community
-        // calendar must produce a NEW local row, otherwise deleting one
-        // copy would delete the other.
-        id: generateCalendarId(),
-        title: detail.title,
-        municipality: detail.city,
-        canton: detail.region ?? undefined,
-        zone: detail.zones[0],
-        zones: detail.zones,
-        year: detail.year,
-        half: (detail.half as 1 | 2 | undefined) ?? undefined,
-        // The server accepts any type string and date; keep only events
-        // this build can render and schedule.
-        events: detail.events.filter(
-          (e) => e.type in ST && !isNaN(parseISODate(e.date).getTime()),
-        ),
-        source: "community",
-        active: true,
-        createdAt: new Date().toISOString(),
-      };
+      const local = communityToSaved(detail);
       await addCalendar(local);
       markCommunityCalendarUsed(detail.id);
       toast.show(t("community.toast.imported"));

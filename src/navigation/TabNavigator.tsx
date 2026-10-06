@@ -3,6 +3,7 @@ import { BackHandler, View } from "react-native";
 import { BottomTabBar } from "../components/BottomTabBar";
 import { AddCalendarSheet } from "../components/AddCalendarSheet";
 import { CalendarSwitcher } from "../components/CalendarSwitcher";
+import { SharedLinkHandler } from "../components/SharedLinkHandler";
 import { HomeScreen } from "../screens/HomeScreen";
 import { CollectionCentersScreen } from "../screens/CollectionCentersScreen";
 import { RemindersScreen } from "../screens/RemindersScreen";
@@ -111,6 +112,7 @@ export function TabNavigator() {
         onScanConfirm={handleScanConfirm}
         onRequestReopen={() => setAddSheetVisible(true)}
       />
+      <SharedLinkHandler />
       <CalendarSwitcher
         visible={switcherVisible}
         onClose={() => {

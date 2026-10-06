@@ -1,12 +1,19 @@
-// Forward geocoding via OpenStreetMap Nominatim.
-//   Free, no API key needed. Rate-limited to ~1 req/sec — fine because we
-//   debounce typing. The User-Agent header is required by Nominatim's policy.
+// Forward geocoding on OpenStreetMap data.
 //
-// Returns place suggestions (cities, towns, villages, municipalities, regions,
-// countries — NOT streets/addresses). Each suggestion carries a `formatted`
-// string that's what we drop into the input on select.
+//   searchPlaces()    — search-as-you-type suggestions via Photon (komoot),
+//                       which is built for autocomplete. Nominatim's usage
+//                       policy forbids autocomplete, so it isn't used here.
+//   geocodeLocation() — a single lookup via Nominatim (allowed: one request
+//                       per user action, with an identifying User-Agent).
+//
+// Suggestions are places (cities, towns, villages, districts, regions,
+// countries — NOT streets/addresses). Each carries a `formatted` string
+// that's what we drop into the input on select.
+
+import { getLocale } from "../i18n";
 
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
+const PHOTON_URL = "https://photon.komoot.io/api/";
 const USER_AGENT = "Abfall/1.0 (Swiss waste-calendar app)";
 
 // Swiss canton full-name → 2-letter-code lookup. Mirrors the table in
@@ -22,35 +29,28 @@ const SWISS_CANTONS: Record<string, string> = {
   "St. Gallen": "SG", "Saint Gallen": "SG", "Thurgau": "TG", "Ticino": "TI",
   "Uri": "UR", "Valais": "VS", "Wallis": "VS", "Vaud": "VD", "Zug": "ZG",
   "Zürich": "ZH", "Zurich": "ZH",
+  // French names, as Photon returns them with lang=fr
+  "Argovie": "AG", "Appenzell Rhodes-Extérieures": "AR", "Appenzell Rhodes-Intérieures": "AI",
+  "Bâle-Campagne": "BL", "Bâle-Ville": "BS", "Glaris": "GL", "Nidwald": "NW", "Obwald": "OW",
+  "Schaffhouse": "SH", "Soleure": "SO", "Saint-Gall": "SG", "Thurgovie": "TG",
+  "Tessin": "TI", "Zoug": "ZG",
 };
 
-// Nominatim "type" values we treat as actual places. Excludes streets,
-// buildings, amenities, etc.
-const PLACE_TYPES = new Set([
-  "city", "town", "village", "hamlet", "municipality",
-  "suburb", "neighbourhood", "quarter", "borough",
-  "administrative", "county", "state", "region", "country", "province",
-]);
+const SWITZERLAND: Record<string, string> = {
+  en: "Switzerland", de: "Schweiz", fr: "Suisse", it: "Svizzera",
+};
 
-interface NominatimAddress {
-  city?: string;
-  town?: string;
-  village?: string;
-  hamlet?: string;
-  municipality?: string;
-  state?: string;
-  county?: string;
-  country?: string;
-  country_code?: string;
-}
-
-interface NominatimResult {
-  place_id: number;
-  display_name: string;
-  name?: string;
-  class: string;
-  type: string;
-  address?: NominatimAddress;
+interface PhotonFeature {
+  properties: {
+    osm_type?: string;
+    osm_id?: number;
+    name?: string;
+    type?: string;
+    county?: string;
+    state?: string;
+    country?: string;
+    countrycode?: string;
+  };
 }
 
 export interface PlaceSuggestion {
@@ -63,32 +63,32 @@ export interface PlaceSuggestion {
   formatted: string;
 }
 
-function titleCase(s: string): string {
-  return s.replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
 function abbreviateSwiss(region: string | undefined, countryCode: string | undefined): string | null {
   if (countryCode?.toLowerCase() !== "ch") return null;
   if (!region) return null;
-  return SWISS_CANTONS[region] || null;
+  // Local-name results can list every official language: "Bern/Berne".
+  for (const part of region.split("/")) {
+    const code = SWISS_CANTONS[part.trim()];
+    if (code) return code;
+  }
+  return null;
 }
 
-function formatResult(r: NominatimResult): PlaceSuggestion | null {
-  const addr = r.address || {};
-  const primary =
-    r.name ||
-    addr.city ||
-    addr.town ||
-    addr.village ||
-    addr.hamlet ||
-    addr.municipality ||
-    r.display_name.split(",")[0].trim();
-
+function formatFeature(f: PhotonFeature): PlaceSuggestion | null {
+  const p = f.properties;
+  const primary = p.name?.trim();
   if (!primary) return null;
 
-  const country = addr.country;
-  const region = addr.state || addr.county;
-  const cantonCode = abbreviateSwiss(addr.state, addr.country_code);
+  const region = (p.state || p.county)?.split("/")[0];
+  // Local-name results give "Schweiz/Suisse/Svizzera/Svizra"; show the
+  // app's language instead, and the first form for other countries.
+  const country =
+    p.countrycode === "CH" ? SWITZERLAND[getLocale()] : p.country?.split("/")[0];
+  // A canton itself has no `state`; its own name gives the code, so
+  // "Genève" the canton formats like (and dedupes with) the city.
+  const cantonCode =
+    abbreviateSwiss(p.state, p.countrycode) ??
+    (p.type === "state" ? abbreviateSwiss(primary, p.countrycode) : null);
 
   // Build the formatted insert string
   const formatted = cantonCode
@@ -99,17 +99,16 @@ function formatResult(r: NominatimResult): PlaceSuggestion | null {
     ? `${primary}, ${country}`
     : primary;
 
-  // Build the secondary context line
+  // Context line, e.g. "Bezirk Dietikon, Zürich, Schweiz"
   const ctxParts: string[] = [];
+  if (p.county && p.county !== primary && p.county !== region) ctxParts.push(p.county);
   if (region && region !== primary) ctxParts.push(region);
   if (country && country !== region) ctxParts.push(country);
-  let secondary = ctxParts.join(", ");
-  if (r.type) secondary += `${secondary ? " · " : ""}${titleCase(r.type.replace(/_/g, " "))}`;
 
   return {
-    id: String(r.place_id),
+    id: `${p.osm_type ?? ""}${p.osm_id ?? primary}`,
     primary,
-    secondary,
+    secondary: ctxParts.join(", "),
     formatted,
   };
 }
@@ -143,6 +142,11 @@ export async function geocodeLocation(
   };
 }
 
+// Centre of Switzerland: results nearby rank higher, without excluding
+// other countries.
+const BIAS = { lat: "46.8", lon: "8.2", location_bias_scale: "0.4" };
+const PLACE_LAYERS = ["city", "district", "locality", "county", "state", "country"];
+
 export async function searchPlaces(
   query: string,
   signal?: AbortSignal,
@@ -150,29 +154,32 @@ export async function searchPlaces(
   const trimmed = query.trim();
   if (trimmed.length < 2) return [];
 
-  const url = `${NOMINATIM_URL}?${new URLSearchParams({
-    q: trimmed,
-    format: "jsonv2",
-    addressdetails: "1",
-    limit: "10",
-    "accept-language": "en",
-  }).toString()}`;
+  // Photon supports de/en/fr; for Italian, "default" returns local names
+  // (Lugano, Ticino, Genève), which is what Swiss users expect anyway.
+  const locale = getLocale();
+  const lang = locale === "it" ? "default" : locale;
+  const params = new URLSearchParams({ q: trimmed, limit: "10", lang, ...BIAS });
+  for (const layer of PLACE_LAYERS) params.append("layer", layer);
 
-  const res = await fetch(url, {
+  const res = await fetch(`${PHOTON_URL}?${params.toString()}`, {
     headers: { "User-Agent": USER_AGENT, Accept: "application/json" },
     signal,
   });
   if (!res.ok) return [];
-  const data = (await res.json()) as NominatimResult[];
+  const data = (await res.json()) as { features?: PhotonFeature[] };
 
+  // Swiss places first, towns before districts/regions (people search for
+  // their municipality), otherwise Photon's relevance order — the sort is
+  // stable. Then dedupe on what we'd insert.
+  const rank = (f: PhotonFeature) =>
+    (f.properties.countrycode === "CH" ? 0 : 100) +
+    Math.max(PLACE_LAYERS.indexOf(f.properties.type ?? ""), 0);
+  const features = [...(data.features ?? [])].sort((a, b) => rank(a) - rank(b));
   const seen = new Set<string>();
   const suggestions: PlaceSuggestion[] = [];
-  for (const r of data) {
-    if (!PLACE_TYPES.has(r.type)) continue;
-    const s = formatResult(r);
-    if (!s) continue;
-    // Dedup by formatted string
-    if (seen.has(s.formatted)) continue;
+  for (const f of features) {
+    const s = formatFeature(f);
+    if (!s || seen.has(s.formatted)) continue;
     seen.add(s.formatted);
     suggestions.push(s);
     if (suggestions.length >= 6) break;

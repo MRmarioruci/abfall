@@ -105,7 +105,6 @@ export function PublishDialog({ visible, onClose, calendar }: Props) {
       await patchCalendar(calendar.id, {
         shared: true,
         shareCode: detail.id,
-        shareUrl: `https://abfall.app/c/${detail.id}`,
       });
       toast.show(t("publish.toast.published"));
       onClose();
