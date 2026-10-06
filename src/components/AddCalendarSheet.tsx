@@ -86,12 +86,9 @@ export function AddCalendarSheet({ visible, onClose, onScanConfirm, onRequestReo
     setStaged((prev) => [...prev, ...assetsToImageInputs(result.assets)]);
   }, []);
 
+  // No permission prompt: the system photo picker (Android 13+, iOS 14+)
+  // only hands over the photos the user picks.
   const handlePickGallery = useCallback(async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert("Permission needed", "We need access to your photos to scan calendars.");
-      return;
-    }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       allowsMultipleSelection: true,

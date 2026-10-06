@@ -43,21 +43,31 @@ module.exports = ({ config }) => ({
     },
     predictiveBackGestureEnabled: false,
     permissions: [
-      "ACCESS_COARSE_LOCATION",
-      "ACCESS_FINE_LOCATION",
       "android.permission.ACCESS_COARSE_LOCATION",
       "android.permission.ACCESS_FINE_LOCATION",
       // Required so expo-notifications uses setExactAndAllowWhileIdle on
       // Android 12+. Without this, alarms fall back to inexact mode and can
-      // be delayed by 15-30 min while the device is in Doze.
+      // be delayed by 15-30 min while the device is in Doze. (Not
+      // USE_EXACT_ALARM: Play only allows that for alarm-clock apps.)
       "android.permission.SCHEDULE_EXACT_ALARM",
-      // Android 13+ alarm-clock-style permission that doesn't need a runtime
-      // prompt — fine for pickup reminders since users explicitly request a
-      // specific minute. Allows exact scheduling without user friction.
-      "android.permission.USE_EXACT_ALARM",
       // expo-calendar — write pickup events into the device calendar.
       "android.permission.READ_CALENDAR",
       "android.permission.WRITE_CALENDAR",
+    ],
+    // Photos come from the system photo picker, which needs no permission,
+    // and the camera never records video. Keep plugins from adding these;
+    // Play asks for a justification for broad media access.
+    blockedPermissions: [
+      "android.permission.RECORD_AUDIO",
+      "android.permission.READ_MEDIA_IMAGES",
+      "android.permission.READ_MEDIA_VIDEO",
+      "android.permission.READ_MEDIA_AUDIO",
+      "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+      // From Expo's template: overlay is only for the dev menu, and
+      // storage access isn't needed for the picker or camera.
+      "android.permission.SYSTEM_ALERT_WINDOW",
+      "android.permission.READ_EXTERNAL_STORAGE",
+      "android.permission.WRITE_EXTERNAL_STORAGE",
     ],
     package: "com.anonymous.abfall",
     config: {
@@ -71,6 +81,16 @@ module.exports = ({ config }) => ({
   },
   plugins: [
     "expo-font",
+    [
+      "expo-image-picker",
+      {
+        cameraPermission:
+          "Abfall uses the camera to scan your paper waste calendar.",
+        photosPermission:
+          "Abfall reads the photo you pick to scan your paper waste calendar.",
+        microphonePermission: false,
+      },
+    ],
     [
       "expo-location",
       {
