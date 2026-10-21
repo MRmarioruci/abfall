@@ -1,15 +1,25 @@
 import { Pressable, View } from "react-native";
 import { S } from "../../theme/colors";
+import { haptics } from "../../lib/haptics";
 
 interface Props {
   on: boolean;
   onChange: (v: boolean) => void;
+  /** What the switch turns on or off, for screen readers. */
+  accessibilityLabel?: string;
 }
 
-export function SoftSwitch({ on, onChange }: Props) {
+export function SoftSwitch({ on, onChange, accessibilityLabel }: Props) {
   return (
     <Pressable
-      onPress={() => onChange(!on)}
+      onPress={() => {
+        haptics.select();
+        onChange(!on);
+      }}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: on }}
+      accessibilityLabel={accessibilityLabel}
+      hitSlop={8}
       style={{
         width: 50,
         height: 30,

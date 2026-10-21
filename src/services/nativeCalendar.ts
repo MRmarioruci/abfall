@@ -13,7 +13,11 @@
 //     defaults to an all-day event so it shows up nicely in users'
 //     daily calendar without picking a fake time.
 
-import * as Calendar from "expo-calendar";
+// SDK 57 replaced these functions with an object API (ExpoCalendar /
+// event.delete()) and the old names now throw unless imported from the
+// legacy entry. We store and delete events by id, which the legacy API
+// supports directly, so we stay on it until a planned migration.
+import * as Calendar from "expo-calendar/legacy";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 import type { SavedCalendar, CollectionEvent, ReminderRule } from "../types/calendar";

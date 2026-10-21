@@ -1,228 +1,119 @@
-import { useEffect, useRef, useState } from "react";
-import { View, Text, Animated, Easing, ActivityIndicator } from "react-native";
-import { S } from "../theme/colors";
-import { BrandMark } from "./ui/BrandMark";
-import { CheckIcon } from "./icons/Icons";
+import { useEffect, useRef } from "react";
+import { View, Text, Animated, Easing, Image, Pressable, StyleSheet } from "react-native";
+import { S, ST } from "../theme/colors";
 import type { ParseStage } from "../services/parseCalendar";
 import { useT } from "../context/LocaleContext";
 import type { StringKey } from "../i18n";
+import { FONT } from "../theme/type";
 
 const STEPS: Array<{ id: ParseStage; labelKey: StringKey }> = [
   { id: "preparing", labelKey: "scan.stage.preparing" },
-  { id: "anchoring", labelKey: "scan.stage.anchoring" },
-  { id: "understanding", labelKey: "scan.stage.understanding" },
-  { id: "extracting", labelKey: "scan.stage.extracting" },
+  { id: "reading", labelKey: "scan.stage.extracting" },
   { id: "mapping", labelKey: "scan.stage.mapping" },
 ];
 
-// Rotating tips shown at the bottom of the screen while the scan runs.
-// Keep these short, useful, and friendly. Order is randomised on each
-// scan so the same one doesn't appear first every time.
-const TIPS: StringKey[] = [
-  "scan.tip.steady",
-  "scan.tip.lighting",
-  "scan.tip.multi_page",
-  "scan.tip.fix_later",
-  "scan.tip.flatten",
-  "scan.tip.languages",
-  "scan.tip.frame",
-  "scan.tip.zones",
-  "scan.tip.rules",
-  "scan.tip.review",
-];
-
-function shuffleTips(): StringKey[] {
-  const out = [...TIPS];
-  for (let i = out.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [out[i], out[j]] = [out[j], out[i]];
-  }
-  return out;
-}
+// One segment colour per step, from the waste palette.
+const SEGMENT_COLORS = [ST.kehricht.c, ST.papier.c, ST.gruengut.c];
 
 interface Props {
   stage: ParseStage;
   detail?: string;
+  /** The page being read, shown with a scan line over it. */
+  imageUri?: string;
+  /** How many pages are being read together. */
+  pageCount?: number;
+  /** Stops the scan. */
+  onCancel?: () => void;
 }
 
-export function ScanProgress({ stage, detail }: Props) {
+export function ScanProgress({ stage, detail, imageUri, pageCount = 1, onCancel }: Props) {
   const { t } = useT();
-  // Remember the most recent detail seen per stage so completed steps still
-  // display their result ("Found 6 months: ...") instead of going silent.
-  const [stageDetails, setStageDetails] = useState<Partial<Record<ParseStage, string>>>({});
-  useEffect(() => {
-    if (detail) {
-      setStageDetails((prev) => ({ ...prev, [stage]: detail }));
-    }
-  }, [stage, detail]);
+  const currentIndex = Math.max(0, STEPS.findIndex((s) => s.id === stage));
+  const step = STEPS[Math.min(currentIndex, STEPS.length - 1)];
 
-  const currentIndex = STEPS.findIndex((s) => s.id === stage);
-  const progress = (currentIndex + 1) / STEPS.length;
-
-  // Animated progress bar
-  const widthAnim = useRef(new Animated.Value(0)).current;
+  // Scan line sweeping up and down the photo.
+  const sweep = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(widthAnim, {
-      toValue: progress,
-      duration: 400,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    }).start();
-  }, [progress]);
-
-  // Gentle pulse on the brand mark
-  const pulse = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const anim = Animated.loop(
+    const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 1100, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0, duration: 1100, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(sweep, { toValue: 1, duration: 1800, easing: Easing.inOut(Easing.quad), useNativeDriver: false }),
+        Animated.timing(sweep, { toValue: 0, duration: 1800, easing: Easing.inOut(Easing.quad), useNativeDriver: false }),
       ]),
     );
-    anim.start();
-    return () => anim.stop();
-  }, []);
+    loop.start();
+    return () => loop.stop();
+  }, [sweep]);
 
-  const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] });
-
-  // Rotating tips — cycle every 5 seconds with a crossfade so the user has
-  // something to read while the scan is in flight.
-  const tipsRef = useRef(shuffleTips());
-  const [tipIndex, setTipIndex] = useState(0);
-  const tipOpacity = useRef(new Animated.Value(1)).current;
+  // Cross-fade the step text when it changes.
+  const fade = useRef(new Animated.Value(1)).current;
   useEffect(() => {
-    const interval = setInterval(() => {
-      Animated.timing(tipOpacity, {
-        toValue: 0,
-        duration: 280,
-        easing: Easing.inOut(Easing.quad),
-        useNativeDriver: true,
-      }).start(() => {
-        setTipIndex((prev) => (prev + 1) % tipsRef.current.length);
-        Animated.timing(tipOpacity, {
-          toValue: 1,
-          duration: 320,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }).start();
-      });
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [tipOpacity]);
+    fade.setValue(0);
+    Animated.timing(fade, { toValue: 1, duration: 260, useNativeDriver: true }).start();
+  }, [stage, detail, fade]);
 
   return (
-    <View style={{ flex: 1, paddingHorizontal: 32, paddingTop: 80, alignItems: "center" }}>
-      {/* Brand mark */}
-      <Animated.View style={{ transform: [{ scale }], marginBottom: 28 }}>
-        <BrandMark size={64} />
-      </Animated.View>
-
-      <Text style={{ fontSize: 24, fontWeight: "800", color: S.ink, letterSpacing: -0.5, textAlign: "center" }}>
-        {t("scan.progress.title")}
-      </Text>
-      <Text style={{ fontSize: 14, color: S.sec, fontWeight: "500", marginTop: 6, textAlign: "center" }}>
-        {t("scan.progress.duration")}
-      </Text>
-
-      {/* Progress bar */}
-      <View style={{ width: "100%", height: 6, borderRadius: 99, backgroundColor: "#EAE3DA", marginTop: 28, overflow: "hidden" }}>
+    <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 28, paddingBottom: 28 }}>
+      {/* Photo with scan line */}
+      <View style={{ flex: 1, borderRadius: 28, overflow: "hidden", backgroundColor: "#E9E1D8" }}>
+        {imageUri && <Image source={{ uri: imageUri }} style={{ flex: 1 }} resizeMode="cover" />}
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(245,242,247,0.18)" }]} />
         <Animated.View
+          pointerEvents="none"
           style={{
-            height: "100%",
-            borderRadius: 99,
-            backgroundColor: S.ink,
-            width: widthAnim.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }),
-          }}
-        />
-      </View>
-
-      {/* Steps list — kept tight to leave room for the tip line */}
-      <View style={{ alignSelf: "stretch", marginTop: 36, gap: 14, marginBottom: 90 }}>
-        {STEPS.map((step, i) => {
-          const isDone = i < currentIndex;
-          const isActive = i === currentIndex;
-          const isPending = i > currentIndex;
-
-          return (
-            <View key={step.id} style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-              <View
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 99,
-                  backgroundColor: isDone ? S.ink : isActive ? "#fff" : "transparent",
-                  borderWidth: isPending ? 1.5 : 0,
-                  borderColor: isPending ? "#D8CFC4" : "transparent",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  shadowColor: isActive ? S.ink : "transparent",
-                  shadowOffset: { width: 0, height: 3 },
-                  shadowOpacity: isActive ? 0.18 : 0,
-                  shadowRadius: 8,
-                  elevation: isActive ? 3 : 0,
-                }}
-              >
-                {isDone && <CheckIcon color="#fff" size={14} />}
-                {isActive && <ActivityIndicator size="small" color={S.ink} />}
-              </View>
-
-              <View style={{ flex: 1 }}>
-                <Text
-                  style={{
-                    fontSize: 15,
-                    fontWeight: isActive ? "800" : isDone ? "700" : "600",
-                    color: isPending ? S.ter : S.ink,
-                    letterSpacing: -0.2,
-                  }}
-                >
-                  {t(step.labelKey)}
-                </Text>
-                {!isPending && stageDetails[step.id] && (
-                  <Text style={{ fontSize: 12, color: S.sec, fontWeight: "500", marginTop: 2 }}>
-                    {stageDetails[step.id]}
-                  </Text>
-                )}
-              </View>
-            </View>
-          );
-        })}
-      </View>
-
-      {/* Rotating tip — plain centered text, no card */}
-      <View
-        style={{
-          position: "absolute",
-          bottom: 40,
-          left: 32,
-          right: 32,
-          alignItems: "center",
-          minHeight: 56,
-          justifyContent: "center",
-        }}
-      >
-        <Text
-          style={{
-            fontSize: 10,
-            fontWeight: "800",
-            color: S.ter,
-            letterSpacing: 1.4,
+            position: "absolute",
+            left: 0,
+            right: 0,
+            height: 90,
+            top: sweep.interpolate({ inputRange: [0, 1], outputRange: ["-12%", "88%"] }),
           }}
         >
-          {t("scan.progress.quick_tip")}
-        </Text>
-        <Animated.View style={{ opacity: tipOpacity, marginTop: 5 }}>
-          <Text
-            style={{
-              fontSize: 12.5,
-              color: S.sec,
-              fontWeight: "600",
-              lineHeight: 17,
-              textAlign: "center",
-            }}
-          >
-            {t(tipsRef.current[tipIndex])}
-          </Text>
+          <View style={{ flex: 1, backgroundColor: "rgba(230,154,128,0.22)" }} />
+          <View style={{ height: 3, backgroundColor: ST.kehricht.c }} />
         </Animated.View>
+        {pageCount > 1 && (
+          <View style={{ position: "absolute", top: 14, right: 14, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99, backgroundColor: "rgba(33,31,28,0.75)" }}>
+            <Text style={{ fontSize: 12, fontFamily: FONT.w800, color: "#fff" }}>
+              {t("add.camera.ready_other", { n: pageCount })}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {/* Status */}
+      <View style={{ paddingTop: 24, paddingHorizontal: 4 }}>
+        <View style={{ flexDirection: "row", gap: 6 }}>
+          {STEPS.map((s, i) => (
+            <View
+              key={s.id}
+              style={{
+                flex: 1,
+                height: 6,
+                borderRadius: 99,
+                backgroundColor: i <= currentIndex ? SEGMENT_COLORS[i] : "#E6DED6",
+              }}
+            />
+          ))}
+        </View>
+        <Animated.View style={{ opacity: fade, marginTop: 18, minHeight: 58 }}>
+          <Text style={{ fontSize: 22, fontFamily: FONT.w800, color: S.ink, letterSpacing: -0.5 }}>
+            {t(step.labelKey)}
+          </Text>
+          {!!detail && (
+            <Text style={{ fontSize: 14, color: S.sec, fontFamily: FONT.w600, marginTop: 4 }} numberOfLines={2}>
+              {detail}
+            </Text>
+          )}
+        </Animated.View>
+        {onCancel && (
+          <Pressable
+            onPress={onCancel}
+            accessibilityRole="button"
+            hitSlop={10}
+            style={({ pressed }) => ({ alignSelf: "center", marginTop: 14, paddingVertical: 8, paddingHorizontal: 18, opacity: pressed ? 0.6 : 1 })}
+          >
+            <Text style={{ fontSize: 15, fontFamily: FONT.w800, color: S.sec }}>{t("common.cancel")}</Text>
+          </Pressable>
+        )}
       </View>
     </View>
   );

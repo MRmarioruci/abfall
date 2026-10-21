@@ -5,6 +5,7 @@ import { S, ST, type WasteStreamId } from "../theme/colors";
 import { CircBtn } from "../components/ui/CircBtn";
 import { StreamGlyph } from "../components/icons/StreamGlyph";
 import { BackIcon, HeartIcon, BellIcon, CheckIcon } from "../components/icons/Icons";
+import { FONT } from "../theme/type";
 
 const LEADS = [
   { v: 3, t: "3d" },
@@ -40,7 +41,7 @@ export function DetailScreen({ route, navigation }: any) {
           <CircBtn size={44} onPress={() => navigation.goBack()}>
             <BackIcon color={S.ink} size={20} />
           </CircBtn>
-          <Text style={{ fontSize: 17, fontWeight: "800", color: S.ink, letterSpacing: -0.3 }}>
+          <Text style={{ fontSize: 17, fontFamily: FONT.w800, color: S.ink, letterSpacing: -0.3 }}>
             {s.label}
           </Text>
           <CircBtn size={44}>
@@ -70,10 +71,10 @@ export function DetailScreen({ route, navigation }: any) {
         </View>
 
         <View style={{ alignItems: "center", paddingTop: 14, paddingHorizontal: 20 }}>
-          <Text style={{ fontSize: 28, fontWeight: "500", color: S.ink, letterSpacing: -0.8, textAlign: "center" }}>
-            {s.label}, every <Text style={{ fontWeight: "800" }}>two weeks</Text>
+          <Text style={{ fontSize: 28, fontFamily: FONT.w500, color: S.ink, letterSpacing: -0.8, textAlign: "center" }}>
+            {s.label}, every <Text style={{ fontFamily: FONT.w800 }}>two weeks</Text>
           </Text>
-          <Text style={{ fontSize: 13.5, color: S.sec, fontWeight: "600", marginTop: 6 }}>
+          <Text style={{ fontSize: 13.5, color: S.sec, fontFamily: FONT.w600, marginTop: 6 }}>
             Flatten boxes · no plastic windows
           </Text>
         </View>
@@ -84,7 +85,7 @@ export function DetailScreen({ route, navigation }: any) {
             style={{
               textAlign: "center",
               fontSize: 11,
-              fontWeight: "800",
+              fontFamily: FONT.w800,
               color: S.ter,
               letterSpacing: 1.5,
               marginBottom: 8,
@@ -120,7 +121,7 @@ export function DetailScreen({ route, navigation }: any) {
                       <Text
                         style={{
                           fontSize: 21,
-                          fontWeight: "800",
+                          fontFamily: FONT.w800,
                           color: "#fff",
                           letterSpacing: -0.5,
                         }}
@@ -130,7 +131,7 @@ export function DetailScreen({ route, navigation }: any) {
                       <Text
                         style={{
                           fontSize: 9,
-                          fontWeight: "700",
+                          fontFamily: FONT.w700,
                           color: "rgba(255,255,255,0.6)",
                           marginTop: 4,
                           letterSpacing: 0.5,
@@ -140,7 +141,7 @@ export function DetailScreen({ route, navigation }: any) {
                       </Text>
                     </View>
                   ) : (
-                    <Text style={{ fontSize: 18, fontWeight: "700", color: S.ter }}>
+                    <Text style={{ fontSize: 18, fontFamily: FONT.w700, color: S.ter }}>
                       {l.t}
                     </Text>
                   )}
@@ -168,15 +169,15 @@ export function DetailScreen({ route, navigation }: any) {
         }}
       >
         <View>
-          <Text style={{ fontSize: 11, fontWeight: "800", color: S.ter, letterSpacing: 1 }}>
+          <Text style={{ fontSize: 11, fontFamily: FONT.w800, color: S.ter, letterSpacing: 1 }}>
             NEXT PICKUP
           </Text>
           <Text
-            style={{ fontSize: 26, fontWeight: "800", color: S.ink, letterSpacing: -0.6, marginTop: 3 }}
+            style={{ fontSize: 26, fontFamily: FONT.w800, color: S.ink, letterSpacing: -0.6, marginTop: 3 }}
           >
             Tomorrow
           </Text>
-          <Text style={{ fontSize: 13, color: S.sec, fontWeight: "600" }}>
+          <Text style={{ fontSize: 13, color: S.sec, fontFamily: FONT.w600 }}>
             Thu 11 Jun · 07:00
           </Text>
         </View>

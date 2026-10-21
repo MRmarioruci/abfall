@@ -11,29 +11,59 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Animated, Text, View } from "react-native";
+import { Animated, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { S } from "../../theme/colors";
 import { CheckIcon } from "../icons/Icons";
+import { haptics } from "../../lib/haptics";
+import { FONT } from "../../theme/type";
+
+export type ToastVariant = "success" | "error" | "info";
+
+export interface ToastOptions {
+  /** "success" (default) shows a tick, "error" a warning mark, "info" no icon. */
+  variant?: ToastVariant;
+  /** A button inside the toast, e.g. Undo after a delete. */
+  action?: { label: string; onPress: () => void };
+}
 
 interface ToastCtx {
-  show: (message: string) => void;
+  show: (message: string, options?: ToastOptions) => void;
 }
 
 const Ctx = createContext<ToastCtx | null>(null);
 
 const TOAST_DURATION = 2200;
+// Long enough to reach for the action button.
+const ACTION_DURATION = 4500;
+
+interface ToastState {
+  message: string;
+  variant: ToastVariant;
+  action?: ToastOptions["action"];
+}
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const insets = useSafeAreaInsets();
-  const [message, setMessage] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(null);
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(20)).current;
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const show = useCallback((msg: string) => {
+  const hide = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+      Animated.timing(translateY, { toValue: 20, duration: 200, useNativeDriver: true }),
+    ]).start(({ finished }) => {
+      if (finished) setToast(null);
+    });
+  }, [opacity, translateY]);
+
+  const show = useCallback((message: string, options?: ToastOptions) => {
     if (hideTimer.current) clearTimeout(hideTimer.current);
-    setMessage(msg);
+    const variant = options?.variant ?? "success";
+    if (variant === "error") haptics.warn();
+    setToast({ message, variant, action: options?.action });
     Animated.parallel([
       Animated.timing(opacity, { toValue: 1, duration: 180, useNativeDriver: true }),
       Animated.spring(translateY, {
@@ -43,15 +73,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         stiffness: 220,
       }),
     ]).start();
-    hideTimer.current = setTimeout(() => {
-      Animated.parallel([
-        Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
-        Animated.timing(translateY, { toValue: 20, duration: 200, useNativeDriver: true }),
-      ]).start(({ finished }) => {
-        if (finished) setMessage(null);
-      });
-    }, TOAST_DURATION);
-  }, [opacity, translateY]);
+    hideTimer.current = setTimeout(hide, options?.action ? ACTION_DURATION : TOAST_DURATION);
+  }, [opacity, translateY, hide]);
 
   useEffect(() => {
     return () => {
@@ -62,9 +85,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider value={{ show }}>
       {children}
-      {message !== null && (
+      {toast !== null && (
         <View
-          pointerEvents="none"
+          pointerEvents="box-none"
           style={{
             position: "absolute",
             left: 0,
@@ -74,47 +97,76 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           }}
         >
           <Animated.View
+            accessibilityLiveRegion="polite"
             style={{
               flexDirection: "row",
               alignItems: "center",
               gap: 10,
-              backgroundColor: S.ink,
-              paddingVertical: 12,
-              paddingHorizontal: 18,
+              backgroundColor: toast.variant === "error" ? "#7A2414" : S.ink,
+              paddingVertical: toast.action ? 8 : 12,
+              paddingLeft: toast.variant === "info" ? 20 : 12,
+              paddingRight: toast.action ? 8 : 18,
               borderRadius: 99,
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 8 },
               shadowOpacity: 0.25,
               shadowRadius: 18,
               elevation: 6,
-              maxWidth: "86%",
+              maxWidth: "90%",
               opacity,
               transform: [{ translateY }],
             }}
           >
-            <View
-              style={{
-                width: 22,
-                height: 22,
-                borderRadius: 99,
-                backgroundColor: "rgba(255,255,255,0.18)",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <CheckIcon color="#fff" size={13} />
-            </View>
+            {toast.variant !== "info" && (
+              <View
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 99,
+                  backgroundColor: "rgba(255,255,255,0.18)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {toast.variant === "error" ? (
+                  <Text style={{ color: "#fff", fontSize: 13, fontFamily: FONT.w900, lineHeight: 15 }}>!</Text>
+                ) : (
+                  <CheckIcon color="#fff" size={13} />
+                )}
+              </View>
+            )}
             <Text
               style={{
+                flexShrink: 1,
                 color: "#fff",
                 fontSize: 14.5,
-                fontWeight: "700",
+                fontFamily: FONT.w700,
                 letterSpacing: -0.2,
               }}
               numberOfLines={2}
             >
-              {message}
+              {toast.message}
             </Text>
+            {toast.action && (
+              <Pressable
+                onPress={() => {
+                  if (hideTimer.current) clearTimeout(hideTimer.current);
+                  haptics.tap();
+                  toast.action!.onPress();
+                  hide();
+                }}
+                accessibilityRole="button"
+                hitSlop={6}
+                style={({ pressed }) => ({
+                  paddingHorizontal: 14,
+                  paddingVertical: 8,
+                  borderRadius: 99,
+                  backgroundColor: pressed ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.18)",
+                })}
+              >
+                <Text style={{ color: "#fff", fontSize: 14, fontFamily: FONT.w800 }}>{toast.action.label}</Text>
+              </Pressable>
+            )}
           </Animated.View>
         </View>
       )}

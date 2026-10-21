@@ -3,6 +3,7 @@ import { ST, type WasteStreamId } from "../theme/colors";
 import { StreamGlyph } from "./icons/StreamGlyph";
 import { ArrowURIcon } from "./icons/Icons";
 import { useT } from "../context/LocaleContext";
+import { FONT } from "../theme/type";
 
 interface Props {
   stream: WasteStreamId;
@@ -37,7 +38,7 @@ export function StreamGridCard({ stream, rel, date, tall = false, onPress }: Pro
         <Text
           style={{
             fontSize: 10.5,
-            fontWeight: "800",
+            fontFamily: FONT.w800,
             color: s.ink,
             opacity: 0.62,
             letterSpacing: 1,
@@ -49,7 +50,7 @@ export function StreamGridCard({ stream, rel, date, tall = false, onPress }: Pro
         <Text
           style={{
             fontSize: 21,
-            fontWeight: "800",
+            fontFamily: FONT.w800,
             color: s.ink,
             letterSpacing: -0.5,
             lineHeight: 22,
@@ -61,7 +62,7 @@ export function StreamGridCard({ stream, rel, date, tall = false, onPress }: Pro
         <Text
           style={{
             fontSize: 13,
-            fontWeight: "600",
+            fontFamily: FONT.w600,
             color: s.ink,
             opacity: 0.7,
             marginTop: 3,

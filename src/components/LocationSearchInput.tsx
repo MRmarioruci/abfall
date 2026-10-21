@@ -4,6 +4,7 @@ import { S } from "../theme/colors";
 import { PinIcon, XIcon } from "./icons/Icons";
 import { searchPlaces, type PlaceSuggestion } from "../services/geocoding";
 import { useT } from "../context/LocaleContext";
+import { FONT } from "../theme/type";
 
 interface Props {
   value: string;
@@ -34,6 +35,11 @@ export function LocationSearchInput({
   const suppressNextSearch = useRef(false);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  // Stop a pending search when this goes away.
+  useEffect(() => () => {
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    abortRef.current?.abort();
+  }, []);
 
   useEffect(() => {
     if (suppressNextSearch.current) {
@@ -110,7 +116,7 @@ export function LocationSearchInput({
           style={{
             flex: 1,
             fontSize: 16,
-            fontWeight: "700",
+            fontFamily: FONT.w700,
             color: S.ink,
             letterSpacing: -0.2,
             paddingVertical: 12,
@@ -155,14 +161,14 @@ export function LocationSearchInput({
           {suggestions.length === 0 && searching && (
             <View style={{ padding: 14, flexDirection: "row", alignItems: "center", gap: 10 }}>
               <ActivityIndicator size="small" color={S.sec} />
-              <Text style={{ fontSize: 13, fontWeight: "600", color: S.sec }}>
+              <Text style={{ fontSize: 13, fontFamily: FONT.w600, color: S.sec }}>
                 {t("location.searching")}
               </Text>
             </View>
           )}
           {suggestions.length === 0 && !searching && (
             <View style={{ padding: 14 }}>
-              <Text style={{ fontSize: 13, fontWeight: "600", color: S.sec }}>
+              <Text style={{ fontSize: 13, fontFamily: FONT.w600, color: S.sec }}>
                 {t("location.no_matches_spelling")}
               </Text>
             </View>
@@ -190,7 +196,7 @@ export function LocationSearchInput({
                   <Text
                     style={{
                       fontSize: 15,
-                      fontWeight: "800",
+                      fontFamily: FONT.w800,
                       color: S.ink,
                       letterSpacing: -0.2,
                     }}
@@ -202,7 +208,7 @@ export function LocationSearchInput({
                     style={{
                       fontSize: 12,
                       color: S.sec,
-                      fontWeight: "600",
+                      fontFamily: FONT.w600,
                       marginTop: 1,
                     }}
                     numberOfLines={1}

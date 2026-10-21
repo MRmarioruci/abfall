@@ -1,23 +1,51 @@
 import { useState } from "react";
-import { View, Text, Pressable } from "react-native";
+import { View, Pressable } from "react-native";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
-import { S } from "../theme/colors";
-import { CheckIcon, XIcon, ShareIcon } from "./icons/Icons";
+import { OptionRow, SheetHeader } from "./ui/sheet";
+import { S, ST, type WasteStreamId } from "../theme/colors";
+import { CalIcon, CheckIcon, XIcon, ShareIcon } from "./icons/Icons";
 import { useCalendars } from "../context/CalendarContext";
 import { ShareSheet } from "./ShareSheet";
 import type { SavedCalendar } from "../types/calendar";
 import { useT } from "../context/LocaleContext";
-import type { StringKey } from "../i18n";
 
-const SOURCE_LABELS: Record<string, StringKey> = {
-  scan: "switcher.source.scan",
-  manual: "switcher.source.manual",
-  community: "switcher.source.community",
-};
+// Each saved calendar gets its own palette colour so the list is easy to
+// tell apart at a glance.
+const CHIP_TINTS: WasteStreamId[] = ["papier", "karton", "kehricht", "gruengut", "glas", "textilien"];
 
 interface Props {
   visible: boolean;
   onClose: () => void;
+}
+
+function RowAction({
+  label,
+  onPress,
+  children,
+}: {
+  label: string;
+  onPress: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Pressable
+      hitSlop={8}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => ({
+        width: 34,
+        height: 34,
+        borderRadius: 99,
+        backgroundColor: "#F4EFEA",
+        alignItems: "center",
+        justifyContent: "center",
+        transform: [{ scale: pressed ? 0.92 : 1 }],
+      })}
+    >
+      {children}
+    </Pressable>
+  );
 }
 
 export function CalendarSwitcher({ visible, onClose }: Props) {
@@ -34,141 +62,60 @@ export function CalendarSwitcher({ visible, onClose }: Props) {
 
   return (
     <SlideUpSheet visible={visible} onClose={onClose} height={sheetHeight}>
-      <View style={{ paddingHorizontal: 20, paddingTop: 4 }}>
-        <Text
-          style={{
-            fontSize: 22,
-            fontWeight: "800",
-            color: S.ink,
-            letterSpacing: -0.5,
-          }}
-        >
-          {t("switcher.title")}
-        </Text>
-        <Text
-          style={{
-            fontSize: 14,
-            color: S.sec,
-            fontWeight: "500",
-            marginTop: 4,
-            marginBottom: 18,
-          }}
-        >
-          {calendars.length > 0
-            ? t("switcher.subtitle")
-            : t("switcher.empty")}
-        </Text>
+      <View style={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: 12 }}>
+        <SheetHeader
+          title={t("switcher.title")}
+          subtitle={calendars.length > 0 ? t("switcher.subtitle") : t("switcher.empty")}
+        />
 
-        <View style={{ gap: 10 }}>
-          {calendars.map((cal) => {
-            const zone = cal.zones?.[0] || cal.zone;
-            const period = `${cal.year}`;
+        <View style={{ gap: 8 }}>
+          {calendars.map((cal, i) => {
+            const tint = ST[CHIP_TINTS[i % CHIP_TINTS.length]];
             return (
-              <Pressable
+              <OptionRow
                 key={cal.id}
+                label={cal.title || cal.municipality}
+                subtitle={[
+                  cal.location || cal.municipality,
+                  t(cal.events.length === 1 ? "share.dates_one" : "share.dates_other", { n: cal.events.length }),
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+                icon={<CalIcon color={tint.ink} size={20} />}
+                iconBg={tint.soft}
+                selected={cal.active}
                 onPress={() => handleSwitch(cal.id)}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 20,
-                  backgroundColor: "#fff",
-                  borderRadius: 20,
-                  padding: 14,
-                  borderWidth: cal.active ? 2 : 0,
-                  borderColor: cal.active ? S.ink : "transparent",
-                  shadowColor: "rgb(150,118,96)",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.08,
-                  shadowRadius: 12,
-                  elevation: 2,
-                }}
-              >
-                <View
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 14,
-                    backgroundColor: cal.active ? S.ink : "#F0EAE4",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {cal.active && <CheckIcon color="#fff" size={20} />}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <Text style={{ fontSize: 15, fontWeight: "800", color: S.ink, letterSpacing: -0.2 }} numberOfLines={1}>
-                      {cal.title || cal.municipality}
-                    </Text>
-                    {zone && (
+                right={
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <RowAction label={t("switcher.share")} onPress={() => setShareTarget(cal)}>
+                      <ShareIcon color={S.ink} size={15} />
+                    </RowAction>
+                    {cal.active ? (
                       <View
                         style={{
-                          backgroundColor: "#F0EAE4",
-                          paddingHorizontal: 8,
-                          paddingVertical: 2,
+                          width: 34,
+                          height: 34,
                           borderRadius: 99,
+                          backgroundColor: S.ink,
+                          alignItems: "center",
+                          justifyContent: "center",
                         }}
                       >
-                        <Text style={{ fontSize: 11, fontWeight: "700", color: S.sec }}>
-                          {zone === "all" ? t("event_edit.all_zones") : zone}
-                        </Text>
+                        <CheckIcon color="#fff" size={14} />
                       </View>
+                    ) : (
+                      <RowAction label={t("switcher.remove")} onPress={() => removeCalendar(cal.id)}>
+                        <XIcon color={S.sec} size={14} />
+                      </RowAction>
                     )}
                   </View>
-                  {cal.location && (
-                    <Text style={{ fontSize: 12, color: S.sec, fontWeight: "600", marginTop: 2 }} numberOfLines={1}>
-                      {cal.location}
-                    </Text>
-                  )}
-                  <Text style={{ fontSize: 12, color: S.ter, fontWeight: "500", marginTop: 2 }}>
-                    {period}
-                    {SOURCE_LABELS[cal.source] ? ` · ${t(SOURCE_LABELS[cal.source])}` : ""}
-                    {" · "}
-                    {cal.events.length === 1
-                      ? t("switcher.dates_one")
-                      : t("switcher.dates_other", { n: cal.events.length })}
-                  </Text>
-                </View>
-                <View style={{ flexDirection: "row", gap: 10, marginTop: 20 }}>
-                  <Pressable
-                    hitSlop={8}
-                    onPress={() => setShareTarget(cal)}
-                    accessibilityLabel={t("switcher.share")}
-                    style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 99,
-                      backgroundColor: "#F0EAE4",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <ShareIcon color={S.sec} size={14} />
-                  </Pressable>
-                  {!cal.active && (
-                    <Pressable
-                      hitSlop={8}
-                      onPress={() => removeCalendar(cal.id)}
-                      accessibilityLabel={t("switcher.remove")}
-                      style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 99,
-                        backgroundColor: "#F0EAE4",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <XIcon color={S.sec} size={14} />
-                    </Pressable>
-                  )}
-                </View>
-              </Pressable>
+                }
+              />
             );
           })}
         </View>
       </View>
-      
+
       <ShareSheet
         visible={shareTarget !== null}
         onClose={() => setShareTarget(null)}

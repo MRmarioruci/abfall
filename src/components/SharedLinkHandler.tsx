@@ -63,7 +63,7 @@ export function SharedLinkHandler() {
           markCommunityCalendarUsed(pending.id);
           toast.show(t("community.toast.imported"));
         } catch {
-          toast.show(t("community.toast.import_failed"));
+          toast.show(t("community.toast.import_failed"), { variant: "error" });
         }
       }}
     />

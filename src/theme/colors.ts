@@ -18,7 +18,12 @@ export type WasteStreamId =
   | "sperrgut"
   | "altmetall"
   | "textilien"
-  | "sonderabfall";
+  | "sonderabfall"
+  /** Packaging / plastic / mixed recycling: Gelber Sack, PMD, plastica. */
+  | "verpackung"
+  | "glas"
+  /** Any other collection; the printed name is kept in the event's note. */
+  | "sonstiges";
 
 // `label` is the user-facing name. It is populated from the i18n module's
 // current locale (English by default). When we add a real locale switcher
@@ -43,6 +48,9 @@ const VISUAL: Record<WasteStreamId, Omit<WasteStream, "label">> = {
   altmetall:    { c: "#9CC9C2", ink: "#103330", soft: "#D4E8E4" },
   textilien:    { c: "#D4A5C9", ink: "#3D1435", soft: "#EEDCE9" },
   sonderabfall: { c: "#E8B4B4", ink: "#4A1010", soft: "#F6DEDE" },
+  verpackung:   { c: "#F2B65A", ink: "#4A2E05", soft: "#FCE7C6" },
+  glas:         { c: "#9DBBE0", ink: "#13304F", soft: "#DCE7F4" },
+  sonstiges:    { c: "#BDB6AE", ink: "#2E2A26", soft: "#E9E5E0" },
 };
 
 // English defaults — kept in sync with src/i18n WASTE_LABELS.en. When we wire
@@ -58,6 +66,9 @@ const DEFAULT_LABELS: Record<WasteStreamId, string> = {
   sperrgut: "Bulky waste",
   textilien: "Textiles",
   sonderabfall: "Hazardous waste",
+  verpackung: "Recycling",
+  glas: "Glass",
+  sonstiges: "Other",
 };
 
 export const ST: Record<WasteStreamId, WasteStream> = {
@@ -71,12 +82,17 @@ export const ST: Record<WasteStreamId, WasteStream> = {
   altmetall: { label: DEFAULT_LABELS.altmetall, ...VISUAL.altmetall },
   textilien: { label: DEFAULT_LABELS.textilien, ...VISUAL.textilien },
   sonderabfall: { label: DEFAULT_LABELS.sonderabfall, ...VISUAL.sonderabfall },
+  verpackung: { label: DEFAULT_LABELS.verpackung, ...VISUAL.verpackung },
+  glas: { label: DEFAULT_LABELS.glas, ...VISUAL.glas },
+  sonstiges: { label: DEFAULT_LABELS.sonstiges, ...VISUAL.sonstiges },
 };
 
 export const STREAM_ORDER: WasteStreamId[] = [
   "kehricht",
+  "verpackung",
   "papier",
   "karton",
+  "glas",
   "gruengut",
   "bio",
   "metall",
@@ -84,4 +100,5 @@ export const STREAM_ORDER: WasteStreamId[] = [
   "sperrgut",
   "textilien",
   "sonderabfall",
+  "sonstiges",
 ];

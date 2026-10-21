@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { View, Text, Pressable, TextInput, Alert, Linking, Platform, ActivityIndicator, ScrollView, Keyboard, Dimensions } from "react-native";
 import * as Location from "expo-location";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
-import { S } from "../theme/colors";
+import { PillButton, SheetHeader } from "./ui/sheet";
+import { S, ST } from "../theme/colors";
 import { PinIcon, XIcon } from "./icons/Icons";
 import { searchPlaces, type PlaceSuggestion } from "../services/geocoding";
 import { useT } from "../context/LocaleContext";
+import { FONT } from "../theme/type";
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
 // Sizes of the fixed parts: header block, input, auto-locate, save, padding.
@@ -81,6 +83,11 @@ export function LocationEditSheet({ visible, onClose, current, onSave }: Props) 
   const suppressNextSearch = useRef(false);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  // Stop a pending search when this goes away.
+  useEffect(() => () => {
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    abortRef.current?.abort();
+  }, []);
 
   useEffect(() => {
     if (visible) {
@@ -233,31 +240,33 @@ export function LocationEditSheet({ visible, onClose, current, onSave }: Props) 
   return (
     <SlideUpSheet visible={visible} onClose={onClose} height={sheetHeight}>
       <View style={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: 16 }}>
-        <Text style={{ fontSize: 11, fontWeight: "800", color: S.ter, letterSpacing: 1.2 }}>
-          {t("location.eyebrow")}
-        </Text>
-        <Text style={{ fontSize: 22, fontWeight: "800", color: S.ink, letterSpacing: -0.5, marginTop: 4 }}>
-          {t("location.title")}
-        </Text>
-        <Text style={{ fontSize: 13, color: S.sec, fontWeight: "600", marginTop: 6 }}>
-          {t("location.body")}
-        </Text>
+        <SheetHeader title={t("location.title")} />
 
+        {/* Search field: a soft white pill with a tinted pin chip. */}
         <View
           style={{
-            marginTop: 18,
             flexDirection: "row",
             alignItems: "center",
-            gap: 10,
-            paddingHorizontal: 14,
-            paddingVertical: 4,
-            borderRadius: 14,
+            gap: 12,
+            paddingLeft: 8,
+            paddingRight: 14,
+            minHeight: 60,
+            borderRadius: 20,
             backgroundColor: "#fff",
-            borderWidth: 1.5,
-            borderColor: S.line,
           }}
         >
-          <PinIcon color={S.sec} size={16} />
+          <View
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 13,
+              backgroundColor: ST.papier.soft,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <PinIcon color={ST.papier.ink} size={18} />
+          </View>
           <TextInput
             value={value}
             onChangeText={setValue}
@@ -269,13 +278,13 @@ export function LocationEditSheet({ visible, onClose, current, onSave }: Props) 
             style={{
               flex: 1,
               fontSize: 17,
-              fontWeight: "700",
+              fontFamily: FONT.w800,
               color: S.ink,
               letterSpacing: -0.2,
               paddingVertical: 12,
             }}
           />
-          {searching && <ActivityIndicator size="small" color={S.ter} />}
+          {searching && <ActivityIndicator size="small" color={ST.papier.ink} />}
           {!searching && value.length > 0 && (
             <Pressable
               onPress={() => {
@@ -285,7 +294,15 @@ export function LocationEditSheet({ visible, onClose, current, onSave }: Props) 
               }}
               hitSlop={10}
               accessibilityLabel={t("location.clear")}
-              style={{ width: 22, height: 22, borderRadius: 99, backgroundColor: "#F0EAE4", alignItems: "center", justifyContent: "center" }}
+              style={({ pressed }) => ({
+                width: 26,
+                height: 26,
+                borderRadius: 99,
+                backgroundColor: "#F4EFEA",
+                alignItems: "center",
+                justifyContent: "center",
+                transform: [{ scale: pressed ? 0.9 : 1 }],
+              })}
             >
               <XIcon color={S.sec} size={11} />
             </Pressable>
@@ -297,25 +314,24 @@ export function LocationEditSheet({ visible, onClose, current, onSave }: Props) 
           <View
             style={{
               marginTop: 8,
-              borderRadius: 14,
+              borderRadius: 20,
               backgroundColor: "#fff",
-              borderWidth: 1.5,
-              borderColor: S.line,
+              padding: 6,
               maxHeight: dropdownMaxHeight,
               overflow: "hidden",
             }}
           >
             {suggestions.length === 0 && searching && (
-              <View style={{ padding: 14, flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <View style={{ padding: 12, flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <ActivityIndicator size="small" color={S.sec} />
-                <Text style={{ fontSize: 13, fontWeight: "600", color: S.sec }}>
+                <Text style={{ fontSize: 14, fontFamily: FONT.w700, color: S.sec }}>
                   {t("location.searching")}
                 </Text>
               </View>
             )}
             {suggestions.length === 0 && !searching && (
-              <View style={{ padding: 14 }}>
-                <Text style={{ fontSize: 13, fontWeight: "600", color: S.sec }}>
+              <View style={{ padding: 12 }}>
+                <Text style={{ fontSize: 14, fontFamily: FONT.w700, color: S.sec }}>
                   {t("location.no_matches_place")}
                 </Text>
               </View>
@@ -324,28 +340,42 @@ export function LocationEditSheet({ visible, onClose, current, onSave }: Props) 
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
-              {suggestions.map((s, i) => (
+              {suggestions.map((s) => (
                 <Pressable
                   key={s.id}
                   onPress={() => handlePickSuggestion(s)}
-                  style={{
+                  style={({ pressed }) => ({
                     flexDirection: "row",
                     alignItems: "center",
-                    gap: 11,
-                    paddingHorizontal: 14,
-                    paddingVertical: 11,
-                    borderTopWidth: i === 0 ? 0 : 1,
-                    borderTopColor: S.line,
-                  }}
+                    gap: 12,
+                    paddingHorizontal: 8,
+                    paddingVertical: 8,
+                    borderRadius: 14,
+                    backgroundColor: pressed ? ST.papier.soft : "transparent",
+                    transform: [{ scale: pressed ? 0.98 : 1 }],
+                  })}
                 >
-                  <PinIcon color={S.sec} size={14} />
+                  <View
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 11,
+                      backgroundColor: ST.papier.soft,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <PinIcon color={ST.papier.ink} size={14} />
+                  </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 15, fontWeight: "800", color: S.ink, letterSpacing: -0.2 }} numberOfLines={1}>
+                    <Text style={{ fontSize: 15, fontFamily: FONT.w800, color: S.ink, letterSpacing: -0.2 }} numberOfLines={1}>
                       {s.primary}
                     </Text>
-                    <Text style={{ fontSize: 12, color: S.sec, fontWeight: "600", marginTop: 1 }} numberOfLines={1}>
-                      {s.secondary}
-                    </Text>
+                    {!!s.secondary && (
+                      <Text style={{ fontSize: 13, color: S.sec, fontFamily: FONT.w600, marginTop: 1 }} numberOfLines={1}>
+                        {s.secondary}
+                      </Text>
+                    )}
                   </View>
                 </Pressable>
               ))}
@@ -354,73 +384,52 @@ export function LocationEditSheet({ visible, onClose, current, onSave }: Props) 
         )}
 
         {autoLocating ? (
+          // Locating: same footprint as the button, tinted, with a cancel.
           <View
             style={{
               marginTop: 12,
+              height: 54,
               flexDirection: "row",
               alignItems: "center",
-              gap: 8,
-              paddingVertical: 8,
-              paddingLeft: 16,
-              paddingRight: 8,
+              gap: 10,
+              paddingLeft: 20,
+              paddingRight: 10,
               borderRadius: 99,
-              backgroundColor: "#E5E6F6",
+              backgroundColor: ST.papier.soft,
             }}
           >
-            <ActivityIndicator size="small" color="#2C2E61" />
-            <Text style={{ flex: 1, fontSize: 14, fontWeight: "800", color: "#2C2E61", letterSpacing: 0.2 }}>
+            <ActivityIndicator size="small" color={ST.papier.ink} />
+            <Text style={{ flex: 1, fontSize: 16, fontFamily: FONT.w800, color: ST.papier.ink }}>
               {t("location.locating")}
             </Text>
             <Pressable
               onPress={handleCancelLocate}
               hitSlop={10}
               accessibilityLabel={t("common.cancel")}
-              style={{
-                width: 32,
-                height: 32,
+              style={({ pressed }) => ({
+                width: 36,
+                height: 36,
                 borderRadius: 99,
                 backgroundColor: "#fff",
                 alignItems: "center",
                 justifyContent: "center",
-              }}
+                transform: [{ scale: pressed ? 0.92 : 1 }],
+              })}
             >
-              <XIcon color="#2C2E61" size={14} />
+              <XIcon color={ST.papier.ink} size={14} />
             </Pressable>
           </View>
         ) : (
-          <Pressable
+          <PillButton
+            label={t("location.use_current")}
+            variant="secondary"
+            icon={<PinIcon color={S.ink} size={16} />}
             onPress={handleAutoLocate}
-            style={{
-              marginTop: 12,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              paddingVertical: 12,
-              borderRadius: 99,
-              backgroundColor: "#E5E6F6",
-            }}
-          >
-            <PinIcon color="#2C2E61" size={14} />
-            <Text style={{ fontSize: 14, fontWeight: "800", color: "#2C2E61", letterSpacing: 0.2 }}>
-              {t("location.use_current")}
-            </Text>
-          </Pressable>
+            style={{ marginTop: 12 }}
+          />
         )}
 
-        <Pressable
-          onPress={handleSave}
-          style={{
-            marginTop: 18,
-            height: 54,
-            borderRadius: 99,
-            backgroundColor: S.ink,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Text style={{ fontSize: 17, fontWeight: "700", color: "#fff" }}>{t("location.save")}</Text>
-        </Pressable>
+        <PillButton label={t("location.save")} onPress={handleSave} style={{ marginTop: 10 }} />
       </View>
     </SlideUpSheet>
   );

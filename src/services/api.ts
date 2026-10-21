@@ -30,6 +30,8 @@ export interface CommunityCalendarSummary {
   sharedByName: string | null;
   usesCount: number;
   createdAt: string;
+  /** Distinct waste types in the calendar (search results; absent on older servers). */
+  types?: string[];
 }
 
 export interface CommunityCalendarDetail extends CommunityCalendarSummary {
@@ -84,6 +86,8 @@ async function request<T>(
   try {
     res = await fetch(url, { ...init, headers });
   } catch (err) {
+    // Aborted on purpose (cancel / timeout) — the caller reports it.
+    if (init.signal?.aborted) throw err;
     // Network-layer failure (DNS, offline, TLS, etc). The error usually
     // says "Network request failed" on RN — log the full shape so we
     // can distinguish hosts unreachable from CORS preflight from etc.
@@ -298,26 +302,82 @@ export async function reportCommunityCalendar(
 
 // ─── calendar scanning ─────────────────────────────────────────────────
 
-export type ScanStepRequest =
-  | { step: "anchor"; image: string }
-  | { step: "structure"; image: string }
-  | {
-      step: "extract";
-      image: string;
-      months: number[];
-      year: number;
-      structure?: unknown;
-    };
+/** One collection event as the scan returns it (rules already expanded). */
+export interface ScanEvent {
+  date: string;
+  /** A WasteStreamId ("sonstiges" for anything else). */
+  type: string;
+  /** The service's name as printed, e.g. "Christbaumabfuhr". */
+  label?: string;
+  /** Zone name, or "all" when town-wide. */
+  zone: string;
+  time?: string;
+}
+
+export interface CalendarReadResult {
+  title: string;
+  municipality: string;
+  region: string;
+  postcode: string;
+  zones: string[];
+  events: ScanEvent[];
+  notes: string;
+}
+
+// The server allows a scan up to 300 s (vercel.json maxDuration); a little
+// more here covers the upload before we give up.
+const SCAN_TIMEOUT_MS = 310_000;
+
+/** The scan took longer than SCAN_TIMEOUT_MS. */
+export class ScanTimeoutError extends Error {
+  constructor() {
+    super("scan timed out");
+  }
+}
+
+/** The caller aborted the scan (e.g. the user tapped Cancel). */
+export class ScanCancelledError extends Error {
+  constructor() {
+    super("scan cancelled");
+  }
+}
 
 /**
- * Run one step of the calendar-scanning pipeline on the server, which
- * holds the prompts and model key. `image` is a base64 JPEG. Returns the
- * model's JSON for that step; the caller knows its shape.
+ * Read a photographed waste calendar on the server, which holds the
+ * prompt and model key. `pages` are base64 JPEGs in page order; they go
+ * in one request so the model sees the whole calendar at once.
+ *
+ * Rejects with ScanCancelledError when `signal` aborts and with
+ * ScanTimeoutError when it runs past SCAN_TIMEOUT_MS.
  */
-export async function runScanStep<T>(body: ScanStepRequest): Promise<T> {
-  const res = await request<{ result: T }>("/v1/scan", {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
-  return res.result;
+export async function readCalendar(
+  pages: string[],
+  signal?: AbortSignal,
+): Promise<CalendarReadResult> {
+  if (signal?.aborted) throw new ScanCancelledError();
+
+  const controller = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, SCAN_TIMEOUT_MS);
+  const onAbort = () => controller.abort();
+  signal?.addEventListener("abort", onAbort);
+
+  try {
+    const res = await request<{ result: CalendarReadResult }>("/v1/scan", {
+      method: "POST",
+      body: JSON.stringify({ step: "read", images: pages }),
+      signal: controller.signal,
+    });
+    return res.result;
+  } catch (err) {
+    if (signal?.aborted) throw new ScanCancelledError();
+    if (timedOut) throw new ScanTimeoutError();
+    throw err;
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", onAbort);
+  }
 }

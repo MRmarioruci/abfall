@@ -213,6 +213,63 @@ export function StreamGlyph({ stream, size = 96, color }: Props) {
         />
       </G>
     ),
+    verpackung: (
+      <G>
+        {/* A tied sack with the recycling loop */}
+        <Path
+          d="M30 28c-6 8-10 18-10 28 0 10 8 16 24 16s24-6 24-16c0-10-4-20-10-28"
+          stroke={col}
+          strokeWidth={SW}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+        <Path
+          d="M30 28h28M36 28l-4-10M52 28l4-10M38 52l6-8 6 8M44 44v14"
+          stroke={col}
+          strokeWidth={SW}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+      </G>
+    ),
+    glas: (
+      <G>
+        {/* Bottle */}
+        <Path
+          d="M38 14h12v14c6 4 10 10 10 18v24a4 4 0 0 1-4 4H32a4 4 0 0 1-4-4V46c0-8 4-14 10-18V14Z"
+          stroke={col}
+          strokeWidth={SW}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+        <Path
+          d="M28 50h32M28 62h32"
+          stroke={col}
+          strokeWidth={SW}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+      </G>
+    ),
+    sonstiges: (
+      <G>
+        {/* Bin with a dot: something else goes out */}
+        <Rect x={22} y={26} width={44} height={46} rx={6} stroke={col} strokeWidth={SW} fill="none" />
+        <Path
+          d="M18 26h52M36 26v-6h16v6"
+          stroke={col}
+          strokeWidth={SW}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+        <Circle cx={44} cy={49} r={5} fill={col} />
+      </G>
+    ),
   };
 
   return (

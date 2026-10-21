@@ -1,7 +1,7 @@
 // Recyclops — the app's mascot (the team calls him Basti). Lives inside
 // the calendar card, idles, does little tricks, talks, and every so often
-// walks over to the legend, turns around (tushie!) and reaches up to swap
-// two color labels.
+// walks over to the legend, turns around (tushie!) and puts a hand on each
+// of two colour labels to swap them.
 //
 // He's a rig, not a flat drawing: body, arms, legs, eye, lid, brow, mouth
 // and the leaf on his head are separate parts computed from a pose
@@ -13,8 +13,9 @@
 // Never the same action twice in a row; he only talks at home, facing you.
 //
 // The parent supplies:
-//   • `onRequestSwap` — fired while he's turned away with his hands up, so
-//     the parent can reorder its own data (e.g. CalendarMonth legend order)
+//   • `planSwap` — asked before each wander: where to stand, how high to
+//     reach, and the swap to run when his hands touch (CalendarMonth swaps
+//     two legend labels there)
 //   • `walkRange` — how far left he can roam, in px (0 keeps him at home)
 //   • `onPress` — tap handler; he also does a happy hop
 
@@ -26,6 +27,7 @@ import Animated, {
   useAnimatedStyle,
   useDerivedValue,
   useFrameCallback,
+  useReducedMotion,
   useSharedValue,
   withSpring,
   withTiming,
@@ -37,6 +39,7 @@ import { S, ST } from "../theme/colors";
 import { useT } from "../context/LocaleContext";
 import { t as translate, type StringKey } from "../i18n";
 import { REST_POSE, rig, type Pose, type Rig } from "./recyclops/rig";
+import { FONT } from "../theme/type";
 
 const APath = Animated.createAnimatedComponent(Path);
 const ACircle = Animated.createAnimatedComponent(Circle);
@@ -160,7 +163,7 @@ function SpeechBubble({ text, tailStyle }: { text: string; tailStyle: object }) 
           style={{
             color: S.ink,
             fontSize: 10.5,
-            fontWeight: "700",
+            fontFamily: FONT.w700,
             lineHeight: 14,
             textAlign: "center",
             letterSpacing: -0.1,
@@ -191,16 +194,33 @@ function SpeechBubble({ text, tailStyle }: { text: string; tailStyle: object }) 
   );
 }
 
+/** Where to go and what to do there, decided by the parent. */
+export interface SwapPlan {
+  /** Horizontal offset (px) from his home spot to stand at; negative = left. */
+  dx: number;
+  /** Height (px, from the top of his box at home) his hands should be at. */
+  reachY: number;
+  /** Runs the moment his hands touch, e.g. swaps the two labels. */
+  commit: () => void;
+}
+
 interface Props {
   size?: number;
   /** Tap handler — he also does a happy hop. */
   onPress?: () => void;
-  /** Called while he's turned away with his hands up, so the parent can
-   *  rearrange whatever he's "fiddling with". */
-  onRequestSwap?: () => void;
-  /** How far left (px) he wanders from home. 0 keeps him stationary. */
+  /** Asked before each wander: where the two things to swap are. Returning
+   *  null skips the wander (nothing measurable to swap yet). */
+  planSwap?: () => SwapPlan | null;
+  /** How far left (px) he may wander from home. 0 keeps him stationary. */
   walkRange?: number;
 }
+
+// Rig geometry (viewBox units; see recyclops/rig.ts): shoulders sit at
+// y≈55.7 and arms are 21 long; the viewBox starts at y = -8.
+const SHOULDER_Y = 55.7;
+const ARM_LEN = 21;
+const VIEWBOX_TOP = -8;
+const RAISED_ARM = 165;
 
 type PoseValues = { [K in keyof Pose]: SharedValue<number> };
 const POSE_KEYS = Object.keys(REST_POSE) as (keyof Pose)[];
@@ -225,9 +245,11 @@ function usePointProps(R: SharedValue<Rig>, part: PointPart) {
   return useAnimatedProps(() => ({ cx: R.value[part].cx, cy: R.value[part].cy }));
 }
 
-export function Recyclops({ size = 76, onPress, onRequestSwap, walkRange = 60 }: Props) {
+export function Recyclops({ size = 76, onPress, planSwap, walkRange = 60 }: Props) {
   const { t } = useT();
   const P = usePoseValues();
+  // People who ask the system for less motion get a calm, blinking mascot.
+  const reduceMotion = useReducedMotion();
 
   // Whole-body motion (px / degrees), applied to the wrapping view.
   const x = useSharedValue(0);
@@ -250,8 +272,8 @@ export function Recyclops({ size = 76, onPress, onRequestSwap, walkRange = 60 }:
 
   // Read through a ref so the parent's fresh inline callback each render
   // doesn't restart the routine mid-walk.
-  const onRequestSwapRef = useRef(onRequestSwap);
-  onRequestSwapRef.current = onRequestSwap;
+  const planSwapRef = useRef(planSwap);
+  planSwapRef.current = planSwap;
 
   // ── Continuous motion, every frame on the UI thread ──────────────────
   useFrameCallback((frame) => {
@@ -504,22 +526,50 @@ export function Recyclops({ size = 76, onPress, onRequestSwap, walkRange = 60 }:
       if (!cancelled) setBubbleMsg(null);
     };
 
-    // Walk left (home is the card's right edge), turn around, reach up and
-    // fiddle while the parent swaps two labels, then turn back and go home.
+    // Arm angle (degrees from straight down) that puts his hands at
+    // `reachY` px from the top of his box. Arms stay between "out and a
+    // little down" and "straight up"; whatever they can't cover he makes
+    // up with his body: a small crouch for low labels, tiptoe for high ones.
+    const aimArms = (reachY: number) => {
+      const scale = size / 100;
+      const targetY = reachY / scale + VIEWBOX_TOP; // viewBox units
+      const MIN_ARM = 55;
+      const cos = Math.max(-1, Math.min(1, (targetY - SHOULDER_Y) / ARM_LEN));
+      const angle = Math.max(MIN_ARM, Math.min(RAISED_ARM, (Math.acos(cos) * 180) / Math.PI));
+      const handY = SHOULDER_Y + Math.cos((angle * Math.PI) / 180) * ARM_LEN;
+      // Positive = move down (crouch), negative = up (tiptoe).
+      const shift = (targetY - handY) * scale;
+      return { angle, shift: Math.max(-size * 0.33, Math.min(size * 0.15, shift)) };
+    };
+
+    // Walk to the spot between the two labels the parent picked, turn to
+    // face them, put a hand on each and swap them, then go home.
     const wander = async () => {
-      await walkTo(-between(0.35, 1) * walkRange);
+      const plan = planSwapRef.current?.();
+      if (!plan) return trick();
+      const dx = Math.max(-walkRange, Math.min(0, plan.dx));
+      await walkTo(dx);
       if (cancelled) return;
-      await wait(250);
+      await wait(200);
       await turn(true);
       if (cancelled) return;
+      const { angle, shift } = aimArms(plan.reachY);
       armsBusy.value = 1;
-      await all(to(P.armL, 165, 300, settle), to(P.armR, 165, 300, settle));
-      onRequestSwapRef.current?.();
+      await all(
+        to(P.armL, angle, 320, settle),
+        to(P.armR, angle, 320, settle),
+        to(y, shift, 320, Easing.out(Easing.quad)),
+        // Stretch when rising on tiptoe, squash a little when crouching.
+        to(P.squash, shift < -1 ? 1.08 : shift > 1 ? 0.92 : 1, 320),
+      );
+      if (cancelled) return;
+      // Hands on the labels: they trade places under his palms.
+      plan.commit();
       for (let i = 0; i < 2 && !cancelled; i++) {
-        await all(to(P.armL, 150, 150), to(P.armR, 175, 150));
-        await all(to(P.armL, 175, 150), to(P.armR, 150, 150));
+        await all(to(P.armL, angle - 8, 160), to(P.armR, angle + 6, 160));
+        await all(to(P.armL, angle + 6, 160), to(P.armR, angle - 8, 160));
       }
-      await all(to(P.armL, 18, 260), to(P.armR, 18, 260));
+      await all(to(P.armL, 18, 280), to(P.armR, 18, 280), to(y, 0, 280, Easing.in(Easing.quad)), to(P.squash, 1, 280));
       armsBusy.value = 0;
       if (cancelled) return;
       await turn(false);
@@ -549,6 +599,13 @@ export function Recyclops({ size = 76, onPress, onRequestSwap, walkRange = 60 }:
       return options[0]![0];
     };
 
+    if (reduceMotion) {
+      return () => {
+        cancelled = true;
+        timers.forEach((id) => clearTimeout(id));
+      };
+    }
+
     (async () => {
       while (!cancelled) {
         await idle();
@@ -564,7 +621,7 @@ export function Recyclops({ size = 76, onPress, onRequestSwap, walkRange = 60 }:
     };
     // Shared values are stable; only walkRange/size should restart it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [walkRange, size]);
+  }, [walkRange, size, reduceMotion]);
 
   const handlePress = () => {
     onPress?.();

@@ -3,10 +3,12 @@ import { View, Text, Pressable, TextInput, ScrollView } from "react-native";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
 import { S, ST, STREAM_ORDER, type WasteStreamId } from "../theme/colors";
 import { StreamGlyph } from "./icons/StreamGlyph";
-import { XIcon } from "./icons/Icons";
+import { CheckIcon } from "./icons/Icons";
+import { PillButton, QuietButton, SheetHeader } from "./ui/sheet";
 import type { CollectionEvent } from "../types/calendar";
 import { parseISODate } from "../lib/dates";
 import { useT } from "../context/LocaleContext";
+import { FONT } from "../theme/type";
 
 const MONTH_NUMBERS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
@@ -60,29 +62,20 @@ export function EventEditSheet({ visible, onClose, event, year, zones, onSave, o
     onClose();
   };
 
+  const tint = ST[type];
+
   return (
     <SlideUpSheet visible={visible} onClose={onClose} height={560}>
       <View style={{ paddingHorizontal: 20, paddingTop: 4 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-          <Text style={{ fontSize: 22, fontWeight: "800", color: S.ink, letterSpacing: -0.5 }}>
-            {event ? t("event_edit.title_edit") : t("event_edit.title_add")}
-          </Text>
-          {event && onDelete && (
-            <Pressable
-              onPress={() => { onDelete(); onClose(); }}
-              style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 99, backgroundColor: "#F6DDD2" }}
-            >
-              <XIcon color="#4A1B10" size={13} />
-              <Text style={{ fontSize: 13, fontWeight: "700", color: "#4A1B10" }}>{t("common.delete")}</Text>
-            </Pressable>
-          )}
-        </View>
+        <SheetHeader title={event ? t("event_edit.title_edit") : t("event_edit.title_add")} />
 
-        {/* Waste type */}
-        <Text style={{ fontSize: 12, fontWeight: "800", color: S.ter, letterSpacing: 1, marginBottom: 10 }}>
-          {t("event_edit.waste_type")}
-        </Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}>
+        {/* Waste type: each in its own colour. */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ marginHorizontal: -20 }}
+          contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
+        >
           {STREAM_ORDER.map((id) => {
             const s = ST[id];
             const active = type === id;
@@ -90,20 +83,28 @@ export function EventEditSheet({ visible, onClose, event, year, zones, onSave, o
               <Pressable
                 key={id}
                 onPress={() => setType(id)}
-                style={{
-                  flexDirection: "row",
+                accessibilityRole="button"
+                accessibilityLabel={wasteLabel(id)}
+                accessibilityState={{ selected: active }}
+                style={({ pressed }) => ({
+                  width: 84,
+                  height: 88,
+                  borderRadius: 22,
+                  backgroundColor: active ? s.c : s.soft,
+                  borderWidth: 2,
+                  borderColor: active ? S.ink : "transparent",
                   alignItems: "center",
-                  gap: 7,
-                  paddingVertical: 9,
-                  paddingHorizontal: 13,
-                  borderRadius: 99,
-                  backgroundColor: active ? s.c : "#fff",
-                  borderWidth: 1.5,
-                  borderColor: active ? s.c : S.line,
-                }}
+                  justifyContent: "center",
+                  gap: 4,
+                  paddingHorizontal: 6,
+                  transform: [{ scale: pressed ? 0.96 : 1 }],
+                })}
               >
-                <StreamGlyph stream={id} size={20} color={active ? s.ink : S.sec} />
-                <Text style={{ fontSize: 14, fontWeight: "700", color: active ? s.ink : S.sec }}>
+                <StreamGlyph stream={id} size={34} color={s.ink} />
+                <Text
+                  style={{ fontSize: 12, fontFamily: FONT.w800, color: s.ink, textAlign: "center", lineHeight: 14 }}
+                  numberOfLines={2}
+                >
                   {wasteLabel(id)}
                 </Text>
               </Pressable>
@@ -111,47 +112,47 @@ export function EventEditSheet({ visible, onClose, event, year, zones, onSave, o
           })}
         </ScrollView>
 
-        {/* Date */}
-        <Text style={{ fontSize: 12, fontWeight: "800", color: S.ter, letterSpacing: 1, marginTop: 22, marginBottom: 10 }}>
-          {t("event_edit.date")}
-        </Text>
-        <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
+        {/* Date: day number, then the month. */}
+        <View style={{ flexDirection: "row", gap: 10, alignItems: "center", marginTop: 18 }}>
           <TextInput
             value={day}
             onChangeText={setDay}
             keyboardType="number-pad"
             maxLength={2}
             accessibilityLabel={t("event_edit.day_label")}
+            selectionColor={tint.ink}
             style={{
               width: 64,
-              height: 48,
-              borderRadius: 14,
-              backgroundColor: "#fff",
-              borderWidth: 1.5,
-              borderColor: S.line,
+              height: 52,
+              borderRadius: 18,
+              backgroundColor: tint.soft,
               textAlign: "center",
-              fontSize: 18,
-              fontWeight: "800",
-              color: S.ink,
+              fontSize: 22,
+              fontFamily: FONT.w800,
+              color: tint.ink,
             }}
           />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginRight: -20 }} contentContainerStyle={{ gap: 6, paddingRight: 20 }}>
             {MONTH_NUMBERS.map((m) => {
               const active = month === m;
               return (
                 <Pressable
                   key={m}
                   onPress={() => setMonth(m)}
-                  style={{
-                    paddingVertical: 12,
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  style={({ pressed }) => ({
+                    height: 52,
+                    minWidth: 52,
                     paddingHorizontal: 12,
-                    borderRadius: 12,
+                    borderRadius: 18,
+                    alignItems: "center",
+                    justifyContent: "center",
                     backgroundColor: active ? S.ink : "#fff",
-                    borderWidth: 1.5,
-                    borderColor: active ? S.ink : S.line,
-                  }}
+                    transform: [{ scale: pressed ? 0.95 : 1 }],
+                  })}
                 >
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: active ? "#fff" : S.sec }}>{monthShort(m)}</Text>
+                  <Text style={{ fontSize: 14, fontFamily: FONT.w800, color: active ? "#fff" : S.sec }}>{monthShort(m)}</Text>
                 </Pressable>
               );
             })}
@@ -160,52 +161,51 @@ export function EventEditSheet({ visible, onClose, event, year, zones, onSave, o
 
         {/* Zone */}
         {zoneOptions.length > 1 && (
-          <>
-            <Text style={{ fontSize: 12, fontWeight: "800", color: S.ter, letterSpacing: 1, marginTop: 22, marginBottom: 10 }}>
-              {t("event_edit.zone")}
-            </Text>
-            <View style={{ flexDirection: "row", gap: 8 }}>
-              {zoneOptions.map((z) => {
-                const active = zone === z;
-                return (
-                  <Pressable
-                    key={z}
-                    onPress={() => setZone(z)}
-                    style={{
-                      paddingVertical: 10,
-                      paddingHorizontal: 18,
-                      borderRadius: 99,
-                      backgroundColor: active ? S.ink : "#fff",
-                      borderWidth: 1.5,
-                      borderColor: active ? S.ink : S.line,
-                    }}
-                  >
-                    <Text style={{ fontSize: 14, fontWeight: "700", color: active ? "#fff" : S.sec }}>
-                      {z === "all" ? t("event_edit.all_zones") : z}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 18 }}>
+            {zoneOptions.map((z) => {
+              const active = zone === z;
+              return (
+                <Pressable
+                  key={z}
+                  onPress={() => setZone(z)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  style={({ pressed }) => ({
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                    height: 40,
+                    paddingHorizontal: 16,
+                    borderRadius: 99,
+                    backgroundColor: active ? S.ink : "#fff",
+                    transform: [{ scale: pressed ? 0.95 : 1 }],
+                  })}
+                >
+                  {active && <CheckIcon color="#fff" size={12} />}
+                  <Text style={{ fontSize: 14, fontFamily: FONT.w800, color: active ? "#fff" : S.sec }}>
+                    {z === "all" ? t("event_edit.all_zones") : z}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
         )}
 
-        {/* Save */}
-        <Pressable
+        <PillButton
+          label={event ? t("event_edit.save_changes") : t("event_edit.title_add")}
           onPress={handleSave}
-          style={{
-            marginTop: 28,
-            height: 56,
-            borderRadius: 99,
-            backgroundColor: S.ink,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Text style={{ fontSize: 17, fontWeight: "700", color: "#fff" }}>
-            {event ? t("event_edit.save_changes") : t("event_edit.title_add")}
-          </Text>
-        </Pressable>
+          style={{ marginTop: 24 }}
+        />
+        {event && onDelete && (
+          <QuietButton
+            label={t("common.delete")}
+            danger
+            onPress={() => {
+              onDelete();
+              onClose();
+            }}
+          />
+        )}
       </View>
     </SlideUpSheet>
   );

@@ -19,20 +19,22 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
-import { S, ST } from "../theme/colors";
+import { PillButton, QuietButton, SheetHeader, SoftCard } from "./ui/sheet";
+import { BrowseArt } from "./art/Art";
+import { StreamGlyph } from "./icons/StreamGlyph";
+import { S, ST, STREAM_ORDER, type WasteStreamId } from "../theme/colors";
 import {
   BackIcon,
   SearchIcon,
-  ChevRIcon,
-  GlobeIcon,
-  CheckIcon,
   PinIcon,
   ScanIcon,
+  UserIcon,
 } from "./icons/Icons";
 import {
   searchCommunityCalendars,
   getCommunityCalendar,
   markCommunityCalendarUsed,
+  type CommunityCalendarDetail,
   reportCommunityCalendar,
   ApiError,
   type CommunityCalendarSummary,
@@ -40,12 +42,12 @@ import {
 import { useCalendars } from "../context/CalendarContext";
 import { useToast } from "./ui/Toast";
 import { communityToSaved } from "../services/communityImport";
-import { Recyclops } from "./Recyclops";
 import { ConfirmSheet } from "./ConfirmSheet";
 import { addReportedId, getReportedIds } from "../services/reported";
 import type { SavedCalendar } from "../types/calendar";
 import { useT } from "../context/LocaleContext";
 import type { StringKey } from "../i18n";
+import { FONT } from "../theme/type";
 
 interface Props {
   visible: boolean;
@@ -67,15 +69,19 @@ const DEFAULT_COUNTRY = "CH";
  * `location` field; the structured fields stay at whatever scan/import
  * set them to. Either alone misses one of the user flows.
  */
-function deriveSearchLocation(active: SavedCalendar | undefined): {
+function deriveSearchLocation(
+  active: SavedCalendar | undefined,
+  homeLocation: string | undefined,
+): {
   city: string;
   region: string;
 } {
-  if (!active) return { city: "", region: "" };
-  let city = active.municipality?.trim() ?? "";
-  let region = active.canton?.trim() ?? "";
-  if ((!city || !region) && active.location) {
-    const parts = active.location
+  let city = active?.municipality?.trim() ?? "";
+  let region = active?.canton?.trim() ?? "";
+  // No calendar yet: fall back to the location set on the empty Home screen.
+  const location = active ? active.location : homeLocation;
+  if ((!city || !region) && location) {
+    const parts = location
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
@@ -87,7 +93,7 @@ function deriveSearchLocation(active: SavedCalendar | undefined): {
 
 export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Props) {
   const insets = useSafeAreaInsets();
-  const { active, addCalendar } = useCalendars();
+  const { active, addCalendar, homeLocation } = useCalendars();
   const toast = useToast();
   const { t } = useT();
 
@@ -132,7 +138,7 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
       await reportCommunityCalendar(id, "user_report");
     } catch (err) {
       console.warn("[community] report failed:", err);
-      toast.show(t("community.toast.report_failed"));
+      toast.show(t("community.toast.report_failed"), { variant: "error" });
       return;
     }
     await addReportedId(id).catch(() => {});
@@ -158,11 +164,11 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
       return;
     }
     if (searchGuard.current) return;
-    const { city: initCity } = deriveSearchLocation(active);
+    const { city: initCity } = deriveSearchLocation(active, homeLocation);
     setQuery(initCity);
     searchGuard.current = true;
     runSearch(initCity);
-  }, [visible, active?.municipality, active?.canton, active?.location]);
+  }, [visible, active?.municipality, active?.canton, active?.location, homeLocation]);
 
   // Debounced live search — runs ~350ms after the user stops typing.
   // Doesn't fire on the initial mount (auto-search already handled).
@@ -261,7 +267,7 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
       setNextCursor(page.nextCursor);
     } catch (err) {
       console.warn("[community] load more failed:", err);
-      toast.show(t("community.toast.load_more_failed"));
+      toast.show(t("community.toast.load_more_failed"), { variant: "error" });
     } finally {
       setLoadingMore(false);
     }
@@ -283,7 +289,7 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
       toast.show(t("community.toast.imported"));
       onClose();
     } catch {
-      toast.show(t("community.toast.import_failed"));
+      toast.show(t("community.toast.import_failed"), { variant: "error" });
     } finally {
       setImporting(false);
     }
@@ -325,32 +331,17 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
 
   // ── Search screen ────────────────────────────────────────────────────
 
+  const scanInstead = onScanCalendar
+    ? () => {
+        onClose();
+        onScanCalendar();
+      }
+    : undefined;
+
   return (
     <SlideUpSheet visible={visible} onClose={onClose}>
       <View style={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: 10 }}>
-        {/* Header */}
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 14 }}>
-          <View
-            style={{
-              width: 38,
-              height: 38,
-              borderRadius: 13,
-              backgroundColor: ST.papier.soft,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <GlobeIcon color={ST.papier.ink} size={20} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 22, fontWeight: "800", color: S.ink, letterSpacing: -0.5 }}>
-              {t("community.title")}
-            </Text>
-            <Text style={{ fontSize: 12.5, color: S.sec, fontWeight: "600", marginTop: 1 }}>
-              {t("community.subtitle")}
-            </Text>
-          </View>
-        </View>
+        <SheetHeader title={t("community.title")} subtitle={t("community.subtitle")} />
 
         {/* Single search field — searches title, city, AND region with
             fuzzy ilike. Auto-filled from the active calendar so the
@@ -369,73 +360,38 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
         {/* Search status / results */}
         <View style={{ marginBottom: Math.max(insets.bottom, 8) }}>
           {searching && !results && (
-            <View
-              style={{
-                paddingVertical: 32,
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 10,
-              }}
-            >
-              <ActivityIndicator size="small" color={S.sec} />
-              <Text style={{ fontSize: 13, color: S.sec, fontWeight: "600" }}>
-                {t("community.searching")}
-              </Text>
+            <View style={{ paddingVertical: 36, alignItems: "center", justifyContent: "center", gap: 10 }}>
+              <ActivityIndicator size="small" color={ST.papier.ink} />
+              <Text style={{ fontSize: 14, color: S.sec, fontFamily: FONT.w700 }}>{t("community.searching")}</Text>
             </View>
           )}
 
+          {/* Empty / error: one picture, one line, one button. */}
           {searchError && !searching && (
-            <View
-              style={{
-                padding: 18,
-                paddingTop: 22,
-                borderRadius: 18,
-                backgroundColor: "#F4EFEA",
-                gap: 14,
-                alignItems: "center",
-              }}
-            >
-              <Recyclops size={96} />
+            <SoftCard bg={ST.papier.soft} style={{ alignItems: "center", paddingVertical: 22 }}>
+              <BrowseArt />
               <Text
                 style={{
-                  fontSize: 13.5,
-                  color: S.sec,
-                  fontWeight: "600",
-                  lineHeight: 19,
+                  fontSize: 15,
+                  color: ST.papier.ink,
+                  fontFamily: FONT.w700,
+                  lineHeight: 21,
                   textAlign: "center",
+                  marginTop: 8,
+                  paddingHorizontal: 6,
                 }}
               >
                 {t(searchError)}
               </Text>
-              {onScanCalendar && (
-                <Pressable
-                  onPress={() => {
-                    onClose();
-                    onScanCalendar();
-                  }}
-                  style={{
-                    alignSelf: "stretch",
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 8,
-                    paddingVertical: 13,
-                    borderRadius: 99,
-                    backgroundColor: S.ink,
-                    shadowColor: S.ink,
-                    shadowOffset: { width: 0, height: 6 },
-                    shadowOpacity: 0.2,
-                    shadowRadius: 14,
-                    elevation: 4,
-                  }}
-                >
-                  <ScanIcon color="#fff" size={15} />
-                  <Text style={{ fontSize: 14, fontWeight: "800", color: "#fff", letterSpacing: -0.2 }}>
-                    {t("community.scan_instead")}
-                  </Text>
-                </Pressable>
+              {scanInstead && (
+                <PillButton
+                  label={t("community.scan_instead")}
+                  icon={<ScanIcon color="#fff" size={17} />}
+                  onPress={scanInstead}
+                  style={{ alignSelf: "stretch", marginTop: 18 }}
+                />
               )}
-            </View>
+            </SoftCard>
           )}
 
           {visibleResults && visibleResults.length > 0 && (
@@ -446,106 +402,77 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
                     flexDirection: "row",
                     alignItems: "center",
                     gap: 9,
-                    padding: 12,
-                    borderRadius: 14,
-                    backgroundColor: ST.papier.soft,
-                    marginBottom: 10,
+                    paddingVertical: 11,
+                    paddingHorizontal: 14,
+                    borderRadius: 18,
+                    backgroundColor: ST.karton.soft,
+                    marginBottom: 12,
                   }}
                 >
-                  <PinIcon color={ST.papier.ink} size={13} />
-                  <Text
-                    style={{
-                      flex: 1,
-                      fontSize: 12.5,
-                      color: ST.papier.ink,
-                      fontWeight: "700",
-                      lineHeight: 17,
-                    }}
-                  >
+                  <PinIcon color={ST.karton.ink} size={14} />
+                  <Text style={{ flex: 1, fontSize: 13, color: ST.karton.ink, fontFamily: FONT.w700, lineHeight: 18 }}>
                     {t("community.no_match", { q: fallbackQuery, country: DEFAULT_COUNTRY })}
                   </Text>
                 </View>
               )}
               <ScrollView
-                style={{ maxHeight: 360 }}
-                contentContainerStyle={{ gap: 10 }}
-                showsVerticalScrollIndicator
+                style={{ maxHeight: 380 }}
+                contentContainerStyle={{ gap: 10, paddingBottom: 2 }}
+                showsVerticalScrollIndicator={false}
                 nestedScrollEnabled
               >
                 {visibleResults.map((r) => (
                   <ResultRow key={r.id} item={r} onPress={() => handleOpenPreview(r.id)} />
                 ))}
 
-                {/* Show-more button — only when the server gave us a
-                    cursor for more rows. Tap loads the next 20 and
-                    appends. */}
+                {/* Show-more — only when the server gave us a cursor for
+                    more rows. Tap loads the next 20 and appends. */}
                 {nextCursor && (
-                  <Pressable
+                  <PillButton
+                    label={loadingMore ? t("community.loading") : t("community.show_more")}
+                    variant="secondary"
                     onPress={handleLoadMore}
-                    disabled={loadingMore}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 8,
-                      paddingVertical: 12,
-                      borderRadius: 99,
-                      backgroundColor: "#fff",
-                      borderWidth: 1.5,
-                      borderColor: S.line,
-                      marginTop: 4,
-                      opacity: loadingMore ? 0.7 : 1,
-                    }}
-                  >
-                    {loadingMore ? (
-                      <ActivityIndicator size="small" color={S.sec} />
-                    ) : (
-                      <ChevRIcon color={S.sec} size={12} />
-                    )}
-                    <Text style={{ fontSize: 13, fontWeight: "800", color: S.ink, letterSpacing: -0.2 }}>
-                      {loadingMore ? t("community.loading") : t("community.show_more")}
-                    </Text>
-                  </Pressable>
+                    loading={loadingMore}
+                    style={{ marginTop: 4, height: 48 }}
+                  />
                 )}
               </ScrollView>
 
-              {/* Soft footer — gentle escape hatch when the user
-                  doesn't see what they want in the results. */}
-              {onScanCalendar && (
-                <Pressable
-                  onPress={() => {
-                    onClose();
-                    onScanCalendar();
-                  }}
-                  hitSlop={6}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 6,
-                    paddingVertical: 14,
-                    marginTop: 4,
-                  }}
-                >
-                  <ScanIcon color={S.sec} size={13} />
-                  <Text
-                    style={{
-                      fontSize: 12.5,
-                      fontWeight: "700",
-                      color: S.sec,
-                      letterSpacing: -0.1,
-                    }}
-                  >
-                    {t("community.scan_own")}
-                  </Text>
-                </Pressable>
-              )}
+              {/* Gentle escape hatch when the results don't have theirs. */}
+              {scanInstead && <QuietButton label={t("community.scan_own")} onPress={scanInstead} />}
             </>
           )}
         </View>
       </View>
     </SlideUpSheet>
   );
+}
+
+// ─── colour per calendar ───────────────────────────────────────────────
+
+// Rows show the calendar's waste types as dots when the server sends them;
+// otherwise (older servers) each place gets a stable palette colour and
+// its initial, so the list still reads as distinct cards at a glance.
+const ROW_TINTS: WasteStreamId[] = ["papier", "gruengut", "karton", "kehricht", "glas", "textilien", "metall", "verpackung"];
+
+function tintFor(key: string) {
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
+  return ST[ROW_TINTS[Math.abs(h) % ROW_TINTS.length]];
+}
+
+const MAX_ROW_DOTS = 6;
+
+/** Known stream ids from a summary's `types`, in app order; null when absent. */
+function rowTypes(item: CommunityCalendarSummary): WasteStreamId[] | null {
+  if (!item.types?.length) return null;
+  const ids = STREAM_ORDER.filter((id) => item.types!.includes(id));
+  return ids.length > 0 ? ids.slice(0, MAX_ROW_DOTS) : null;
+}
+
+function placeLine(item: CommunityCalendarSummary) {
+  const place = item.region ? `${item.city}, ${item.region}` : item.city;
+  return `${place} · ${item.year}`;
 }
 
 // ─── result row ────────────────────────────────────────────────────────
@@ -558,55 +485,80 @@ function ResultRow({
   onPress: () => void;
 }) {
   const { t } = useT();
-  const initial = item.sharedByName?.charAt(0).toUpperCase() ?? "·";
-  const meta = [
-    item.region ? `${item.year} · ${item.region}` : String(item.year),
-    item.usesCount > 0
-      ? t(item.usesCount === 1 ? "community.uses_one" : "community.uses_other", { n: item.usesCount })
-      : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const tint = tintFor(item.city || item.id);
+  const initial = item.city?.trim().charAt(0).toUpperCase() || "·";
+  const dots = rowTypes(item);
   return (
     <Pressable
       onPress={onPress}
-      style={{
+      accessibilityRole="button"
+      accessibilityLabel={`${item.title}, ${placeLine(item)}`}
+      style={({ pressed }) => ({
         flexDirection: "row",
         alignItems: "center",
-        gap: 11,
+        gap: 14,
+        minHeight: 68,
         backgroundColor: "#fff",
-        borderRadius: 16,
-        padding: 12,
-        paddingRight: 12,
-        shadowColor: "rgb(150,118,96)",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-        elevation: 2,
-      }}
+        borderRadius: 22,
+        paddingVertical: 12,
+        paddingHorizontal: 14,
+        transform: [{ scale: pressed ? 0.98 : 1 }],
+      })}
     >
       <View
         style={{
-          width: 36,
-          height: 36,
-          borderRadius: 99,
-          backgroundColor: ST.gruengut.soft,
+          width: 44,
+          height: 44,
+          borderRadius: 15,
+          backgroundColor: dots ? S.bg : tint.soft,
           alignItems: "center",
           justifyContent: "center",
         }}
       >
-        <Text style={{ fontSize: 14, fontWeight: "800", color: ST.gruengut.ink }}>{initial}</Text>
+        {dots ? (
+          <View
+            style={{
+              width: dots.length > 4 ? 35 : 22, // 3 or 2 dots per row
+              flexDirection: "row",
+              flexWrap: "wrap",
+              justifyContent: "center",
+              gap: 4,
+            }}
+          >
+            {dots.map((id) => (
+              <View key={id} style={{ width: 9, height: 9, borderRadius: 99, backgroundColor: ST[id].c }} />
+            ))}
+          </View>
+        ) : (
+          <Text style={{ fontSize: 18, fontFamily: FONT.w800, color: tint.ink }}>{initial}</Text>
+        )}
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 15, fontWeight: "800", color: S.ink, letterSpacing: -0.2 }} numberOfLines={1}>
-          {item.city}
+        <Text style={{ fontSize: 16, fontFamily: FONT.w800, color: S.ink, letterSpacing: -0.2 }} numberOfLines={1}>
+          {item.title}
         </Text>
-        <Text style={{ fontSize: 11.5, color: S.sec, fontWeight: "600", marginTop: 1 }}>
-          {meta}
-          {item.sharedByName ? ` · ${t("community.by", { name: item.sharedByName })}` : ""}
+        <Text style={{ fontSize: 13, color: S.sec, fontFamily: FONT.w600, marginTop: 2 }} numberOfLines={1}>
+          {placeLine(item)}
         </Text>
       </View>
-      <ChevRIcon color={S.ter} size={12} />
+      {item.usesCount > 0 && (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 5,
+            paddingHorizontal: 10,
+            paddingVertical: 5,
+            borderRadius: 99,
+            backgroundColor: ST.gruengut.soft,
+          }}
+        >
+          <UserIcon color={ST.gruengut.ink} size={12} />
+          <Text style={{ fontSize: 12.5, fontFamily: FONT.w800, color: ST.gruengut.ink }}>
+            {t(item.usesCount === 1 ? "community.uses_one" : "community.uses_other", { n: item.usesCount })}
+          </Text>
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -628,124 +580,148 @@ function PreviewBody({
   onReport: () => void;
   importing: boolean;
 }) {
-  const { t } = useT();
+  const { t, wasteLabel } = useT();
+  const tint = tintFor(summary.city || summary.id);
+
+  // Display only: read the calendar's events to show which waste types it
+  // covers. Import still fetches its own copy; a failure here just leaves
+  // the chips out.
+  const [types, setTypes] = useState<WasteStreamId[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    setTypes(null);
+    getCommunityCalendar(summary.id)
+      .then((detail: CommunityCalendarDetail | null) => {
+        if (!alive || !detail) return;
+        const present = new Set(detail.events.map((e) => e.type));
+        setTypes(STREAM_ORDER.filter((id) => present.has(id)));
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [summary.id]);
+
+  const subtitle = [
+    placeLine(summary),
+    summary.half ? t("community.preview.half", { n: summary.half }) : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const facts: { key: string; icon?: React.ReactNode; label: string }[] = [];
+  if (summary.zones.length > 0) {
+    facts.push({ key: "zones", icon: <PinIcon color={tint.ink} size={12} />, label: summary.zones.join(", ") });
+  }
+  if (summary.usesCount > 0) {
+    facts.push({
+      key: "uses",
+      icon: <UserIcon color={tint.ink} size={12} />,
+      label: t(summary.usesCount === 1 ? "community.uses_one" : "community.uses_other", { n: summary.usesCount }),
+    });
+  }
+  if (summary.sharedByName) {
+    facts.push({ key: "by", label: t("community.by", { name: summary.sharedByName }) });
+  }
+
   return (
     <View style={{ paddingHorizontal: 20, paddingTop: 4 }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 18 }}>
+      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
         <Pressable
           onPress={onBack}
           hitSlop={10}
+          accessibilityRole="button"
           accessibilityLabel={t("community.back")}
-          style={{
-            width: 36,
-            height: 36,
+          style={({ pressed }) => ({
+            width: 38,
+            height: 38,
             borderRadius: 99,
-            backgroundColor: "#F4EFEA",
+            backgroundColor: "#fff",
             alignItems: "center",
             justifyContent: "center",
-          }}
+            transform: [{ scale: pressed ? 0.92 : 1 }],
+          })}
         >
           <BackIcon color={S.ink} size={18} />
         </Pressable>
-        <Text style={{ flex: 1, fontSize: 22, fontWeight: "800", color: S.ink, letterSpacing: -0.5 }}>
-          {summary.city}
-        </Text>
+        <View style={{ flex: 1 }}>
+          <SheetHeader title={summary.title} subtitle={subtitle} />
+        </View>
       </View>
 
-      <View
-        style={{
-          backgroundColor: "#fff",
-          borderRadius: 22,
-          padding: 18,
-          marginBottom: 18,
-          shadowColor: "rgb(150,118,96)",
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.12,
-          shadowRadius: 18,
-          elevation: 3,
-        }}
-      >
-        <PreviewRow label={t("community.preview.title")} value={summary.title} />
-        <PreviewRow
-          label={t("community.preview.year")}
-          value={
-            String(summary.year) +
-            (summary.half ? ` · ${t("community.preview.half", { n: summary.half })}` : "")
-          }
-        />
-        <PreviewRow label={t("community.preview.region")} value={summary.region ?? "—"} />
-        <PreviewRow
-          label={t("community.preview.zones")}
-          value={summary.zones.join(", ") || t("community.preview.zones_all")}
-        />
-        <PreviewRow label={t("community.preview.language")} value={summary.sourceLanguage ?? "—"} />
-        <PreviewRow
-          label={t("community.preview.shared_by")}
-          value={summary.sharedByName ?? t("community.preview.anonymous")}
-        />
-        <PreviewRow label={t("community.preview.uses")} value={String(summary.usesCount)} last />
-      </View>
+      {/* What it collects, as colour: one chip per waste type. */}
+      <SoftCard bg={tint.soft} style={{ marginBottom: 16, minHeight: 112, justifyContent: "center" }}>
+        {types === null ? (
+          <ActivityIndicator size="small" color={tint.ink} />
+        ) : types.length > 0 ? (
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {types.map((id) => (
+              <View
+                key={id}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 7,
+                  paddingLeft: 5,
+                  paddingRight: 12,
+                  paddingVertical: 5,
+                  borderRadius: 99,
+                  backgroundColor: "#fff",
+                }}
+              >
+                <View
+                  style={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: 99,
+                    backgroundColor: ST[id].c,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <StreamGlyph stream={id} size={16} />
+                </View>
+                <Text style={{ fontSize: 13.5, fontFamily: FONT.w800, color: S.ink }}>{wasteLabel(id)}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
 
-      <Pressable
-        onPress={onImport}
-        disabled={importing}
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 8,
-          backgroundColor: S.ink,
-          borderRadius: 99,
-          paddingVertical: 15,
-          opacity: importing ? 0.7 : 1,
-          shadowColor: S.ink,
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.2,
-          shadowRadius: 16,
-          elevation: 4,
-        }}
-      >
-        {importing ? (
-          <ActivityIndicator size="small" color="#fff" />
-        ) : (
-          <CheckIcon color="#fff" size={16} />
+        {facts.length > 0 && (
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: types && types.length > 0 ? 14 : 0 }}>
+            {facts.map((f) => (
+              <View
+                key={f.key}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 5,
+                  paddingHorizontal: 10,
+                  paddingVertical: 5,
+                  borderRadius: 99,
+                  backgroundColor: "rgba(255,255,255,0.55)",
+                  maxWidth: "100%",
+                }}
+              >
+                {f.icon}
+                <Text style={{ fontSize: 12.5, fontFamily: FONT.w700, color: tint.ink }} numberOfLines={1}>
+                  {f.label}
+                </Text>
+              </View>
+            ))}
+          </View>
         )}
-        <Text style={{ fontSize: 15.5, fontWeight: "800", color: "#fff", letterSpacing: -0.2 }}>
-          {importing ? t("community.importing") : t("community.use")}
-        </Text>
-      </Pressable>
+      </SoftCard>
 
-      <Pressable
-        onPress={onReport}
-        hitSlop={8}
-        style={{ alignSelf: "center", paddingVertical: 14, marginBottom: Math.max(insetsBottom, 8) }}
-      >
-        <Text style={{ fontSize: 13.5, fontWeight: "700", color: S.sec }}>
-          {t("community.report_link")}
-        </Text>
-      </Pressable>
-    </View>
-  );
-}
+      <PillButton
+        label={importing ? t("community.importing") : t("community.use")}
+        onPress={onImport}
+        loading={importing}
+      />
 
-function PreviewRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
-  return (
-    <View
-      style={{
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingVertical: 9,
-        borderBottomWidth: last ? 0 : 1,
-        borderBottomColor: S.line,
-      }}
-    >
-      <Text style={{ fontSize: 12, fontWeight: "800", color: S.ter, letterSpacing: 0.4 }}>
-        {label.toUpperCase()}
-      </Text>
-      <Text style={{ flex: 1, marginLeft: 12, textAlign: "right", fontSize: 14, fontWeight: "700", color: S.ink }} numberOfLines={1}>
-        {value}
-      </Text>
+      <View style={{ marginBottom: Math.max(insetsBottom, 8) }}>
+        <QuietButton label={t("community.report_link")} onPress={onReport} />
+      </View>
     </View>
   );
 }
@@ -771,14 +747,14 @@ function SearchField({
         flexDirection: "row",
         alignItems: "center",
         gap: 10,
+        height: 52,
         backgroundColor: "#fff",
-        borderRadius: 14,
-        paddingHorizontal: 14,
-        borderWidth: 1.5,
-        borderColor: S.line,
+        borderRadius: 99,
+        paddingLeft: 18,
+        paddingRight: 18,
       }}
     >
-      <SearchIcon color={S.ter} size={15} />
+      <SearchIcon color={S.sec} size={17} />
       <TextInput
         value={value}
         onChangeText={onChange}
@@ -790,9 +766,9 @@ function SearchField({
         style={{
           flex: 1,
           paddingVertical: 12,
-          fontSize: 14.5,
+          fontSize: 16,
           color: S.ink,
-          fontWeight: "700",
+          fontFamily: FONT.w700,
         }}
       />
     </View>

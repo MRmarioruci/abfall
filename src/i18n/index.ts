@@ -87,6 +87,9 @@ const WASTE_LABELS: Record<Locale, Record<WasteStreamId, string>> = {
     sperrgut: "Bulky waste",
     textilien: "Textiles",
     sonderabfall: "Hazardous waste",
+    verpackung: "Recycling",
+    glas: "Glass",
+    sonstiges: "Other",
   },
   de: {
     kehricht: "Kehricht",
@@ -99,6 +102,9 @@ const WASTE_LABELS: Record<Locale, Record<WasteStreamId, string>> = {
     sperrgut: "Sperrgut",
     textilien: "Textilien",
     sonderabfall: "Sonderabfall",
+    verpackung: "Verpackungen",
+    glas: "Glas",
+    sonstiges: "Sonstiges",
   },
   fr: {
     kehricht: "Ordures",
@@ -111,6 +117,9 @@ const WASTE_LABELS: Record<Locale, Record<WasteStreamId, string>> = {
     sperrgut: "Encombrants",
     textilien: "Textiles",
     sonderabfall: "Déchets spéciaux",
+    verpackung: "Emballages",
+    glas: "Verre",
+    sonstiges: "Autre",
   },
   it: {
     kehricht: "Rifiuti",
@@ -123,6 +132,9 @@ const WASTE_LABELS: Record<Locale, Record<WasteStreamId, string>> = {
     sperrgut: "Ingombranti",
     textilien: "Tessili",
     sonderabfall: "Rifiuti speciali",
+    verpackung: "Plastica e lattine",
+    glas: "Vetro",
+    sonstiges: "Altro",
   },
 };
 

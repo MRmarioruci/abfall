@@ -5,6 +5,10 @@ import { S, ST, STREAM_ORDER, type WasteStreamId } from "../theme/colors";
 import { StreamGlyph } from "../components/icons/StreamGlyph";
 import { SoftSwitch } from "../components/ui/SoftSwitch";
 import { SunIcon, MoonIcon, BellIcon, PlusIcon, XIcon, ChevRIcon, CalIcon, GoogleIcon } from "../components/icons/Icons";
+import { ArtTile, PillButton } from "../components/ui/sheet";
+import { EmptyState } from "../components/ui/EmptyState";
+import { BellArt, WhenArt } from "../components/reminders/ReminderArt";
+import { haptics } from "../lib/haptics";
 import { ReminderEditSheet } from "../components/ReminderEditSheet";
 import { DestinationPicker } from "../components/DestinationPicker";
 import { useToast } from "../components/ui/Toast";
@@ -26,6 +30,7 @@ import {
 import { getRefreshClientId, useGoogleAuth } from "../hooks/useGoogleAuth";
 import { applyDelivery } from "../services/notificationDelivery";
 import type { ReminderRule } from "../types/calendar";
+import { FONT, TYPE } from "../theme/type";
 
 type RemindersMap = Record<WasteStreamId, ReminderRule[]>;
 type SelKey = "all" | WasteStreamId;
@@ -44,6 +49,9 @@ const EMPTY_REMINDERS: RemindersMap = {
   altmetall: [],
   textilien: [],
   sonderabfall: [],
+  verpackung: [],
+  glas: [],
+  sonstiges: [],
 };
 
 function getWhenIcon(when: string, color: string, size = 19) {
@@ -53,7 +61,14 @@ function getWhenIcon(when: string, color: string, size = 19) {
   return <BellIcon color={color} size={size} />;
 }
 
-export function RemindersScreen({ preselectedStream }: { preselectedStream?: WasteStreamId }) {
+export function RemindersScreen({
+  preselectedStream,
+  onAddCalendar,
+}: {
+  preselectedStream?: WasteStreamId;
+  /** Opens the add-calendar flow; the no-calendar state shows a button for it when given. */
+  onAddCalendar?: () => void;
+}) {
   const insets = useSafeAreaInsets();
   const { active, patchCalendar } = useCalendars();
   const { t, wasteLabel, whenLabel, monthShort } = useT();
@@ -94,7 +109,7 @@ export function RemindersScreen({ preselectedStream }: { preselectedStream?: Was
         console.warn("[reminders] applyDelivery failed", err);
         await setNotificationDestination(previous);
         setDestination(previous);
-        toast.show(t("reminders.toast.delivery_failed", { dest: destLabel }));
+        toast.show(t("reminders.toast.delivery_failed", { dest: destLabel }), { variant: "error" });
         return;
       }
     }
@@ -139,18 +154,20 @@ export function RemindersScreen({ preselectedStream }: { preselectedStream?: Was
           previousDestinationRef.current = null;
         }
         const msg = err instanceof Error ? err.message : String(err);
-        toast.show(t("reminders.toast.google_failed", { error: msg }));
+        toast.show(t("reminders.toast.google_failed", { error: msg }), { variant: "error" });
       }
       // Safety net: if `connected` never flips within 30s (user cancelled
       // on Google's consent screen, dismissed the system browser, etc.),
       // give up and revert.
-      setTimeout(() => {
+      if (googleTimeoutRef.current) clearTimeout(googleTimeoutRef.current);
+      googleTimeoutRef.current = setTimeout(() => {
+        googleTimeoutRef.current = null;
         if (pendingGoogleAuthRef.current && !google.connected) {
           setPendingGoogleAuth(false);
           if (previousDestinationRef.current) {
             setDestination(previousDestinationRef.current);
             previousDestinationRef.current = null;
-            toast.show(t("reminders.toast.google_cancelled"));
+            toast.show(t("reminders.toast.google_cancelled"), { variant: "error" });
           }
         }
       }, 30_000);
@@ -164,6 +181,12 @@ export function RemindersScreen({ preselectedStream }: { preselectedStream?: Was
   // Mirror state into a ref so the setTimeout in handlePickDestination
   // sees the latest value (closures would capture the stale value).
   const pendingGoogleAuthRef = useRef(pendingGoogleAuth);
+  // The 30s "Google sign-in never finished" fallback; cleared when the
+  // screen goes away so it can't fire on another tab.
+  const googleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (googleTimeoutRef.current) clearTimeout(googleTimeoutRef.current);
+  }, []);
   pendingGoogleAuthRef.current = pendingGoogleAuth;
   const [sel, setSel] = useState<SelKey>(preselectedStream || "all");
   const [editorVisible, setEditorVisible] = useState(false);
@@ -177,6 +200,11 @@ export function RemindersScreen({ preselectedStream }: { preselectedStream?: Was
   }, [preselectedStream]);
 
   const reminders = active?.reminders || EMPTY_REMINDERS;
+  // Filter chips only for the waste types this calendar collects (or that
+  // already have reminders), so a calendar with three bins shows three.
+  const chipStreams = STREAM_ORDER.filter(
+    (id) => id === sel || (reminders[id] || []).length > 0 || active?.events.some((e) => e.type === id),
+  );
   // Flat list of {stream, rule} entries for whichever filter is active.
   // For "all" we sort by upcoming-soonest so the most relevant pickup floats
   // to the top; for a specific stream we keep insertion order.
@@ -274,23 +302,65 @@ export function RemindersScreen({ preselectedStream }: { preselectedStream?: Was
     }
   };
 
+  // Latest calendar + reminders for the Undo callback, which runs after
+  // later renders and must not restore over newer edits.
+  const activeRef = useRef(active);
+  activeRef.current = active;
+
   const handleDelete = (ruleId: string, stream: WasteStreamId) => {
     if (!active) return;
-    const next = { ...reminders };
+    const calendarId = active.id;
+    const before = reminders;
+    const index = (before[stream] || []).findIndex((r) => r.id === ruleId);
+    if (index < 0) return;
+    const removed = (before[stream] || [])[index];
+    const next = { ...before };
     next[stream] = (next[stream] || []).filter((r) => r.id !== ruleId);
     updateReminders(next);
-    toast.show(t("reminders.toast.removed"));
+    haptics.warn();
+
+    const restore = () => {
+      const current = activeRef.current;
+      if (!current || current.id !== calendarId) {
+        // The user switched calendars meanwhile; put the deleted one's map back as it was.
+        patchCalendar(calendarId, { reminders: before }).catch(() => {});
+        return;
+      }
+      const map = { ...(current.reminders || EMPTY_REMINDERS) };
+      const list = [...(map[stream] || [])];
+      if (list.some((r) => r.id === removed.id)) return;
+      list.splice(Math.min(index, list.length), 0, removed);
+      map[stream] = list;
+      patchCalendar(calendarId, { reminders: map }).catch(() => {});
+    };
+
+    toast.show(t("reminders.toast.removed"), {
+      variant: "info",
+      action: { label: t("common.undo"), onPress: restore },
+    });
   };
 
+  // The stream a new reminder is for: the selected one, or (from "All") the
+  // first stream that has events in the calendar, or papier as fallback.
+  const defaultStream = (): WasteStreamId =>
+    sel === "all" ? ((active?.events[0]?.type as WasteStreamId | undefined) ?? "papier") : sel;
+
   const openAdd = () => {
-    // From "All" view, default to the first stream that has events in the
-    // calendar (most likely to actually fire), or papier as fallback. From a
-    // stream view, use that stream.
-    const fallback =
-      (active?.events[0]?.type as WasteStreamId | undefined) ?? "papier";
-    setEditingStream(sel === "all" ? fallback : sel);
+    setEditingStream(defaultStream());
     setEditingRule(null);
     setEditorVisible(true);
+  };
+
+  // Quick start from the empty state: the same rule the editor would save.
+  // "evening before" and "morning of" fire at fixed times (20:00 / 07:00),
+  // so the stored time just mirrors that.
+  const quickAdd = (when: "evening before" | "morning of") => {
+    handleSave(defaultStream(), {
+      id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      when,
+      time: when === "evening before" ? "20:00" : "07:00",
+      on: true,
+    });
   };
 
   const openEdit = (rule: ReminderRule, stream: WasteStreamId) => {
@@ -301,194 +371,144 @@ export function RemindersScreen({ preselectedStream }: { preselectedStream?: Was
 
   if (!active) {
     return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: "#F5F2F7",
-          paddingTop: insets.top + 40,
-          paddingHorizontal: 30,
-        }}
-      >
-        <Text style={{ fontSize: 18, fontWeight: "800", color: S.ink, textAlign: "center" }}>
-          {t("reminders.no_calendar_title")}
+      <View style={{ flex: 1, backgroundColor: S.bg, paddingTop: insets.top + 12, paddingHorizontal: 16 }}>
+        <Text style={[TYPE.title, { color: S.ink, paddingHorizontal: 4, marginBottom: 16 }]}>
+          {t("tabs.reminders")}
         </Text>
-        <Text style={{ marginTop: 8, fontSize: 14, color: S.sec, textAlign: "center" }}>
-          {t("reminders.no_calendar_body")}
-        </Text>
+        <EmptyState
+          title={t("reminders.no_calendar_title")}
+          subtitle={t("reminders.no_calendar_body")}
+          bg={ST.papier.soft}
+          action={
+            onAddCalendar
+              ? { label: t("add.title"), onPress: onAddCalendar, icon: <PlusIcon color="#fff" size={18} /> }
+              : undefined
+          }
+        />
       </View>
     );
   }
 
+  const destLabel = t(`destination.${destination}.label` as StringKey);
+  const ruleLabel = (stream: WasteStreamId, r: ReminderRule) =>
+    `${wasteLabel(stream)} · ${
+      r.when === "specific date" && r.customDate ? formatCustomDate(r.customDate, monthShort) : whenLabel(r.when)
+    } · ${r.time}`;
+  const quickStream = defaultStream();
+  const qc = ST[quickStream];
+
   return (
-    <View style={{ flex: 1, backgroundColor: "#F5F2F7" }}>
+    <View style={{ flex: 1, backgroundColor: S.bg }}>
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
       >
+        {/* Compact header: title, then calendar name · destination. The
+            destination is the tap target for the picker. */}
         <View style={{ paddingHorizontal: 20 }}>
-          <Text style={{ fontSize: 12.5, color: S.sec, fontWeight: "600", marginBottom: 6 }}>
-            {t("reminders.notifications")}
-          </Text>
-          <Text style={{ fontSize: 34, fontWeight: "500", color: S.ink, letterSpacing: -0.8 }}>
-            {t("reminders.title_lead")} <Text style={{ fontWeight: "800" }}>{t("reminders.title_bold")}</Text>
-          </Text>
-          <Text
-            style={{
-              fontSize: 15,
-              color: S.sec,
-              lineHeight: 21,
-              fontWeight: "500",
-              marginTop: 10,
-            }}
-          >
-            {t("reminders.subtitle", { name: active.title })}
-          </Text>
+          <Text style={[TYPE.title, { color: S.ink }]}>{t("tabs.reminders")}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4, minHeight: 32 }}>
+            <Text style={[TYPE.caption, { color: S.sec, flexShrink: 1 }]} numberOfLines={1}>
+              {active.title}
+              {"  ·  "}
+            </Text>
+            <Pressable
+              onPress={() => {
+                haptics.tap();
+                setDestinationPickerVisible(true);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={`${t("destination_picker.title")}: ${destLabel}`}
+              hitSlop={8}
+              style={({ pressed }) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                paddingVertical: 5,
+                paddingLeft: 6,
+                paddingRight: 10,
+                borderRadius: 99,
+                backgroundColor: "#fff",
+                transform: [{ scale: pressed ? 0.96 : 1 }],
+              })}
+            >
+              <View
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 99,
+                  backgroundColor: destination === "google" ? "#fff" : ST.papier.soft,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {destination === "abfall" ? (
+                  <BellIcon color={ST.papier.ink} size={13} />
+                ) : destination === "google" ? (
+                  <GoogleIcon size={14} />
+                ) : destination === "phone" ? (
+                  <CalIcon color={ST.papier.ink} size={13} />
+                ) : (
+                  <XIcon color={S.sec} size={11} />
+                )}
+              </View>
+              <Text style={[TYPE.caption, { color: S.ink, fontFamily: FONT.w700 }]} numberOfLines={1}>
+                {destLabel}
+              </Text>
+              <ChevRIcon color={S.sec} size={10} />
+            </Pressable>
+          </View>
         </View>
-
-        {/* Destination strip — single tap to change where reminders go.
-            Always visible so the user knows exactly where the next ping
-            will come from. */}
-        <Pressable
-          onPress={() => setDestinationPickerVisible(true)}
-          style={{
-            marginHorizontal: 16,
-            marginTop: 18,
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 12,
-            paddingVertical: 12,
-            paddingHorizontal: 14,
-            backgroundColor: S.card,
-            borderRadius: 18,
-            shadowColor: "rgb(150,118,96)",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.1,
-            shadowRadius: 12,
-            elevation: 2,
-          }}
-        >
-          <View
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 11,
-              backgroundColor: destination === "google" ? "#fff" : "#F4EFEA",
-              borderWidth: destination === "google" ? 1.5 : 0,
-              borderColor: S.line,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {destination === "abfall" ? (
-              <BellIcon color={S.ink} size={17} />
-            ) : destination === "google" ? (
-              <GoogleIcon size={18} />
-            ) : destination === "phone" ? (
-              <CalIcon color={S.ink} size={17} />
-            ) : (
-              <XIcon color={S.sec} size={15} />
-            )}
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 10.5, fontWeight: "800", color: S.ter, letterSpacing: 0.6 }}>
-              {t("reminders.delivered_via")}
-            </Text>
-            <Text style={{ fontSize: 14.5, fontWeight: "800", color: S.ink, marginTop: 1, letterSpacing: -0.2 }}>
-              {t(`destination.${destination}.label` as StringKey)}
-            </Text>
-          </View>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 4,
-              paddingVertical: 5,
-              paddingHorizontal: 10,
-              borderRadius: 99,
-              backgroundColor: "#F0EAE4",
-            }}
-          >
-            <Text style={{ fontSize: 11.5, fontWeight: "800", color: S.sec }}>{t("common.change")}</Text>
-            <ChevRIcon color={S.sec} size={10} />
-          </View>
-        </Pressable>
 
         {/* Stream chips */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{
-            paddingHorizontal: 16,
-            paddingTop: 20,
-            paddingBottom: 4,
-            gap: 10,
-          }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 18, paddingBottom: 14, gap: 8 }}
         >
-          {/* "All" chip — selected by default */}
           {(() => {
             const on = sel === "all";
             return (
               <Pressable
                 key="all"
-                onPress={() => setSel("all")}
-                style={{
+                onPress={() => {
+                  haptics.select();
+                  setSel("all");
+                }}
+                accessibilityRole="button"
+                accessibilityState={{ selected: on }}
+                style={({ pressed }) => ({
                   flexDirection: "row",
                   alignItems: "center",
-                  gap: 9,
-                  paddingVertical: 8,
-                  paddingRight: 14,
-                  paddingLeft: 14,
+                  gap: 8,
+                  minHeight: 44,
+                  paddingHorizontal: 16,
                   borderRadius: 99,
                   backgroundColor: on ? S.ink : "#fff",
-                  ...(on
-                    ? {}
-                    : {
-                        shadowColor: "rgb(150,118,96)",
-                        shadowOffset: { width: 0, height: 6 },
-                        shadowOpacity: 0.12,
-                        shadowRadius: 18,
-                        elevation: 3,
-                      }),
-                }}
+                  transform: [{ scale: pressed ? 0.96 : 1 }],
+                })}
               >
-                <Text
-                  style={{
-                    fontSize: 15,
-                    fontWeight: "800",
-                    color: on ? "#fff" : S.ink,
-                    letterSpacing: -0.3,
-                  }}
-                >
-                  {t("reminders.all")}
-                </Text>
+                <Text style={[TYPE.label, { color: on ? "#fff" : S.ink }]}>{t("reminders.all")}</Text>
                 {totalActiveCount > 0 && (
                   <View
                     style={{
-                      minWidth: 19,
-                      height: 19,
+                      minWidth: 20,
+                      height: 20,
                       paddingHorizontal: 5,
                       borderRadius: 99,
-                      backgroundColor: on ? "rgba(255,255,255,0.18)" : "#F0EAE4",
+                      backgroundColor: on ? "rgba(255,255,255,0.18)" : S.bg,
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
-                    <Text
-                      style={{
-                        fontSize: 11,
-                        fontWeight: "800",
-                        color: on ? "#fff" : S.sec,
-                      }}
-                    >
-                      {totalActiveCount}
-                    </Text>
+                    <Text style={[TYPE.micro, { color: on ? "#fff" : S.sec }]}>{totalActiveCount}</Text>
                   </View>
                 )}
               </Pressable>
             );
           })()}
-          {STREAM_ORDER.map((id) => {
+          {chipStreams.map((id) => {
             const on = id === sel;
             // Defensive `|| []`: a saved calendar's reminders map may be a
             // partial shape (missing some stream keys) if it was created
@@ -498,70 +518,50 @@ export function RemindersScreen({ preselectedStream }: { preselectedStream?: Was
             return (
               <Pressable
                 key={id}
-                onPress={() => setSel(id)}
-                style={{
+                onPress={() => {
+                  haptics.select();
+                  setSel(id);
+                }}
+                accessibilityRole="button"
+                accessibilityState={{ selected: on }}
+                style={({ pressed }) => ({
                   flexDirection: "row",
                   alignItems: "center",
-                  gap: 9,
-                  paddingVertical: 8,
+                  gap: 8,
+                  minHeight: 44,
                   paddingRight: 14,
-                  paddingLeft: 8,
+                  paddingLeft: 7,
                   borderRadius: 99,
                   backgroundColor: on ? cc.c : "#fff",
-                  ...(on
-                    ? {}
-                    : {
-                        shadowColor: "rgb(150,118,96)",
-                        shadowOffset: { width: 0, height: 6 },
-                        shadowOpacity: 0.12,
-                        shadowRadius: 18,
-                        elevation: 3,
-                      }),
-                }}
+                  transform: [{ scale: pressed ? 0.96 : 1 }],
+                })}
               >
                 <View
                   style={{
                     width: 30,
                     height: 30,
-                    borderRadius: 10,
+                    borderRadius: 99,
                     backgroundColor: on ? "rgba(255,255,255,0.55)" : cc.soft,
                     alignItems: "center",
                     justifyContent: "center",
                   }}
                 >
-                  <StreamGlyph stream={id} size={19} color={cc.ink} />
+                  <StreamGlyph stream={id} size={18} color={cc.ink} />
                 </View>
-                <Text
-                  style={{
-                    fontSize: 15,
-                    fontWeight: "800",
-                    color: on ? cc.ink : S.ink,
-                    letterSpacing: -0.3,
-                  }}
-                >
-                  {wasteLabel(id)}
-                </Text>
+                <Text style={[TYPE.label, { color: on ? cc.ink : S.ink }]}>{wasteLabel(id)}</Text>
                 {n > 0 && (
                   <View
                     style={{
-                      minWidth: 19,
-                      height: 19,
+                      minWidth: 20,
+                      height: 20,
                       paddingHorizontal: 5,
                       borderRadius: 99,
-                      backgroundColor: on ? cc.ink : "#F0EAE4",
+                      backgroundColor: on ? cc.ink : cc.soft,
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
-                    <Text
-                      style={{
-                        fontSize: 11,
-                        fontWeight: "800",
-                        color: on ? "#fff" : S.sec,
-                      }}
-                    >
-                      {n}
-                    </Text>
+                    <Text style={[TYPE.micro, { color: on ? "#fff" : cc.ink }]}>{n}</Text>
                   </View>
                 )}
               </Pressable>
@@ -569,212 +569,152 @@ export function RemindersScreen({ preselectedStream }: { preselectedStream?: Was
           })}
         </ScrollView>
 
-        {/* Section header */}
-        <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 10 }}>
-          <Text style={{ fontSize: 12, fontWeight: "800", color: S.ter, letterSpacing: 1.2 }}>
-            {sel === "all"
-              ? visibleEntries.length === 1
-                ? t("reminders.section_all_one")
-                : t("reminders.section_all", { n: visibleEntries.length })
-              : visibleEntries.length === 1
-              ? t("reminders.section_stream_one", { name: wasteLabel(sel).toUpperCase() })
-              : t("reminders.section_stream", { name: wasteLabel(sel).toUpperCase(), n: visibleEntries.length })}
-          </Text>
-        </View>
-
         {/* Reminder list */}
         <View style={{ paddingHorizontal: 16, gap: 10 }}>
           {visibleEntries.length === 0 && (
-            <View
-              style={{
-                backgroundColor: S.card,
-                borderRadius: 22,
-                padding: 28,
-                alignItems: "center",
-                shadowColor: "rgb(150,118,96)",
-                shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: 0.12,
-                shadowRadius: 18,
-                elevation: 3,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 18,
-                  fontWeight: "800",
-                  color: S.ink,
-                  letterSpacing: -0.3,
-                }}
-              >
-                {t("reminders.empty_title")}
-              </Text>
-              <Text
-                style={{
-                  fontSize: 13.5,
-                  color: S.sec,
-                  marginTop: 4,
-                  fontWeight: "500",
-                  textAlign: "center",
-                }}
-              >
-                {sel === "all"
-                  ? t("reminders.empty_all")
-                  : t("reminders.empty_stream", { name: wasteLabel(sel).toLowerCase() })}
-              </Text>
-            </View>
+            <>
+              <EmptyState
+                title={t("reminders.empty_title")}
+                subtitle={
+                  sel === "all"
+                    ? t("reminders.empty_all")
+                    : t("reminders.empty_stream", { name: wasteLabel(sel) })
+                }
+                art={<BellArt />}
+                bg={sel === "all" ? ST.papier.soft : ST[sel].soft}
+                action={{ label: t("reminders.add"), onPress: openAdd, icon: <PlusIcon color="#fff" size={18} /> }}
+              />
+              {/* Quick start: one tap creates the two most common rules. */}
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <ArtTile label={whenLabel("evening before")} bg={qc.soft} onPress={() => quickAdd("evening before")}>
+                  <WhenArt kind="evening" ink={qc.ink} />
+                </ArtTile>
+                <ArtTile label={whenLabel("morning of")} bg={qc.soft} onPress={() => quickAdd("morning of")}>
+                  <WhenArt kind="morning" ink={qc.ink} />
+                </ArtTile>
+              </View>
+            </>
           )}
 
           {visibleEntries.map(({ stream, rule: r }) => {
             const cc = ST[stream];
-            const upcoming = active ? getUpcomingTriggersForRule(active, stream, r) : [];
+            const upcoming = getUpcomingTriggersForRule(active, stream, r);
             const isRecurring = r.when !== "specific date";
+            const label = ruleLabel(stream, r);
             return (
               <Pressable
                 key={`${stream}-${r.id}`}
                 onPress={() => openEdit(r, stream)}
-                style={{
+                accessibilityRole="button"
+                accessibilityLabel={label}
+                style={({ pressed }) => ({
                   flexDirection: "row",
                   alignItems: "center",
-                  gap: 13,
+                  gap: 12,
                   backgroundColor: S.card,
-                  borderRadius: 22,
-                  padding: 13,
+                  borderRadius: 24,
+                  paddingVertical: 12,
+                  paddingLeft: 12,
                   paddingRight: 14,
-                  shadowColor: "rgb(150,118,96)",
-                  shadowOffset: { width: 0, height: 6 },
-                  shadowOpacity: 0.12,
-                  shadowRadius: 18,
-                  elevation: 3,
-                }}
+                  transform: [{ scale: pressed ? 0.98 : 1 }],
+                })}
               >
                 <View
                   style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 13,
-                    backgroundColor: r.on ? cc.soft : "#F2ECE6",
+                    width: 46,
+                    height: 46,
+                    borderRadius: 15,
+                    backgroundColor: cc.soft,
                     alignItems: "center",
                     justifyContent: "center",
+                    opacity: r.on ? 1 : 0.6,
                   }}
                 >
-                  {getWhenIcon(r.when, r.on ? cc.ink : S.ter)}
+                  {getWhenIcon(r.when, cc.ink)}
                 </View>
                 <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    {sel === "all" && (
-                      <View
-                        style={{
-                          paddingHorizontal: 8,
-                          paddingVertical: 2,
-                          borderRadius: 99,
-                          backgroundColor: r.on ? cc.c : "#F2ECE6",
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontSize: 10.5,
-                            fontWeight: "800",
-                            color: r.on ? cc.ink : S.sec,
-                            letterSpacing: -0.1,
-                          }}
-                        >
-                          {wasteLabel(stream)}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text
-                    style={{
-                      fontSize: 16,
-                      fontWeight: "700",
-                      color: r.on ? S.ink : S.sec,
-                      marginTop: sel === "all" ? 3 : 0,
-                    }}
-                  >
+                  {sel === "all" && (
+                    <View
+                      style={{
+                        alignSelf: "flex-start",
+                        paddingHorizontal: 8,
+                        paddingVertical: 2,
+                        borderRadius: 99,
+                        backgroundColor: r.on ? cc.c : cc.soft,
+                        marginBottom: 3,
+                      }}
+                    >
+                      <Text style={[TYPE.micro, { color: cc.ink }]}>{wasteLabel(stream)}</Text>
+                    </View>
+                  )}
+                  <Text style={[TYPE.label, { color: r.on ? S.ink : S.sec }]} numberOfLines={1}>
                     {r.when === "specific date" && r.customDate
                       ? formatCustomDate(r.customDate, monthShort)
                       : whenLabel(r.when)}
                   </Text>
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      color: S.sec,
-                      marginTop: 1,
-                      fontWeight: "600",
-                    }}
-                  >
+                  {/* Time, then the scheduling reality for this rule: number
+                      of upcoming firings + the next one. */}
+                  <Text style={[TYPE.caption, { color: S.sec, marginTop: 1 }]} numberOfLines={1}>
                     {t("reminders.at_time", { time: r.time })}
+                    {r.on &&
+                      `  ·  ${
+                        upcoming.length === 0
+                          ? t("reminders.no_upcoming")
+                          : isRecurring
+                          ? t("reminders.upcoming_recurring", {
+                              n: upcoming.length,
+                              when: formatTriggerLabel(upcoming[0], monthShort),
+                            })
+                          : t("reminders.upcoming_once", {
+                              when: formatTriggerLabel(upcoming[0], monthShort),
+                            })
+                      }`}
                   </Text>
-                  {/* Show the scheduling reality for this rule: number of
-                      upcoming firings + the next one, so users see at a glance
-                      that a recurring rule books many notifications. */}
-                  {r.on && (
-                    <Text
-                      style={{
-                        fontSize: 11.5,
-                        color: S.ter,
-                        marginTop: 4,
-                        fontWeight: "700",
-                        letterSpacing: 0.2,
-                      }}
-                    >
-                      {upcoming.length === 0
-                        ? t("reminders.no_upcoming")
-                        : isRecurring
-                        ? t("reminders.upcoming_recurring", {
-                            n: upcoming.length,
-                            when: formatTriggerLabel(upcoming[0], monthShort),
-                          })
-                        : t("reminders.upcoming_once", {
-                            when: formatTriggerLabel(upcoming[0], monthShort),
-                          })}
-                    </Text>
-                  )}
                 </View>
                 <Pressable
                   onPress={(e) => {
                     e.stopPropagation();
                     handleDelete(r.id, stream);
                   }}
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 99,
-                    backgroundColor: "#F2ECE6",
+                  accessibilityRole="button"
+                  accessibilityLabel={`${t("common.delete")}: ${label}`}
+                  style={({ pressed }) => ({
+                    width: 44,
+                    height: 44,
                     alignItems: "center",
                     justifyContent: "center",
-                    marginRight: 4,
-                  }}
+                    transform: [{ scale: pressed ? 0.9 : 1 }],
+                  })}
                 >
-                  <XIcon color={S.sec} size={14} />
+                  <View
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 99,
+                      backgroundColor: S.bg,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <XIcon color={S.sec} size={13} />
+                  </View>
                 </Pressable>
                 <Pressable onPress={(e) => e.stopPropagation()}>
-                  <SoftSwitch on={r.on} onChange={() => handleToggle(r, stream)} />
+                  <SoftSwitch on={r.on} onChange={() => handleToggle(r, stream)} accessibilityLabel={label} />
                 </Pressable>
               </Pressable>
             );
           })}
 
-          {/* Add button */}
-          <Pressable
-            onPress={openAdd}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 9,
-              borderWidth: 1.6,
-              borderStyle: "dashed",
-              borderColor: S.ter,
-              borderRadius: 22,
-              padding: 16,
-            }}
-          >
-            <PlusIcon color={S.ink} size={19} />
-            <Text style={{ fontSize: 15.5, fontWeight: "700", color: S.ink }}>
-              {t("reminders.add")}
-            </Text>
-          </Pressable>
+          {visibleEntries.length > 0 && (
+            <PillButton
+              label={t("reminders.add")}
+              variant="secondary"
+              icon={<PlusIcon color={S.ink} size={18} />}
+              onPress={openAdd}
+              style={{ marginTop: 6 }}
+            />
+          )}
         </View>
       </ScrollView>
 

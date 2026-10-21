@@ -4,13 +4,18 @@ import { SlideUpSheet } from "./ui/SlideUpSheet";
 import { S, ST, STREAM_ORDER, type WasteStreamId } from "../theme/colors";
 import { StreamGlyph } from "./icons/StreamGlyph";
 import { CheckIcon } from "./icons/Icons";
+import { PillButton, SheetHeader } from "./ui/sheet";
 import type { CollectionEvent } from "../types/calendar";
 import { useT } from "../context/LocaleContext";
+import { FONT } from "../theme/type";
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
 // Sheet uses up to 88% of screen — leaves a bit of backdrop visible at the top
 // for the user to tap to dismiss.
 const SHEET_HEIGHT = Math.min(720, SCREEN_HEIGHT * 0.88);
+// Three colour tiles per row when the calendar has no zones.
+const TILE_GAP = 10;
+const TILE_W = Math.floor((Dimensions.get("window").width - 40 - TILE_GAP * 2) / 3);
 
 interface Props {
   visible: boolean;
@@ -85,206 +90,184 @@ export function DayEditSheet({ visible, onClose, date, currentEvents, zones, onS
     onClose();
   };
 
+  const countLine =
+    totalSelected === 0
+      ? t("day_edit.none_set")
+      : totalSelected === 1
+        ? t("day_edit.count_set_one")
+        : t("day_edit.count_set_other", { n: totalSelected });
+
   return (
     <SlideUpSheet visible={visible} onClose={onClose} height={SHEET_HEIGHT} scrollable={false}>
-      <View style={{ height: SHEET_HEIGHT - 30, paddingHorizontal: 20 }}>
-        {/* Fixed header */}
-        <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", paddingBottom: 4 }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 11, fontWeight: "800", color: S.ter, letterSpacing: 1.2 }}>
-              {t("day_edit.eyebrow")}
-            </Text>
-            <Text
-              style={{
-                fontSize: 22,
-                fontWeight: "800",
-                color: S.ink,
-                letterSpacing: -0.5,
-                marginTop: 4,
-              }}
-              numberOfLines={1}
-            >
-              {heading}
-            </Text>
-            <Text style={{ fontSize: 13, color: S.sec, fontWeight: "600", marginTop: 4 }}>
-              {totalSelected === 0
-                ? t("day_edit.none_set")
-                : totalSelected === 1
-                  ? t("day_edit.count_set_one")
-                  : t("day_edit.count_set_other", { n: totalSelected })}
-            </Text>
-          </View>
-          {totalSelected > 0 && (
-            <Pressable
-              onPress={clearAll}
-              style={{
-                paddingVertical: 7,
-                paddingHorizontal: 13,
-                borderRadius: 99,
-                backgroundColor: "#F0EAE4",
-              }}
-            >
-              <Text style={{ fontSize: 12, fontWeight: "800", color: S.sec, letterSpacing: 0.3 }}>
-                {t("day_edit.clear")}
-              </Text>
-            </Pressable>
-          )}
-        </View>
+      <View style={{ height: SHEET_HEIGHT - 30, paddingHorizontal: 20, paddingTop: 4 }}>
+        {/* Fixed header: the date is the title. */}
+        <SheetHeader
+          title={heading}
+          subtitle={countLine}
+          right={
+            totalSelected > 0 ? (
+              <Pressable
+                onPress={clearAll}
+                accessibilityRole="button"
+                hitSlop={8}
+                style={({ pressed }) => ({
+                  marginTop: 2,
+                  paddingVertical: 8,
+                  paddingHorizontal: 14,
+                  borderRadius: 99,
+                  backgroundColor: "#fff",
+                  transform: [{ scale: pressed ? 0.95 : 1 }],
+                })}
+              >
+                <Text style={{ fontSize: 14, fontFamily: FONT.w800, color: S.sec }}>{t("day_edit.clear")}</Text>
+              </Pressable>
+            ) : undefined
+          }
+        />
 
         {/* Scrollable middle */}
         <ScrollView
-          style={{ flex: 1, marginTop: 14 }}
-          contentContainerStyle={{ paddingBottom: 16 }}
+          style={{ flex: 1, marginHorizontal: -20 }}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16 }}
           showsVerticalScrollIndicator={false}
         >
-          {STREAM_ORDER.map((type) => {
-            const s = ST[type];
-            const activeZones = typeZones.get(type) || new Set();
-            const isActive = activeZones.size > 0;
-
-            return (
-              <View
-                key={type}
-                style={{
-                  borderRadius: 18,
-                  marginBottom: 10,
-                  backgroundColor: isActive ? s.soft : "#FFFFFF",
-                  borderWidth: 1.5,
-                  borderColor: isActive ? s.c : "rgba(40,28,18,0.07)",
-                  overflow: "hidden",
-                }}
-              >
-                {/* Top row: icon + label + (no-zone toggle / status) */}
-                <Pressable
-                  onPress={hasZones ? undefined : () => toggleNoZone(type)}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 12,
-                    padding: 12,
-                    paddingRight: 14,
-                  }}
-                >
-                  <View
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 12,
-                      backgroundColor: isActive ? s.c : "#F0EAE4",
+          {!hasZones ? (
+            // One colour tile per waste type; tap to toggle.
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: TILE_GAP }}>
+              {STREAM_ORDER.map((type) => {
+                const s = ST[type];
+                const isActive = typeZones.has(type);
+                return (
+                  <Pressable
+                    key={type}
+                    onPress={() => toggleNoZone(type)}
+                    accessibilityRole="button"
+                    accessibilityLabel={wasteLabel(type)}
+                    accessibilityState={{ selected: isActive }}
+                    style={({ pressed }) => ({
+                      width: TILE_W,
+                      height: TILE_W,
+                      borderRadius: 22,
+                      backgroundColor: isActive ? s.c : s.soft,
+                      borderWidth: 2,
+                      borderColor: isActive ? S.ink : "transparent",
                       alignItems: "center",
                       justifyContent: "center",
-                    }}
+                      gap: 4,
+                      paddingHorizontal: 6,
+                      transform: [{ scale: pressed ? 0.96 : 1 }],
+                    })}
                   >
-                    <StreamGlyph stream={type} size={26} color={isActive ? s.ink : S.ter} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 15, fontWeight: "800", color: S.ink, letterSpacing: -0.2 }}>
+                    {isActive && (
+                      <View
+                        style={{
+                          position: "absolute",
+                          top: 8,
+                          right: 8,
+                          width: 22,
+                          height: 22,
+                          borderRadius: 99,
+                          backgroundColor: S.ink,
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <CheckIcon color="#fff" size={11} />
+                      </View>
+                    )}
+                    <StreamGlyph stream={type} size={Math.min(44, TILE_W * 0.42)} color={s.ink} />
+                    <Text
+                      style={{ fontSize: 13, fontFamily: FONT.w800, color: s.ink, textAlign: "center", lineHeight: 15 }}
+                      numberOfLines={2}
+                    >
                       {wasteLabel(type)}
                     </Text>
-                    {isActive && hasZones && (
-                      <Text style={{ fontSize: 12, color: s.ink, fontWeight: "700", marginTop: 2 }}>
-                        {Array.from(activeZones).join(" · ")}
-                      </Text>
-                    )}
-                    {!isActive && (
-                      <Text style={{ fontSize: 12, color: S.ter, fontWeight: "600", marginTop: 2 }}>
-                        {hasZones ? t("day_edit.pick_zones") : t("day_edit.tap_to_add")}
-                      </Text>
-                    )}
-                  </View>
-                  {!hasZones && (
-                    <View
-                      style={{
-                        width: 26,
-                        height: 26,
-                        borderRadius: 99,
-                        backgroundColor: isActive ? s.ink : "transparent",
-                        borderWidth: isActive ? 0 : 1.5,
-                        borderColor: "rgba(40,28,18,0.18)",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      {isActive && <CheckIcon color="#fff" size={14} />}
-                    </View>
-                  )}
-                </Pressable>
-
-                {/* Zone chips (only for multi-zone calendars) — wraps for any number of zones */}
-                {hasZones && (
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : (
+            // Multi-zone calendars: one soft row per type with its zone chips.
+            <View style={{ gap: 10 }}>
+              {STREAM_ORDER.map((type) => {
+                const s = ST[type];
+                const activeZones = typeZones.get(type) || new Set<string>();
+                const isActive = activeZones.size > 0;
+                return (
                   <View
+                    key={type}
                     style={{
-                      flexDirection: "row",
-                      flexWrap: "wrap",
-                      gap: 8,
+                      borderRadius: 22,
                       padding: 12,
-                      paddingTop: 0,
+                      gap: 12,
+                      backgroundColor: isActive ? s.soft : "#fff",
                     }}
                   >
-                    {zones.map((zone) => {
-                      const on = activeZones.has(zone);
-                      return (
-                        <Pressable
-                          key={zone}
-                          onPress={() => toggleZone(type, zone)}
-                          style={{
-                            flexDirection: "row",
-                            alignItems: "center",
-                            gap: 6,
-                            paddingVertical: 8,
-                            paddingHorizontal: 14,
-                            borderRadius: 99,
-                            backgroundColor: on ? s.c : "#FFFFFF",
-                            borderWidth: 1.5,
-                            borderColor: on ? s.c : "rgba(40,28,18,0.10)",
-                          }}
-                        >
-                          {on && <CheckIcon color={s.ink} size={12} />}
-                          <Text
-                            style={{
-                              fontSize: 13,
-                              fontWeight: "800",
-                              color: on ? s.ink : S.sec,
-                              letterSpacing: 0.2,
-                            }}
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                      <View
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: 13,
+                          backgroundColor: isActive ? s.c : s.soft,
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <StreamGlyph stream={type} size={26} color={s.ink} />
+                      </View>
+                      <Text
+                        style={{ flex: 1, fontSize: 16, fontFamily: FONT.w800, color: S.ink, letterSpacing: -0.2 }}
+                        numberOfLines={1}
+                      >
+                        {wasteLabel(type)}
+                      </Text>
+                    </View>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                      {zones.map((zone) => {
+                        const on = activeZones.has(zone);
+                        return (
+                          <Pressable
+                            key={zone}
+                            onPress={() => toggleZone(type, zone)}
+                            accessibilityRole="button"
+                            accessibilityState={{ selected: on }}
+                            style={({ pressed }) => ({
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: 6,
+                              height: 36,
+                              paddingHorizontal: 14,
+                              borderRadius: 99,
+                              backgroundColor: on ? s.c : isActive ? "#fff" : s.soft,
+                              transform: [{ scale: pressed ? 0.95 : 1 }],
+                            })}
                           >
-                            {zone}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
+                            {on && <CheckIcon color={s.ink} size={12} />}
+                            <Text style={{ fontSize: 14, fontFamily: FONT.w800, color: on ? s.ink : S.sec }}>{zone}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
                   </View>
-                )}
-              </View>
-            );
-          })}
+                );
+              })}
+            </View>
+          )}
         </ScrollView>
 
         {/* Fixed footer */}
         <View style={{ paddingTop: 12 }}>
-          <Pressable
+          <PillButton
             onPress={handleSave}
-            style={{
-              height: 54,
-              borderRadius: 99,
-              backgroundColor: S.ink,
-              alignItems: "center",
-              justifyContent: "center",
-              shadowColor: S.ink,
-              shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: 0.22,
-              shadowRadius: 18,
-              elevation: 6,
-            }}
-          >
-            <Text style={{ fontSize: 17, fontWeight: "700", color: "#fff" }}>
-              {totalSelected === 0
+            label={
+              totalSelected === 0
                 ? t("day_edit.save_none")
                 : totalSelected === 1
                   ? t("day_edit.save_count_one")
-                  : t("day_edit.save_count_other", { n: totalSelected })}
-            </Text>
-          </Pressable>
+                  : t("day_edit.save_count_other", { n: totalSelected })
+            }
+          />
         </View>
       </View>
     </SlideUpSheet>

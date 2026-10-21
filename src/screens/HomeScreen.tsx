@@ -6,11 +6,12 @@ import { BrandMark } from "../components/ui/BrandMark";
 import { CircBtn } from "../components/ui/CircBtn";
 import { CalendarMonth } from "../components/CalendarMonth";
 import { StreamGlyph } from "../components/icons/StreamGlyph";
-import { PinIcon, ChevRIcon, ShareIcon, PencilIcon, CheckIcon, BellIcon, XIcon } from "../components/icons/Icons";
+import { PinIcon, ChevRIcon, ShareIcon, PencilIcon, CheckIcon, BellIcon, XIcon, CalIcon } from "../components/icons/Icons";
 import { useCalendars } from "../context/CalendarContext";
 import { useT } from "../context/LocaleContext";
 import { ShareSheet } from "../components/ShareSheet";
 import { LocationEditSheet } from "../components/LocationEditSheet";
+import { placeFromLocation } from "../lib/location";
 import { ReminderEditSheet } from "../components/ReminderEditSheet";
 import { DayEventsEditSheet } from "../components/DayEventsEditSheet";
 import { useToast } from "../components/ui/Toast";
@@ -19,20 +20,31 @@ import { isReminderNudgeDismissed, dismissReminderNudge } from "../services/nudg
 import { getFunFactPool } from "../services/funFacts";
 import type { ReminderRule, CollectionEvent } from "../types/calendar";
 import { parseISODate } from "../lib/dates";
+import { TYPE } from "../theme/type";
+import { ArtTile, PillButton, SoftCard } from "../components/ui/sheet";
+import { EmptyState } from "../components/ui/EmptyState";
+import { ScanArt, BrowseArt } from "../components/art/Art";
+import { haptics } from "../lib/haptics";
+import { NextPickupHero } from "../components/home/NextPickupHero";
+import { UpcomingList } from "../components/home/UpcomingList";
+import { HomeSkeleton } from "../components/home/HomeSkeleton";
+import { HeaderMenu } from "../components/home/HeaderMenu";
 
 interface Props {
   onCalendarPress?: () => void;
   onLocationPress?: () => void;
+  /** Opens the add-calendar sheet (empty state's main action). */
+  onAddPress?: () => void;
   /** Callback fired when the user taps the "Set up reminders" nudge card.
    *  Lets the parent (TabNavigator) switch tabs to Reminders. */
   onGoToReminders?: () => void;
   navigation?: any;
 }
 
-export function HomeScreen({ onCalendarPress, onGoToReminders }: Props) {
+export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders }: Props) {
   const insets = useSafeAreaInsets();
-  const { active, patchCalendar } = useCalendars();
-  const { t, wasteLabel, weekdayShort, monthShort } = useT();
+  const { active, loading, patchCalendar, homeLocation, setHomeLocation } = useCalendars();
+  const { t, monthShort, locale } = useT();
   const toast = useToast();
   const [shareVisible, setShareVisible] = useState(false);
   const [locationVisible, setLocationVisible] = useState(false);
@@ -175,8 +187,8 @@ export function HomeScreen({ onCalendarPress, onGoToReminders }: Props) {
   // crossfade. Pool is memoized on the next-upcoming stream so it stays
   // stable across renders; only changes when a different pickup comes up.
   const funFactPool = useMemo(
-    () => getFunFactPool(allUpcoming[0]?.type),
-    [allUpcoming],
+    () => getFunFactPool(allUpcoming[0]?.type, locale),
+    [allUpcoming, locale],
   );
   const [factIndex, setFactIndex] = useState(0);
   const factOpacity = useRef(new Animated.Value(1)).current;
@@ -213,11 +225,20 @@ export function HomeScreen({ onCalendarPress, onGoToReminders }: Props) {
   const funFact = funFactPool[factIndex] ?? "";
 
   const municipality = active?.municipality || "";
-  const locationLabel = active?.location || active?.municipality || t("home.set_location");
+  const locationLabel = active ? active.location || active.municipality || t("home.set_location") : homeLocation || t("home.set_location");
 
   const handleLocationSave = async (newLocation: string) => {
-    if (!active) return;
-    await patchCalendar(active.id, { location: newLocation || undefined });
+    if (!active) {
+      await setHomeLocation(newLocation || undefined);
+      return;
+    }
+    if (!newLocation) {
+      await patchCalendar(active.id, { location: undefined });
+      return;
+    }
+    // Keep municipality/canton in step with the new location; publishing
+    // and community search read those first.
+    await patchCalendar(active.id, { location: newLocation, ...placeFromLocation(newLocation) });
   };
 
   const handleDayPress = (day: number, month: number, year: number) => {
@@ -296,534 +317,312 @@ export function HomeScreen({ onCalendarPress, onGoToReminders }: Props) {
     );
   };
 
+  const heroDate = uniqueUpcomingDates[0];
+  const heroEvents = useMemo(
+    () => (heroDate ? allUpcoming.filter((e) => e.date === heroDate && ST[e.type]) : []),
+    [allUpcoming, heroDate],
+  );
+  const listEvents = upcoming.filter((e) => e.date !== heroDate);
+  const factStream: WasteStreamId = allUpcoming[0]?.type && ST[allUpcoming[0].type] ? allUpcoming[0].type : "gruengut";
+
+  const openReminder = (stream: WasteStreamId, date: string) => {
+    setReminderSheet({ visible: true, stream, date });
+  };
+
   return (
-    <View style={{ flex: 1, backgroundColor: "#F5F2F7" }}>
+    <View style={{ flex: 1, backgroundColor: S.bg }}>
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingTop: insets.top + 10, paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Top bar: brand · location · share */}
+        {/* Top bar: logo · location (centred) · menu. The side slots have
+            the same width, so the location pill sits in the screen's centre. */}
         <View
           style={{
             paddingHorizontal: 20,
             flexDirection: "row",
             alignItems: "center",
-            justifyContent: "space-between",
           }}
         >
-          <BrandMark size={40} />
+          <View style={{ width: 44, alignItems: "flex-start" }}>
+            <BrandMark size={40} />
+          </View>
 
-          <Pressable
-            onPress={() => setLocationVisible(true)}
-            style={{
-              flexShrink: 1,
-              minWidth: 0,
-              marginHorizontal: 10,
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 6,
-              paddingVertical: 9,
-              paddingHorizontal: 14,
-              borderRadius: 99,
-              backgroundColor: "#fff",
-              shadowColor: "rgb(150,118,96)",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.1,
-              shadowRadius: 12,
-              elevation: 2,
-              maxWidth: 220,
-            }}
-          >
-            <PinIcon color={S.ink} size={14} />
-            <Text
-              style={{
-                flexShrink: 1,
-                minWidth: 0,
-                fontSize: 14,
-                fontWeight: "800",
-                color: S.ink,
-                letterSpacing: -0.2,
+          <View style={{ flex: 1, alignItems: "center", paddingHorizontal: 10 }}>
+            <Pressable
+              onPress={() => {
+                haptics.tap();
+                setLocationVisible(true);
               }}
-              numberOfLines={1}
-              ellipsizeMode="tail"
+              accessibilityRole="button"
+              accessibilityLabel={locationLabel}
+              style={({ pressed }) => ({
+                maxWidth: "100%",
+                minHeight: 44,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                paddingHorizontal: 14,
+                borderRadius: 99,
+                backgroundColor: "#fff",
+                transform: [{ scale: pressed ? 0.97 : 1 }],
+              })}
             >
-              {locationLabel}
-            </Text>
-            <ChevRIcon color={S.ter} size={11} />
-          </Pressable>
+              <PinIcon color={S.ink} size={14} />
+              <Text
+                style={[TYPE.label, { flexShrink: 1, minWidth: 0, color: S.ink, fontSize: 14 }]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {locationLabel}
+              </Text>
+              <ChevRIcon color={S.ter} size={11} />
+            </Pressable>
+          </View>
 
-          <View style={{ flexDirection: "row", gap: 8 }}>
-            {active && (
-              <>
-                <CircBtn
-                  size={44}
-                  bg={editMode ? S.ink : "#fff"}
-                  onPress={() => setEditMode((v) => !v)}
-                >
-                  {editMode ? (
-                    <CheckIcon color="#fff" size={17} />
-                  ) : (
-                    <PencilIcon color={S.ink} size={17} />
-                  )}
+          <View style={{ width: 44, alignItems: "flex-end" }}>
+            {active &&
+              (editMode ? (
+                // While editing, the slot is the way out: one tap to finish.
+                <CircBtn size={44} bg={S.ink} shadow={false} accessibilityLabel={t("common.done")} onPress={() => setEditMode(false)}>
+                  <CheckIcon color="#fff" size={17} />
                 </CircBtn>
-                <CircBtn size={44} onPress={() => setShareVisible(true)}>
-                  <ShareIcon color={S.ink} size={18} />
-                </CircBtn>
-              </>
-            )}
+              ) : (
+                <HeaderMenu
+                  accessibilityLabel={t("home.more")}
+                  items={[
+                    {
+                      label: t("home.edit"),
+                      icon: <PencilIcon color={ST.karton.ink} size={16} />,
+                      tint: ST.karton.soft,
+                      onPress: () => setEditMode(true),
+                    },
+                    {
+                      label: t("switcher.share"),
+                      icon: <ShareIcon color={ST.papier.ink} size={16} />,
+                      tint: ST.papier.soft,
+                      onPress: () => setShareVisible(true),
+                    },
+                  ]}
+                />
+              ))}
           </View>
         </View>
 
-        {/* Edit-mode banner — soft hint that taps now go to day editor */}
+        {/* Edit-mode banner: a soft pill saying taps now edit days */}
         {editMode && active && (
           <View
             style={{
+              alignSelf: "flex-start",
               marginHorizontal: 20,
               marginTop: 14,
-              paddingVertical: 9,
-              paddingHorizontal: 14,
-              borderRadius: 14,
-              backgroundColor: S.ink,
+              paddingVertical: 8,
+              paddingLeft: 10,
+              paddingRight: 14,
+              borderRadius: 99,
+              backgroundColor: ST.karton.soft,
               flexDirection: "row",
               alignItems: "center",
               gap: 8,
+              maxWidth: "90%",
             }}
           >
-            <PencilIcon color="#fff" size={13} />
-            <Text style={{ flex: 1, color: "#fff", fontWeight: "700", fontSize: 13 }}>
+            <View
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: 99,
+                backgroundColor: ST.karton.c,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <PencilIcon color={ST.karton.ink} size={12} />
+            </View>
+            <Text style={[TYPE.caption, { flexShrink: 1, color: ST.karton.ink }]}>
               {t("home.edit_banner")}
             </Text>
           </View>
         )}
 
-        {/* Calendar title row — tap to switch calendars. Flat on the page
-            background (no card, no shadow) so the calendar grid below feels
-            like the visual anchor instead of competing with this row. */}
-        {active && (
-          <Pressable
-            onPress={onCalendarPress}
-            style={{
-              marginHorizontal: 20,
-              marginTop: 22,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <View style={{ flex: 1, paddingRight: 12 }}>
-              <Text style={{ fontSize: 11, fontWeight: "800", color: S.ter, letterSpacing: 1.2 }}>
-                {t("home.calendar")}
-              </Text>
-              <Text
-                style={{
-                  fontSize: 17,
-                  fontWeight: "800",
-                  color: S.ink,
-                  letterSpacing: -0.3,
-                  marginTop: 2,
-                }}
-                numberOfLines={1}
-              >
+        {loading ? (
+          <HomeSkeleton />
+        ) : !active ? (
+          /* No calendar yet: Recyclops, one line, one button, two pictures */
+          <View style={{ paddingHorizontal: 16, paddingTop: 18, gap: 12 }}>
+            <EmptyState
+              title={t("home.empty.title")}
+              subtitle={t("add.subtitle")}
+              action={{ label: t("tabs.add"), onPress: () => onAddPress?.() }}
+            />
+            <View style={{ flexDirection: "row", gap: 12 }}>
+              <ArtTile label={t("add.tile.scan")} bg={ST.papier.soft} onPress={() => onAddPress?.()}>
+                <ScanArt />
+              </ArtTile>
+              <ArtTile label={t("add.tile.browse")} bg={ST.gruengut.soft} onPress={() => onAddPress?.()}>
+                <BrowseArt />
+              </ArtTile>
+            </View>
+          </View>
+        ) : (
+          <>
+            {/* Next pickup: the main fact on the screen */}
+            <View style={{ paddingHorizontal: 16, paddingTop: 18 }}>
+              {heroEvents.length > 0 ? (
+                <NextPickupHero events={heroEvents} onPress={openReminder} />
+              ) : (
+                <SoftCard
+                  bg="#fff"
+                  style={{ flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 16 }}
+                >
+                  <View
+                    style={{
+                      width: 52,
+                      height: 52,
+                      borderRadius: 18,
+                      backgroundColor: ST.sonstiges.soft,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <CalIcon color={ST.sonstiges.ink} size={26} />
+                  </View>
+                  <Text style={[TYPE.label, { flex: 1, color: S.ink }]}>{t("reminders.no_upcoming")}</Text>
+                </SoftCard>
+              )}
+            </View>
+
+            {/* Reminder nudge: one line and one small button */}
+            {showReminderNudge && (
+              <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+                <SoftCard
+                  bg={ST.papier.soft}
+                  style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, padding: 14 }}
+                >
+                  <View
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 99,
+                      backgroundColor: ST.papier.c,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Animated.View style={{ transform: [{ rotate: bellRotation }] }}>
+                      <BellIcon color={ST.papier.ink} size={20} />
+                    </Animated.View>
+                  </View>
+                  <View style={{ flex: 1, alignItems: "flex-start" }}>
+                    <Text style={[TYPE.label, { color: ST.papier.ink }]} numberOfLines={2}>
+                      {t("home.nudge_title")}
+                    </Text>
+                    <PillButton
+                      label={t("home.nudge_cta")}
+                      onPress={handleNudgeCTA}
+                      style={{ height: 36, paddingHorizontal: 14, marginTop: 8 }}
+                    />
+                  </View>
+                  <CircBtn
+                    size={28}
+                    bg="rgba(255,255,255,0.7)"
+                    shadow={false}
+                    accessibilityLabel={t("reminder_edit.close")}
+                    onPress={handleDismissNudge}
+                  >
+                    <XIcon color={ST.papier.ink} size={11} />
+                  </CircBtn>
+                </SoftCard>
+              </View>
+            )}
+
+            {/* Calendar title row: tap to switch calendars */}
+            <Pressable
+              onPress={onCalendarPress}
+              accessibilityRole="button"
+              accessibilityLabel={`${active.title}, ${t("home.switch")}`}
+              style={({ pressed }) => ({
+                marginHorizontal: 20,
+                marginTop: 24,
+                minHeight: 44,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                opacity: pressed ? 0.7 : 1,
+              })}
+            >
+              <Text style={[TYPE.heading, { flex: 1, color: S.ink, paddingRight: 12 }]} numberOfLines={1}>
                 {active.title}
               </Text>
-            </View>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 4,
-                paddingVertical: 6,
-                paddingHorizontal: 12,
-                borderRadius: 99,
-                backgroundColor: "#F0EAE4",
-              }}
-            >
-              <Text style={{ fontSize: 12, fontWeight: "800", color: S.sec, letterSpacing: 0.2 }}>
-                {t("home.switch")}
-              </Text>
-              <ChevRIcon color={S.sec} size={11} />
-            </View>
-          </Pressable>
-        )}
-
-        {/* Monthly calendar */}
-        <View style={{ paddingHorizontal: 16, paddingTop: active ? 12 : 20 }}>
-          <CalendarMonth
-            marks={marks}
-            municipality={municipality}
-            onDayPress={handleDayPress}
-          />
-        </View>
-
-        {/* Reminder nudge — gentle prompt to set up notifications, shown
-            once after adding a calendar until the user dismisses or acts. */}
-        {showReminderNudge && (
-          <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
-            <Pressable
-              onPress={handleNudgeCTA}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 14,
-                backgroundColor: "#fff",
-                borderRadius: 22,
-                padding: 14,
-                paddingRight: 12,
-                shadowColor: "rgb(150,118,96)",
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: 0.14,
-                shadowRadius: 20,
-                elevation: 4,
-              }}
-            >
               <View
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 13,
-                  backgroundColor: ST.papier.soft,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Animated.View style={{ transform: [{ rotate: bellRotation }] }}>
-                  <BellIcon color={ST.papier.ink} size={22} />
-                </Animated.View>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 15, fontWeight: "800", color: S.ink, letterSpacing: -0.3 }}>
-                  {t("home.nudge_title")}
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 12.5,
-                    color: S.sec,
-                    marginTop: 2,
-                    fontWeight: "500",
-                    lineHeight: 17,
-                  }}
-                >
-                  {t("home.nudge_body")}
-                </Text>
-              </View>
-              <Pressable
-                onPress={(e) => {
-                  e.stopPropagation();
-                  handleDismissNudge();
-                }}
-                hitSlop={8}
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 99,
-                  backgroundColor: "#F2ECE6",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <XIcon color={S.sec} size={12} />
-              </Pressable>
-            </Pressable>
-          </View>
-        )}
-
-        {/* Next up section */}
-        <View style={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 10 }}>
-          <Text
-            style={{
-              fontSize: 12,
-              fontWeight: "800",
-              color: S.ter,
-              letterSpacing: 1.2,
-            }}
-          >
-            {t("home.next_up")}
-          </Text>
-        </View>
-
-        <ScrollView
-          // Inner scroll container — caps Next Up at a fixed height so a
-          // long calendar (many "Show more" taps) stays scannable. The
-          // outer ScrollView still handles the rest of the screen; we just
-          // need nestedScrollEnabled on Android so this one can also scroll.
-          style={{ maxHeight: 420 }}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 4 }}
-          nestedScrollEnabled
-          showsVerticalScrollIndicator
-        >
-          {upcoming.map((evt, i) => {
-            const s = ST[evt.type];
-            if (!s) return null;
-            const d = parseISODate(evt.date);
-            const now = new Date();
-            now.setHours(0, 0, 0, 0);
-            const diffDays = Math.round((d.getTime() - now.getTime()) / 86400000);
-            const weekday = weekdayShort(d.getDay());
-            const monthAbbr = monthShort(d.getMonth() + 1);
-            const tag = diffDays === 0 ? t("home.today") : diffDays === 1 ? t("home.tomorrow") : undefined;
-            const isFirst = i === 0;
-            const isLast = i === upcoming.length - 1;
-            // Only render the date stack for the first pickup of each day.
-            // Subsequent same-day items show an empty date column so the
-            // timeline keeps flowing without repeating the date label.
-            const isFirstOfDay = i === 0 || upcoming[i - 1].date !== evt.date;
-
-            const subParts: string[] = [];
-            if (evt.time) subParts.push(evt.time);
-            if (evt.zone && evt.zone !== "all") subParts.push(evt.zone);
-
-            return (
-              <View
-                key={i}
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
-                  // No vertical padding here — any gap between rows would
-                  // break the continuous timeline line. Use minHeight to give
-                  // each row breathing room so the line shows above/below the
-                  // 44px dot instead.
-                  minHeight: 72,
+                  gap: 4,
+                  paddingVertical: 7,
+                  paddingHorizontal: 12,
+                  borderRadius: 99,
+                  backgroundColor: "#fff",
                 }}
               >
-                {/* Date column — only populated on the first item of each
-                    day; same-day continuations leave it blank but keep the
-                    width so the timeline + content stay aligned. */}
-                <View
-                  style={{
-                    width: 52,
-                    alignItems: "center",
-                  }}
-                >
-                  {isFirstOfDay && (
-                    <>
-                      <Text
-                        style={{
-                          fontSize: 26,
-                          fontWeight: "800",
-                          color: S.ink,
-                          letterSpacing: -0.7,
-                          lineHeight: 28,
-                        }}
-                      >
-                        {d.getDate()}
-                      </Text>
-                      <Text
-                        style={{
-                          fontSize: 10,
-                          fontWeight: "800",
-                          color: S.sec,
-                          letterSpacing: 0.4,
-                          marginTop: 2,
-                        }}
-                      >
-                        {weekday.toUpperCase()}
-                      </Text>
-                      <Text
-                        style={{
-                          fontSize: 9.5,
-                          fontWeight: "700",
-                          color: S.ter,
-                          letterSpacing: 0.5,
-                          marginTop: 1,
-                        }}
-                      >
-                        {monthAbbr.toUpperCase()}
-                      </Text>
-                    </>
-                  )}
-                </View>
+                <Text style={[TYPE.caption, { color: S.ink }]}>{t("home.switch")}</Text>
+                <ChevRIcon color={S.sec} size={11} />
+              </View>
+            </Pressable>
 
-                {/* Timeline column — the connecting hairline runs full row
-                    height behind the dot. First/last items clip the line to
-                    the dot's vertical center so it doesn't trail beyond. */}
-                <View
-                  style={{
-                    width: 50,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    alignSelf: "stretch",
-                    position: "relative",
-                  }}
+            {/* Monthly calendar */}
+            <View style={{ paddingHorizontal: 16, paddingTop: 10 }}>
+              <CalendarMonth marks={marks} municipality={municipality} onDayPress={handleDayPress} />
+            </View>
+
+            {/* The rest of the upcoming pickups */}
+            {listEvents.length > 0 && (
+              <View style={{ paddingTop: 20 }}>
+                <UpcomingList events={listEvents} />
+              </View>
+            )}
+
+            {/* Show more: expands the window by 5 days at a time */}
+            {hasMoreDays && (
+              <View style={{ alignItems: "center", paddingTop: 12 }}>
+                <PillButton
+                  variant="secondary"
+                  label={t("home.show_more", { n: Math.min(5, remainingDays) })}
+                  onPress={() => setDayLimit((n) => n + 5)}
+                  style={{ height: 46 }}
+                />
+              </View>
+            )}
+
+            {/* Fun fact: a compact tinted card that rotates every 10 s */}
+            {!!funFact && (
+              <View style={{ paddingHorizontal: 16, paddingTop: 24 }}>
+                <SoftCard
+                  bg={ST[factStream].soft}
+                  style={{ flexDirection: "row", alignItems: "center", gap: 14, padding: 14 }}
                 >
                   <View
                     style={{
-                      position: "absolute",
-                      width: 2,
-                      top: isFirst ? "50%" : 0,
-                      bottom: isLast ? "50%" : 0,
-                      backgroundColor: "rgba(33,31,28,0.12)",
-                    }}
-                  />
-                  {/* Dot with stream icon inside */}
-                  <View
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 99,
-                      backgroundColor: s.c,
+                      width: 48,
+                      height: 48,
+                      borderRadius: 16,
+                      backgroundColor: ST[factStream].c,
                       alignItems: "center",
                       justifyContent: "center",
-                      borderWidth: 3,
-                      borderColor: "#F5F2F7",
                     }}
                   >
-                    <StreamGlyph stream={evt.type} size={26} color={s.ink} />
+                    <StreamGlyph stream={factStream} size={32} color={ST[factStream].ink} />
                   </View>
-                </View>
-
-                {/* Plain content — no card background, no shadow. Label on
-                    top, optional time/zone subtitle, tag inline. */}
-                <View style={{ flex: 1, paddingLeft: 10 }}>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 8,
-                      flexWrap: "wrap",
-                    }}
+                  <Animated.Text
+                    style={[TYPE.caption, { flex: 1, color: ST[factStream].ink, opacity: factOpacity }]}
                   >
-                    <Text
-                      style={{
-                        fontSize: 16.5,
-                        fontWeight: "800",
-                        color: S.ink,
-                        letterSpacing: -0.3,
-                      }}
-                    >
-                      {wasteLabel(evt.type)}
-                    </Text>
-                    {tag && (
-                      <View
-                        style={{
-                          backgroundColor: S.ink,
-                          paddingVertical: 3,
-                          paddingHorizontal: 8,
-                          borderRadius: 99,
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontSize: 9.5,
-                            fontWeight: "800",
-                            color: "#fff",
-                            letterSpacing: 0.3,
-                          }}
-                        >
-                          {tag}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                  {subParts.length > 0 && (
-                    <Text
-                      style={{
-                        fontSize: 12.5,
-                        color: S.sec,
-                        marginTop: 2,
-                        fontWeight: "600",
-                      }}
-                    >
-                      {subParts.join(" · ")}
-                    </Text>
-                  )}
-                </View>
+                    {funFact}
+                  </Animated.Text>
+                </SoftCard>
               </View>
-            );
-          })}
-          {upcoming.length === 0 && !active && (
-            <View style={{ alignItems: "center", paddingVertical: 30 }}>
-              <Text style={{ fontSize: 15, color: S.sec, fontWeight: "600", textAlign: "center" }}>
-                {t("home.empty_hint")}
-              </Text>
-            </View>
-          )}
-        </ScrollView>
-
-        {/* Show-more button — expands the upcoming window by 5 days at a time
-            until every future pickup in the calendar is on screen. */}
-        {hasMoreDays && (
-          <View style={{ alignItems: "center", paddingTop: 16 }}>
-            <Pressable
-              onPress={() => setDayLimit((n) => n + 5)}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 6,
-                paddingVertical: 10,
-                paddingHorizontal: 18,
-                borderRadius: 99,
-                backgroundColor: "#fff",
-                shadowColor: "rgb(150,118,96)",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.12,
-                shadowRadius: 14,
-                elevation: 3,
-              }}
-            >
-              <Text style={{ fontSize: 13.5, fontWeight: "800", color: S.ink, letterSpacing: -0.2 }}>
-                {t("home.show_more", { n: Math.min(5, remainingDays) })}
-              </Text>
-              <ChevRIcon color={S.sec} size={11} />
-            </Pressable>
-          </View>
-        )}
-
-        {/* Did-you-know card — contextual recycling tip, rotates daily. Only
-            shows when there's an active calendar so empty-state stays clean. */}
-        {active && (
-          <View style={{ paddingHorizontal: 16, paddingTop: 28 }}>
-            <View
-              style={{
-                backgroundColor: "#fff",
-                borderRadius: 22,
-                padding: 18,
-                paddingTop: 16,
-                shadowColor: "rgb(150,118,96)",
-                shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: 0.1,
-                shadowRadius: 18,
-                elevation: 3,
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <View
-                  style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: 99,
-                    backgroundColor: ST.gruengut.soft,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Text style={{ fontSize: 12, fontWeight: "800", color: ST.gruengut.ink }}>!</Text>
-                </View>
-                <Text
-                  style={{
-                    fontSize: 11,
-                    fontWeight: "800",
-                    color: S.ter,
-                    letterSpacing: 1.2,
-                  }}
-                >
-                  {t("home.did_you_know")}
-                </Text>
-              </View>
-              <Animated.Text
-                style={{
-                  fontSize: 14.5,
-                  fontWeight: "500",
-                  color: S.ink,
-                  lineHeight: 21,
-                  letterSpacing: -0.1,
-                  opacity: factOpacity,
-                }}
-              >
-                {funFact}
-              </Animated.Text>
-            </View>
-          </View>
+            )}
+          </>
         )}
       </ScrollView>
 
@@ -836,7 +635,7 @@ export function HomeScreen({ onCalendarPress, onGoToReminders }: Props) {
       <LocationEditSheet
         visible={locationVisible}
         onClose={() => setLocationVisible(false)}
-        current={active?.location}
+        current={active ? active.location : homeLocation}
         onSave={handleLocationSave}
       />
 

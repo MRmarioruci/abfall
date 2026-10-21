@@ -268,3 +268,31 @@ export function GlobeIcon({ color, size = 19 }: IconProps) {
     </Svg>
   );
 }
+
+export function FlashIcon({ color, size = 20 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M13 3 5.5 13.2h5.6L10 21l7.5-10.2h-5.6L13 3Z" stroke={color} {...sw(1.9)} />
+    </Svg>
+  );
+}
+
+export function ImageIcon({ color, size = 20 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Rect x={3.5} y={4.5} width={17} height={15} rx={3} stroke={color} {...sw(1.9)} />
+      <Circle cx={9} cy={9.5} r={1.6} stroke={color} {...sw(1.7)} />
+      <Path d="m4 17 4.6-4.3a1.5 1.5 0 0 1 2 0L15 16.5l1.9-1.7a1.5 1.5 0 0 1 2 0l1.6 1.5" stroke={color} {...sw(1.9)} />
+    </Svg>
+  );
+}
+
+export function MoreIcon({ color, size = 20 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Circle cx={5.5} cy={12} r={2} fill={color} />
+      <Circle cx={12} cy={12} r={2} fill={color} />
+      <Circle cx={18.5} cy={12} r={2} fill={color} />
+    </Svg>
+  );
+}

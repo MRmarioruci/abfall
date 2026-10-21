@@ -86,6 +86,16 @@ module.exports = ({ config }) => ({
       },
     ],
     [
+      "expo-camera",
+      {
+        cameraPermission:
+          "Abfall uses the camera to scan your paper waste calendar.",
+        microphonePermission: false,
+        recordAudioAndroid: false,
+        barcodeScannerEnabled: false,
+      },
+    ],
+    [
       "expo-location",
       {
         locationWhenInUsePermission:

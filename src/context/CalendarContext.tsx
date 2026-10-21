@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from "react";
 import type { SavedCalendar } from "../types/calendar";
 import { getCalendars, saveCalendar, setActiveCalendar, deleteCalendar, getActiveCalendar, updateCalendar } from "../services/storage";
+import { getHomeLocation, setHomeLocation as persistHomeLocation } from "../services/homeLocation";
 import {
   cancelAllNotifications,
   cancelNotificationsForCalendar,
@@ -18,6 +19,9 @@ interface CalendarContextValue {
   switchCalendar: (id: string) => Promise<void>;
   removeCalendar: (id: string) => Promise<void>;
   patchCalendar: (id: string, patch: Partial<SavedCalendar>) => Promise<void>;
+  /** Location set while there is no calendar; see services/homeLocation. */
+  homeLocation: string | undefined;
+  setHomeLocation: (location: string | undefined) => Promise<void>;
   reload: () => Promise<void>;
 }
 
@@ -27,11 +31,18 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
   const toast = useToast();
   const [calendars, setCalendars] = useState<SavedCalendar[]>([]);
   const [loading, setLoading] = useState(true);
+  const [homeLocation, setHomeLocationState] = useState<string | undefined>(undefined);
 
   const reload = useCallback(async () => {
-    const data = await getCalendars();
+    const [data, home] = await Promise.all([getCalendars(), getHomeLocation()]);
     setCalendars(data);
+    setHomeLocationState(home);
     setLoading(false);
+  }, []);
+
+  const setHomeLocation = useCallback(async (location: string | undefined) => {
+    await persistHomeLocation(location);
+    setHomeLocationState(location);
   }, []);
 
   useEffect(() => {
@@ -114,7 +125,7 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
 
   return (
     <CalendarContext.Provider
-      value={{ calendars, active, loading, addCalendar, switchCalendar, removeCalendar, patchCalendar, reload }}
+      value={{ calendars, active, loading, addCalendar, switchCalendar, removeCalendar, patchCalendar, homeLocation, setHomeLocation, reload }}
     >
       {children}
     </CalendarContext.Provider>

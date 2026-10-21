@@ -12,6 +12,16 @@ import { OnboardingScreen } from "./src/screens/OnboardingScreen";
 import { hasOnboarded, markOnboarded } from "./src/services/onboarding";
 import { LocaleProvider } from "./src/context/LocaleContext";
 import { deviceLocale, loadStoredLocale, type Locale } from "./src/i18n";
+import {
+  useFonts,
+  HankenGrotesk_400Regular,
+  HankenGrotesk_500Medium,
+  HankenGrotesk_600SemiBold,
+  HankenGrotesk_700Bold,
+  HankenGrotesk_800ExtraBold,
+  HankenGrotesk_900Black,
+} from "@expo-google-fonts/hanken-grotesk";
+import { S } from "./src/theme/colors";
 
 Notifications?.setNotificationHandler({
   handleNotification: async () => ({
@@ -24,11 +34,21 @@ Notifications?.setNotificationHandler({
 });
 
 export default function App() {
-  // Bootstrap is two awaits: onboarding flag + stored locale. Both load in
-  // parallel; we render an empty placeholder until both resolve so we never
-  // flash the wrong screen or the wrong language.
+  // Bootstrap waits for the onboarding flag, the stored locale and the
+  // fonts, in parallel; an empty placeholder shows until all resolve so we
+  // never flash the wrong screen, language or font.
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
   const [initialLocale, setInitialLocale] = useState<Locale | null>(null);
+  // A font that fails to load falls back to the system font rather than
+  // blocking the app.
+  const [fontsLoaded, fontError] = useFonts({
+    HankenGrotesk_400Regular,
+    HankenGrotesk_500Medium,
+    HankenGrotesk_600SemiBold,
+    HankenGrotesk_700Bold,
+    HankenGrotesk_800ExtraBold,
+    HankenGrotesk_900Black,
+  });
 
   useEffect(() => {
     hasOnboarded().then((done) => setShowOnboarding(!done));
@@ -40,7 +60,7 @@ export default function App() {
     setShowOnboarding(false);
   };
 
-  const ready = showOnboarding !== null && initialLocale !== null;
+  const ready = showOnboarding !== null && initialLocale !== null && (fontsLoaded || !!fontError);
 
   return (
     <SafeAreaProvider>
@@ -60,7 +80,7 @@ export default function App() {
           </ToastProvider>
         </LocaleProvider>
       ) : (
-        <View style={{ flex: 1, backgroundColor: "#F5F2F7" }} />
+        <View style={{ flex: 1, backgroundColor: S.bg }} />
       )}
     </SafeAreaProvider>
   );

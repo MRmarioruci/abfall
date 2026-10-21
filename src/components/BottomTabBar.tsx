@@ -4,6 +4,8 @@ import { S } from "../theme/colors";
 import { HomeIcon, PinIcon, PlusIcon, BellIcon, UserIcon } from "./icons/Icons";
 import { useT } from "../context/LocaleContext";
 import type { StringKey } from "../i18n";
+import { FONT } from "../theme/type";
+import { haptics } from "../lib/haptics";
 
 interface Props {
   activeTab: string;
@@ -54,10 +56,14 @@ export function BottomTabBar({ activeTab, onTabPress, onAddPress, badges }: Prop
           return (
             <View key={tab.id} style={{ flex: 1, alignItems: "center" }}>
               <Pressable
-                onPress={onAddPress}
+                onPress={() => {
+                  haptics.tap();
+                  onAddPress();
+                }}
                 accessibilityRole="button"
                 accessibilityLabel={t(tab.label)}
-                style={{
+                style={({ pressed }) => ({
+                  transform: [{ scale: pressed ? 0.92 : 1 }],
                   width: 60,
                   height: 60,
                   borderRadius: 21,
@@ -72,7 +78,7 @@ export function BottomTabBar({ activeTab, onTabPress, onAddPress, badges }: Prop
                   elevation: 12,
                   borderWidth: 4,
                   borderColor: "#fff",
-                }}
+                })}
               >
                 <PlusIcon color="#fff" size={26} />
               </Pressable>
@@ -87,7 +93,10 @@ export function BottomTabBar({ activeTab, onTabPress, onAddPress, badges }: Prop
         return (
           <Pressable
             key={tab.id}
-            onPress={() => onTabPress(tab.id)}
+            onPress={() => {
+              if (!focused) haptics.select();
+              onTabPress(tab.id);
+            }}
             accessibilityRole="tab"
             accessibilityState={{ selected: focused }}
             accessibilityLabel={t(tab.label)}
@@ -123,7 +132,7 @@ export function BottomTabBar({ activeTab, onTabPress, onAddPress, badges }: Prop
                   <Text
                     style={{
                       fontSize: 10,
-                      fontWeight: "800",
+                      fontFamily: FONT.w800,
                       color: "#fff",
                       lineHeight: 12,
                     }}

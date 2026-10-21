@@ -1,9 +1,12 @@
-import { View, Text, Pressable } from "react-native";
+import { View, Text } from "react-native";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
-import { S } from "../theme/colors";
+import { PillButton, QuietButton, SheetHeader, SoftCard } from "./ui/sheet";
+import { NeighboursArt } from "./art/Art";
+import { ST } from "../theme/colors";
 import { CheckIcon, GlobeIcon } from "./icons/Icons";
 import type { SavedCalendar } from "../types/calendar";
 import { useT } from "../context/LocaleContext";
+import { FONT } from "../theme/type";
 
 interface Props {
   visible: boolean;
@@ -12,137 +15,72 @@ interface Props {
   onSkip: () => void;
 }
 
+/**
+ * Shown right after a scan is saved. Publishing is the default, so the
+ * sheet is one picture of neighbours, one line, and a single button;
+ * keeping it private is the quiet option underneath.
+ */
 export function PostScanShareDialog({ visible, calendar, onShare, onSkip }: Props) {
   const { t } = useT();
   if (!calendar) return null;
 
   return (
-    <SlideUpSheet visible={visible} onClose={onSkip} height={500}>
-      <View style={{ paddingHorizontal: 24, paddingTop: 8, alignItems: "center" }}>
-        {/* Success badge */}
-        <View
-          style={{
-            width: 64,
-            height: 64,
-            borderRadius: 99,
-            backgroundColor: "#DCE9CE",
-            alignItems: "center",
-            justifyContent: "center",
-            marginTop: 6,
-            shadowColor: "#273913",
-            shadowOffset: { width: 0, height: 8 },
-            shadowOpacity: 0.18,
-            shadowRadius: 18,
-            elevation: 6,
-          }}
-        >
-          <View
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 99,
-              backgroundColor: "#5BA86B",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <CheckIcon color="#fff" size={22} />
-          </View>
-        </View>
-
-        <Text style={{ fontSize: 26, fontWeight: "800", color: S.ink, letterSpacing: -0.6, marginTop: 16 }}>
-          {t("share.post_scan.saved")}
-        </Text>
-        <Text
-          style={{ fontSize: 14, color: S.sec, fontWeight: "600", marginTop: 4, textAlign: "center" }}
-          numberOfLines={1}
-        >
-          {calendar.title}
-        </Text>
-        <Text style={{ fontSize: 12, color: S.ter, fontWeight: "600", marginTop: 2 }}>
-          {t(calendar.events.length === 1 ? "share.dates_one" : "share.dates_other", { n: calendar.events.length })}
-          {calendar.location ? ` · ${calendar.location}` : ""}
-        </Text>
-
-        {/* Community pitch — publish is the default */}
-        <View
-          style={{
-            marginTop: 22,
-            padding: 18,
-            borderRadius: 22,
-            backgroundColor: "#fff",
-            width: "100%",
-            borderWidth: 2,
-            borderColor: S.ink,
-          }}
-        >
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+    <SlideUpSheet visible={visible} onClose={onSkip}>
+      <View style={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: 12 }}>
+        <SheetHeader
+          title={t("share.post_scan.saved")}
+          subtitle={calendar.title}
+          right={
             <View
               style={{
-                width: 46,
-                height: 46,
-                borderRadius: 14,
-                backgroundColor: S.ink,
+                width: 40,
+                height: 40,
+                borderRadius: 99,
+                backgroundColor: ST.gruengut.soft,
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <GlobeIcon color="#fff" size={24} />
+              <View
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 99,
+                  backgroundColor: "#5BA86B",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <CheckIcon color="#fff" size={14} />
+              </View>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 11, fontWeight: "800", color: S.ter, letterSpacing: 1.2 }}>
-                {t("share.post_scan.eyebrow")}
-              </Text>
-              <Text style={{ fontSize: 15, fontWeight: "800", color: S.ink, letterSpacing: -0.2, marginTop: 2 }}>
-                {t("share.post_scan.title")}
-              </Text>
-            </View>
-          </View>
-          <Text style={{ fontSize: 12.5, color: S.sec, fontWeight: "600", marginTop: 10, lineHeight: 17 }}>
-            {t("share.post_scan.body")}
-          </Text>
-        </View>
+          }
+        />
 
-        {/* Buttons */}
-        <Pressable
-          onPress={onShare}
-          style={{
-            marginTop: 18,
-            height: 54,
-            width: "100%",
-            borderRadius: 99,
-            backgroundColor: S.ink,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 9,
-            shadowColor: S.ink,
-            shadowOffset: { width: 0, height: 10 },
-            shadowOpacity: 0.22,
-            shadowRadius: 20,
-            elevation: 6,
-          }}
-        >
-          <CheckIcon color="#fff" size={16} />
-          <Text style={{ fontSize: 17, fontWeight: "700", color: "#fff" }}>
-            {t("share.post_scan.confirm")}
+        {/* The pitch is a picture: neighbours finding this calendar. */}
+        <SoftCard bg={ST.papier.soft} style={{ alignItems: "center", paddingVertical: 22 }}>
+          <NeighboursArt size={132} />
+          <Text
+            style={{
+              fontSize: 19,
+              fontFamily: FONT.w800,
+              color: ST.papier.ink,
+              letterSpacing: -0.4,
+              marginTop: 10,
+              textAlign: "center",
+            }}
+          >
+            {t("share.post_scan.title")}
           </Text>
-        </Pressable>
+          <PillButton
+            label={t("share.post_scan.confirm")}
+            icon={<GlobeIcon color="#fff" size={17} />}
+            onPress={onShare}
+            style={{ alignSelf: "stretch", marginTop: 18 }}
+          />
+        </SoftCard>
 
-        <Pressable
-          onPress={onSkip}
-          style={{
-            marginTop: 10,
-            height: 48,
-            width: "100%",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Text style={{ fontSize: 15, fontWeight: "700", color: S.sec }}>
-            {t("share.post_scan.keep_private")}
-          </Text>
-        </Pressable>
+        <QuietButton label={t("share.post_scan.keep_private")} onPress={onSkip} />
       </View>
     </SlideUpSheet>
   );

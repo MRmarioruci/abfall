@@ -1,18 +1,21 @@
 import { useState } from "react";
-import { View, Text, Pressable, Share } from "react-native";
+import { View, Text, Share } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import * as Clipboard from "expo-clipboard";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
 import { ConfirmSheet } from "./ConfirmSheet";
 import { PublishDialog } from "./PublishDialog";
-import { S } from "../theme/colors";
-import { ShareIcon, LinkIcon, GlobeIcon, PinIcon, CheckIcon } from "./icons/Icons";
+import { PillButton, QuietButton, SheetHeader, SoftCard } from "./ui/sheet";
+import { NeighboursArt } from "./art/Art";
+import { S, ST } from "../theme/colors";
+import { ShareIcon, LinkIcon, GlobeIcon } from "./icons/Icons";
 import type { SavedCalendar } from "../types/calendar";
 import { useCalendars } from "../context/CalendarContext";
 import { useToast } from "./ui/Toast";
 import { deleteCommunityCalendar } from "../services/api";
 import { shareUrlFor } from "../lib/shareLinks";
 import { useT } from "../context/LocaleContext";
+import { FONT } from "../theme/type";
 
 interface Props {
   visible: boolean;
@@ -75,7 +78,7 @@ export function ShareSheet({ visible, onClose, calendar }: Props) {
         await deleteCommunityCalendar(calendar.shareCode);
       } catch (err) {
         console.warn("[share] unpublish failed", err);
-        toast.show(t("share.toast.unpublish_failed"));
+        toast.show(t("share.toast.unpublish_failed"), { variant: "error" });
         return;
       }
     }
@@ -97,183 +100,62 @@ export function ShareSheet({ visible, onClose, calendar }: Props) {
     setShowPublishDialog(true);
   };
 
+  const subtitle = [calendar.location, t(calendar.events.length === 1 ? "share.dates_one" : "share.dates_other", { n: calendar.events.length })]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
     <>
-    <SlideUpSheet visible={visible} onClose={onClose} height={760}>
-      <View style={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: 8 }}>
-        {/* Header */}
-        <Text style={{ fontSize: 11, fontWeight: "800", color: S.ter, letterSpacing: 1.2 }}>
-          {t("share.eyebrow")}
-        </Text>
-        <Text style={{ fontSize: 22, fontWeight: "800", color: S.ink, letterSpacing: -0.5, marginTop: 4 }} numberOfLines={1}>
-          {calendar.title}
-        </Text>
-        {calendar.location && (
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 6 }}>
-            <PinIcon color={S.sec} size={13} />
-            <Text style={{ fontSize: 13, color: S.sec, fontWeight: "600" }}>
-              {calendar.location}
+    <SlideUpSheet visible={visible} onClose={onClose}>
+      <View style={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: 12 }}>
+        <SheetHeader title={calendar.title} subtitle={subtitle} />
+
+        {!isPublished || !shareUrl ? (
+          // Not public yet: one picture, one line, one button.
+          <SoftCard bg={ST.papier.soft} style={{ alignItems: "center", paddingVertical: 22 }}>
+            <NeighboursArt size={132} />
+            <Text style={{ fontSize: 19, fontFamily: FONT.w800, color: ST.papier.ink, letterSpacing: -0.4, marginTop: 10 }}>
+              {t("share.help_title")}
             </Text>
-          </View>
-        )}
-        <Text style={{ fontSize: 13, color: S.ter, fontWeight: "600", marginTop: 4 }}>
-          {collectionDates}
-        </Text>
-
-        {/* HERO — Community publish */}
-        <View
-          style={{
-            marginTop: 20,
-            padding: 20,
-            borderRadius: 24,
-            backgroundColor: "#fff",
-            borderWidth: 2,
-            borderColor: isPublished ? S.ink : S.line,
-          }}
-        >
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-            <View
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: 16,
-                backgroundColor: isPublished ? S.ink : "#F0EAE4",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <GlobeIcon color={isPublished ? "#fff" : S.ink} size={26} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 11, fontWeight: "800", color: S.ter, letterSpacing: 1.2 }}>
-                {isPublished ? t("share.published_eyebrow") : t("share.publish_eyebrow")}
-              </Text>
-              <Text style={{ fontSize: 17, fontWeight: "800", color: S.ink, letterSpacing: -0.3, marginTop: 3 }}>
-                {isPublished ? t("share.live_title") : t("share.help_title")}
-              </Text>
-              <Text style={{ fontSize: 12.5, color: S.sec, fontWeight: "600", marginTop: 3, lineHeight: 17 }}>
-                {isPublished
-                  ? t("share.live_body")
-                  : t("share.help_body")}
-              </Text>
-            </View>
-          </View>
-
-
-          <Pressable
-            onPress={togglePublish}
-            style={{
-              marginTop: 14,
-              height: 48,
-              borderRadius: 99,
-              backgroundColor: isPublished ? "#fff" : S.ink,
-              borderWidth: 1.5,
-              borderColor: isPublished ? S.ink : "transparent",
-              alignItems: "center",
-              justifyContent: "center",
-              flexDirection: "row",
-              gap: 8,
-            }}
-          >
-            {isPublished ? (
-              <CheckIcon color={S.ink} size={14} />
-            ) : (
-              <GlobeIcon color="#fff" size={15} />
-            )}
-            <Text
-              style={{
-                fontSize: 15,
-                fontWeight: "800",
-                color: isPublished ? S.ink : "#fff",
-                letterSpacing: 0.2,
-              }}
-            >
-              {isPublished ? t("share.unpublish_button") : t("share.publish_now")}
-            </Text>
-          </Pressable>
-        </View>
-
-        {/* Secondary: QR + link */}
-        <Text style={{ fontSize: 11, fontWeight: "800", color: S.ter, letterSpacing: 1.2, marginTop: 22 }}>
-          {t("share.direct")}
-        </Text>
-
-        {/* QR + link combined card — only once there's a real link */}
-        {!shareUrl ? (
-          <Text style={{ marginTop: 8, fontSize: 13, color: S.sec, fontWeight: "600" }}>
-            {t("share.link_after_publish")}
-          </Text>
-        ) : (
-        <View
-          style={{
-            marginTop: 8,
-            padding: 16,
-            borderRadius: 18,
-            backgroundColor: "#fff",
-            borderWidth: 1.5,
-            borderColor: S.line,
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 14,
-          }}
-        >
-          <View
-            style={{
-              padding: 6,
-              borderRadius: 12,
-              backgroundColor: "#fff",
-            }}
-          >
-            <QRCode
-              value={shareUrl}
-              size={84}
-              backgroundColor="#ffffff"
-              color={S.ink}
-              ecl="M"
+            <PillButton
+              label={t("share.publish_now")}
+              icon={<GlobeIcon color="#fff" size={17} />}
+              onPress={togglePublish}
+              style={{ alignSelf: "stretch", marginTop: 18 }}
             />
-          </View>
-          <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <LinkIcon color={S.sec} size={13} />
-              <Text style={{ fontSize: 11, fontWeight: "800", color: S.ter, letterSpacing: 1.2 }}>
-                {t("share.link")}
+          </SoftCard>
+        ) : (
+          <>
+            {/* Live: the QR code is the hero; scanning it is the quickest share. */}
+            <SoftCard bg={ST.gruengut.soft} style={{ alignItems: "center", paddingVertical: 22 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 16 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 99, backgroundColor: "#5BA86B" }} />
+                <Text style={{ fontSize: 13, fontFamily: FONT.w800, color: ST.gruengut.ink }}>{t("share.live_title")}</Text>
+              </View>
+              <View style={{ padding: 14, borderRadius: 22, backgroundColor: "#fff" }}>
+                <QRCode value={shareUrl} size={168} backgroundColor="#ffffff" color={S.ink} ecl="M" />
+              </View>
+              <Text style={{ fontSize: 13, color: ST.gruengut.ink, fontFamily: FONT.w700, marginTop: 12, opacity: 0.75 }} numberOfLines={1}>
+                {shareUrl.replace(/^https?:\/\//, "")}
               </Text>
-            </View>
-            <Text style={{ fontSize: 13, color: S.ink, fontWeight: "700", marginTop: 4 }} numberOfLines={1}>
-              {shareUrl}
-            </Text>
-            <View style={{ flexDirection: "row", gap: 6, marginTop: 8 }}>
-              <Pressable
+            </SoftCard>
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
+              <PillButton
+                label={t("share.copy")}
+                variant="secondary"
+                icon={<LinkIcon color={S.ink} size={16} />}
                 onPress={handleCopyLink}
-                style={{
-                  flex: 1,
-                  paddingVertical: 8,
-                  borderRadius: 99,
-                  backgroundColor: "#F0EAE4",
-                  alignItems: "center",
-                }}
-              >
-                <Text style={{ fontSize: 12, fontWeight: "800", color: S.ink }}>{t("share.copy")}</Text>
-              </Pressable>
-              <Pressable
+                style={{ flex: 1 }}
+              />
+              <PillButton
+                label={t("share.share")}
+                icon={<ShareIcon color="#fff" size={16} />}
                 onPress={handleNativeShare}
-                style={{
-                  flex: 1,
-                  flexDirection: "row",
-                  gap: 5,
-                  paddingVertical: 8,
-                  borderRadius: 99,
-                  backgroundColor: S.ink,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <ShareIcon color="#fff" size={12} />
-                <Text style={{ fontSize: 12, fontWeight: "800", color: "#fff" }}>{t("share.share")}</Text>
-              </Pressable>
+                style={{ flex: 1 }}
+              />
             </View>
-          </View>
-        </View>
+            <QuietButton label={t("share.unpublish.label")} onPress={togglePublish} />
+          </>
         )}
       </View>
     </SlideUpSheet>

@@ -9,6 +9,7 @@ import { CollectionCentersScreen } from "../screens/CollectionCentersScreen";
 import { RemindersScreen } from "../screens/RemindersScreen";
 import { ProfileScreen } from "../screens/ProfileScreen";
 import { ScanReviewScreen } from "../screens/ScanReviewScreen";
+import { ScanCameraScreen } from "../screens/ScanCameraScreen";
 import { useCalendars } from "../context/CalendarContext";
 import { STREAM_ORDER, type WasteStreamId } from "../theme/colors";
 import type { ImageInput } from "../services/parseCalendar";
@@ -22,6 +23,7 @@ export function TabNavigator() {
   const [activeTab, setActiveTab] = useState<TabId>("Home");
   const [addSheetVisible, setAddSheetVisible] = useState(false);
   const [switcherVisible, setSwitcherVisible] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const [scanImages, setScanImages] = useState<ImageInput[] | null>(null);
 
   // Count of reminders currently turned on across all streams of the active
@@ -46,6 +48,7 @@ export function TabNavigator() {
   }, []);
 
   const handleScanConfirm = useCallback((images: ImageInput[]) => {
+    setCameraOpen(false);
     if (images.length === 0) return;
     setScanImages(images);
   }, []);
@@ -64,6 +67,10 @@ export function TabNavigator() {
         setScanImages(null);
         return true;
       }
+      if (cameraOpen) {
+        setCameraOpen(false);
+        return true;
+      }
       if (activeTab !== "Home") {
         setActiveTab("Home");
         return true;
@@ -71,7 +78,7 @@ export function TabNavigator() {
       return false;
     });
     return () => sub.remove();
-  }, [scanImages, activeTab]);
+  }, [scanImages, cameraOpen, activeTab]);
 
   if (scanImages) {
     return (
@@ -81,6 +88,10 @@ export function TabNavigator() {
         onBack={() => setScanImages(null)}
       />
     );
+  }
+
+  if (cameraOpen) {
+    return <ScanCameraScreen onClose={() => setCameraOpen(false)} onDone={handleScanConfirm} />;
   }
 
   // Conditional render: only the active tab's screen is mounted at any one
@@ -93,10 +104,11 @@ export function TabNavigator() {
         <HomeScreen
           onCalendarPress={handleSwitcherOpen}
           onGoToReminders={() => setActiveTab("Reminders")}
+          onAddPress={handleAddPress}
         />
       )}
       {activeTab === "Map" && <CollectionCentersScreen />}
-      {activeTab === "Reminders" && <RemindersScreen />}
+      {activeTab === "Reminders" && <RemindersScreen onAddCalendar={handleAddPress} />}
       {activeTab === "Profile" && <ProfileScreen />}
 
       <BottomTabBar
@@ -109,8 +121,7 @@ export function TabNavigator() {
       <AddCalendarSheet
         visible={addSheetVisible}
         onClose={() => setAddSheetVisible(false)}
-        onScanConfirm={handleScanConfirm}
-        onRequestReopen={() => setAddSheetVisible(true)}
+        onScan={() => setCameraOpen(true)}
       />
       <SharedLinkHandler />
       <CalendarSwitcher

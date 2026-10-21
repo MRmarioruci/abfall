@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { View, Text, Pressable, Animated, PanResponder, Dimensions } from "react-native";
+import { View, Text, Pressable, Animated, PanResponder, Dimensions, type LayoutRectangle } from "react-native";
+import Reanimated, { LinearTransition } from "react-native-reanimated";
 import { S, ST, STREAM_ORDER, type WasteStreamId } from "../theme/colors";
 import { CircBtn } from "./ui/CircBtn";
 import { ChevRIcon } from "./icons/Icons";
-import { Recyclops } from "./Recyclops";
+import { Recyclops, type SwapPlan } from "./Recyclops";
 import { useT } from "../context/LocaleContext";
+import { FONT, TYPE } from "../theme/type";
 
 interface CollectionMark {
   day: number;
@@ -37,8 +39,14 @@ function getFirstDayOfWeek(month: number, year: number) {
 
 const EMPTY_MARKS: CollectionMark[] = [];
 
+// Recyclops' size and where his box sits against the card's bottom-right
+// corner (he overhangs the bottom edge a little, as if standing on it).
+const RECYCLOPS_SIZE = 54;
+const RECYCLOPS_RIGHT = 6;
+const RECYCLOPS_BOTTOM_OVERHANG = 6;
+
 export function CalendarMonth({ marks = EMPTY_MARKS, municipality = "", onDayPress }: Props) {
-  const { monthLong, weekdayMin, wasteLabel } = useT();
+  const { t, monthLong, weekdayMin, weekdayLong, wasteLabel } = useT();
   // Dark theme tokens. The calendar reads as an inverted card against the
   // light home screen so it stands out and so the colored pickup stripes pop.
   const T = {
@@ -198,18 +206,66 @@ export function CalendarMonth({ marks = EMPTY_MARKS, municipality = "", onDayPre
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseLegendStreams.join(",")]);
 
-  const handleRecyclopsSwap = () => {
-    setLegendOrder((prev) => {
-      if (prev.length < 2) return prev;
-      const i = Math.floor(Math.random() * (prev.length - 1));
-      const next = [...prev];
-      [next[i], next[i + 1]] = [next[i + 1]!, next[i]!];
-      return next;
-    });
+  // Where things are, so Recyclops can walk to the exact spot between two
+  // labels and put a hand on each. All in the card's coordinates.
+  const cardLayout = useRef<LayoutRectangle | null>(null);
+  // State too: his walk range depends on it.
+  const [cardWidth, setCardWidth] = useState<number | null>(null);
+  const legendLayout = useRef<LayoutRectangle | null>(null);
+  const chipLayouts = useRef(new Map<WasteStreamId, LayoutRectangle>());
+  const legendOrderRef = useRef(legendOrder);
+  legendOrderRef.current = legendOrder;
+
+  const planSwap = (): SwapPlan | null => {
+    const card = cardLayout.current;
+    const row = legendLayout.current;
+    if (!card || !row) return null;
+    // Neighbouring labels on the same line; a pair split over a line wrap
+    // can't be swapped by hand.
+    const order = legendOrderRef.current;
+    const pairs: [WasteStreamId, WasteStreamId][] = [];
+    for (let i = 0; i < order.length - 1; i++) {
+      const a = chipLayouts.current.get(order[i]!);
+      const b = chipLayouts.current.get(order[i + 1]!);
+      if (a && b && Math.abs(a.y - b.y) < 4 && b.x > a.x) pairs.push([order[i]!, order[i + 1]!]);
+    }
+    // His home: bottom-right corner of the card (see the wrapper below).
+    // He only walks left from there, so pairs right of home are out.
+    const homeCenterX = card.width - RECYCLOPS_RIGHT - RECYCLOPS_SIZE / 2;
+    const homeTop = card.height + RECYCLOPS_BOTTOM_OVERHANG - Math.round(RECYCLOPS_SIZE * 1.08);
+    const gapOf = ([idA, idB]: [WasteStreamId, WasteStreamId]) => {
+      const a = chipLayouts.current.get(idA)!;
+      const b = chipLayouts.current.get(idB)!;
+      return row.x + (a.x + a.width + b.x) / 2;
+    };
+    const reachable = pairs.filter((pair) => gapOf(pair) <= homeCenterX);
+    if (reachable.length === 0) return null;
+    const pair = reachable[Math.floor(Math.random() * reachable.length)]!;
+    const [idA, idB] = pair;
+    const a = chipLayouts.current.get(idA)!;
+    const gapCenterX = gapOf(pair);
+    const labelCenterY = row.y + a.y + a.height / 2;
+    return {
+      dx: gapCenterX - homeCenterX,
+      reachY: labelCenterY - homeTop,
+      commit: () =>
+        setLegendOrder((prev) => {
+          const i = prev.indexOf(idA);
+          const j = prev.indexOf(idB);
+          if (i < 0 || j < 0) return prev;
+          const next = [...prev];
+          [next[i], next[j]] = [next[j]!, next[i]!];
+          return next;
+        }),
+    };
   };
 
   return (
     <View
+      onLayout={(e) => {
+        cardLayout.current = e.nativeEvent.layout;
+        setCardWidth(e.nativeEvent.layout.width);
+      }}
       style={{
         backgroundColor: T.card,
         borderRadius: 28,
@@ -236,32 +292,36 @@ export function CalendarMonth({ marks = EMPTY_MARKS, municipality = "", onDayPre
           <Text
             style={{
               fontSize: 23,
-              fontWeight: "800",
+              fontFamily: FONT.w800,
               color: T.primaryText,
               letterSpacing: -0.5,
             }}
           >
             {monthLong(month + 1)}
           </Text>
-          <Text
-            style={{
-              fontSize: 11,
-              fontWeight: "700",
-              color: T.secondaryText,
-              letterSpacing: 1.5,
-              marginTop: 4,
-            }}
-          >
-            {year} · {municipality.toUpperCase()}
+          <Text style={[TYPE.caption, { color: T.secondaryText, marginTop: 2 }]} numberOfLines={1}>
+            {municipality ? `${year} · ${municipality}` : year}
           </Text>
         </View>
         <View style={{ flexDirection: "row", gap: 8 }}>
-          <CircBtn size={34} bg={T.chevronBg} shadow={false} onPress={prevMonth}>
+          <CircBtn
+            size={34}
+            bg={T.chevronBg}
+            shadow={false}
+            onPress={prevMonth}
+            accessibilityLabel={monthLong(month === 0 ? 12 : month)}
+          >
             <View style={{ transform: [{ scaleX: -1 }] }}>
               <ChevRIcon color={T.chevronInk} size={13} />
             </View>
           </CircBtn>
-          <CircBtn size={34} bg={T.chevronBg} shadow={false} onPress={nextMonth}>
+          <CircBtn
+            size={34}
+            bg={T.chevronBg}
+            shadow={false}
+            onPress={nextMonth}
+            accessibilityLabel={monthLong(month === 11 ? 1 : month + 2)}
+          >
             <ChevRIcon color={T.chevronInk} size={13} />
           </CircBtn>
         </View>
@@ -276,14 +336,7 @@ export function CalendarMonth({ marks = EMPTY_MARKS, municipality = "", onDayPre
         <View style={{ flexDirection: "row", marginBottom: 6 }}>
           {WEEKDAY_INDEX.map((dayIdx, i) => (
             <View key={i} style={{ flex: 1, alignItems: "center" }}>
-              <Text
-                style={{
-                  fontSize: 10,
-                  fontWeight: "700",
-                  letterSpacing: 0.3,
-                  color: T.secondaryText,
-                }}
-              >
+              <Text style={[TYPE.micro, { color: T.secondaryText }]}>
                 {weekdayMin(dayIdx)}
               </Text>
             </View>
@@ -299,16 +352,29 @@ export function CalendarMonth({ marks = EMPTY_MARKS, municipality = "", onDayPre
           const dayMarks = markMap[d] || [];
           const primary = dayMarks[0];
           const isToday = isCurrentMonth && d === today;
+          const dateLabel = t("day_edit.date_long", {
+            weekday: weekdayLong(new Date(year, month, d).getDay()),
+            day: d,
+            month: monthLong(month + 1),
+            year,
+          });
+          const a11yLabel = dayMarks.length
+            ? `${dateLabel}, ${dayMarks.map((id) => wasteLabel(id)).join(", ")}`
+            : dateLabel;
 
           return (
             <Pressable
               key={d}
               onPress={() => onDayPress?.(d, month, year)}
-              style={{
+              accessibilityRole="button"
+              accessibilityLabel={a11yLabel}
+              accessibilityState={isToday ? { selected: true } : undefined}
+              style={({ pressed }) => ({
                 width: `${100 / 7}%`,
                 aspectRatio: 1,
                 padding: 2,
-              }}
+                transform: [{ scale: pressed ? 0.92 : 1 }],
+              })}
             >
               <View
                 style={{
@@ -344,8 +410,8 @@ export function CalendarMonth({ marks = EMPTY_MARKS, municipality = "", onDayPre
                 >
                   <Text
                     style={{
-                      fontSize: 12,
-                      fontWeight: isToday ? "800" : "600",
+                      fontSize: 13,
+                      fontFamily: isToday ? FONT.w800 : FONT.w600,
                       color: isToday
                         ? T.todayText
                         : primary
@@ -365,6 +431,9 @@ export function CalendarMonth({ marks = EMPTY_MARKS, municipality = "", onDayPre
 
       {/* Legend */}
       <View
+        onLayout={(e) => {
+          legendLayout.current = e.nativeEvent.layout;
+        }}
         style={{
           flexDirection: "row",
           flexWrap: "wrap",
@@ -376,7 +445,16 @@ export function CalendarMonth({ marks = EMPTY_MARKS, municipality = "", onDayPre
         }}
       >
         {legendOrder.map((id) => (
-          <View key={id} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          // Animated layout: when Recyclops swaps two labels they slide
+          // past each other instead of jumping.
+          <Reanimated.View
+            key={id}
+            layout={LinearTransition.springify().damping(16).stiffness(140)}
+            onLayout={(e) => {
+              chipLayouts.current.set(id, e.nativeEvent.layout);
+            }}
+            style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+          >
             <View
               style={{
                 width: 9,
@@ -385,10 +463,10 @@ export function CalendarMonth({ marks = EMPTY_MARKS, municipality = "", onDayPre
                 backgroundColor: ST[id].c,
               }}
             />
-            <Text style={{ fontSize: 11, color: T.legendText, fontWeight: "600" }}>
+            <Text style={[TYPE.micro, { color: T.legendText }]}>
               {wasteLabel(id)}
             </Text>
-          </View>
+          </Reanimated.View>
         ))}
       </View>
 
@@ -400,14 +478,14 @@ export function CalendarMonth({ marks = EMPTY_MARKS, municipality = "", onDayPre
         pointerEvents="box-none"
         style={{
           position: "absolute",
-          right: 6,
-          bottom: -6,
+          right: RECYCLOPS_RIGHT,
+          bottom: -RECYCLOPS_BOTTOM_OVERHANG,
         }}
       >
         <Recyclops
-          size={54}
-          walkRange={130}
-          onRequestSwap={handleRecyclopsSwap}
+          size={RECYCLOPS_SIZE}
+          walkRange={Math.max(0, (cardWidth ?? 0) - RECYCLOPS_SIZE)}
+          planSwap={planSwap}
           onPress={() => {}}
         />
       </View>

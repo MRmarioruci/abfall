@@ -10,23 +10,20 @@
 // stay consistent everywhere the user is asked to publish.
 
 import { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  ActivityIndicator,
-} from "react-native";
+import { View, Text, TextInput, Pressable } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
-import { S } from "../theme/colors";
-import { CheckIcon, GlobeIcon, PinIcon, XIcon } from "./icons/Icons";
+import { PillButton, QuietButton, SheetHeader, SoftCard } from "./ui/sheet";
+import { NeighboursArt } from "./art/Art";
+import { S, ST } from "../theme/colors";
+import { GlobeIcon, UserIcon, XIcon } from "./icons/Icons";
 import type { SavedCalendar } from "../types/calendar";
 import { ApiError, shareCalendar } from "../services/api";
 import { useCalendars } from "../context/CalendarContext";
 import { useToast } from "./ui/Toast";
 import { useT } from "../context/LocaleContext";
+import { FONT } from "../theme/type";
 
 const SHARE_NAME_KEY = "abfall_share_name";
 const DEFAULT_COUNTRY = "CH";
@@ -118,23 +115,87 @@ export function PublishDialog({ visible, onClose, calendar }: Props) {
         );
       } else {
         const msg = err instanceof Error ? err.message : String(err);
-        toast.show(t("publish.toast.failed_detail", { error: msg }));
+        toast.show(t("publish.toast.failed_detail", { error: msg }), { variant: "error" });
       }
     } finally {
       setPublishing(false);
     }
   };
 
+  const datesLabel = t(calendar.events.length === 1 ? "share.dates_one" : "share.dates_other", {
+    n: calendar.events.length,
+  });
+  // One line under the title: where it will be filed, and how many dates.
+  const subtitle = locator ? `${locator} · ${datesLabel}` : t("publish.no_city");
+  const initial = shareName.trim().charAt(0).toUpperCase();
+
   return (
     <SlideUpSheet visible={visible} onClose={onClose}>
-      <View style={{ paddingHorizontal: 22, paddingTop: 4 }}>
-        {/* Header */}
+      <View style={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: Math.max(insets.bottom, 12) }}>
+        <SheetHeader
+          title={t("publish.title")}
+          subtitle={subtitle}
+          right={
+            <Pressable
+              onPress={onClose}
+              disabled={publishing}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel={t("publish.close")}
+              style={({ pressed }) => ({
+                width: 34,
+                height: 34,
+                borderRadius: 99,
+                backgroundColor: "#fff",
+                alignItems: "center",
+                justifyContent: "center",
+                transform: [{ scale: pressed ? 0.92 : 1 }],
+              })}
+            >
+              <XIcon color={S.sec} size={14} />
+            </Pressable>
+          }
+        />
+
+        {/* The calendar as neighbours will see it: picture + editable name. */}
+        <SoftCard bg={ST.papier.soft} style={{ alignItems: "center", paddingTop: 16, paddingBottom: 14 }}>
+          <NeighboursArt size={104} />
+          <TextInput
+            value={publishTitle}
+            onChangeText={setPublishTitle}
+            placeholder={t("publish.title_placeholder")}
+            placeholderTextColor={ST.papier.ink + "66"}
+            editable={!publishing}
+            maxLength={120}
+            accessibilityLabel={t("publish.title_placeholder")}
+            textAlign="center"
+            style={{
+              alignSelf: "stretch",
+              marginTop: 10,
+              paddingVertical: 12,
+              paddingHorizontal: 14,
+              borderRadius: 18,
+              backgroundColor: "#fff",
+              fontSize: 18,
+              color: S.ink,
+              fontFamily: FONT.w800,
+              letterSpacing: -0.3,
+            }}
+          />
+        </SoftCard>
+
+        {/* Optional sharer name, shown with the calendar in the catalog. */}
         <View
           style={{
             flexDirection: "row",
             alignItems: "center",
             gap: 12,
-            marginBottom: 16,
+            marginTop: 10,
+            paddingLeft: 10,
+            paddingRight: 14,
+            minHeight: 60,
+            borderRadius: 20,
+            backgroundColor: "#fff",
           }}
         >
           <View
@@ -142,117 +203,17 @@ export function PublishDialog({ visible, onClose, calendar }: Props) {
               width: 40,
               height: 40,
               borderRadius: 13,
-              backgroundColor: S.ink,
+              backgroundColor: ST.karton.soft,
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <GlobeIcon color="#fff" size={20} />
+            {initial ? (
+              <Text style={{ fontSize: 17, fontFamily: FONT.w800, color: ST.karton.ink }}>{initial}</Text>
+            ) : (
+              <UserIcon color={ST.karton.ink} size={20} />
+            )}
           </View>
-          <View style={{ flex: 1 }}>
-            <Text
-              style={{
-                fontSize: 21,
-                fontWeight: "800",
-                color: S.ink,
-                letterSpacing: -0.5,
-              }}
-            >
-              {t("publish.title")}
-            </Text>
-            <Text
-              style={{
-                fontSize: 12.5,
-                color: S.sec,
-                fontWeight: "600",
-                marginTop: 1,
-              }}
-            >
-              {t("publish.subtitle")}
-            </Text>
-          </View>
-          <Pressable
-            onPress={onClose}
-            disabled={publishing}
-            hitSlop={10}
-            accessibilityLabel={t("publish.close")}
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 99,
-              backgroundColor: "#F0EAE4",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <XIcon color={S.sec} size={14} />
-          </Pressable>
-        </View>
-
-        {/* Editable title */}
-        <View
-          style={{
-            paddingHorizontal: 14,
-            borderRadius: 14,
-            borderWidth: 1.5,
-            borderColor: S.line,
-            backgroundColor: "#fff",
-            marginBottom: 8,
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 10.5,
-              fontWeight: "800",
-              color: S.ter,
-              letterSpacing: 0.6,
-              marginTop: 10,
-            }}
-          >
-            {t("publish.field_title")}
-          </Text>
-          <TextInput
-            value={publishTitle}
-            onChangeText={setPublishTitle}
-            placeholder={t("publish.title_placeholder")}
-            placeholderTextColor={S.ter}
-            editable={!publishing}
-            maxLength={120}
-            style={{
-              paddingTop: 2,
-              paddingBottom: 12,
-              fontSize: 17,
-              color: S.ink,
-              fontWeight: "800",
-              letterSpacing: -0.3,
-            }}
-          />
-        </View>
-
-        {/* Optional sharer name */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 8,
-            paddingHorizontal: 14,
-            borderRadius: 14,
-            borderWidth: 1.5,
-            borderColor: S.line,
-            backgroundColor: "#fff",
-            marginBottom: 8,
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 12,
-              fontWeight: "800",
-              color: S.ter,
-              letterSpacing: 0.6,
-            }}
-          >
-            {t("publish.you")}
-          </Text>
           <TextInput
             value={shareName}
             onChangeText={setShareName}
@@ -260,91 +221,31 @@ export function PublishDialog({ visible, onClose, calendar }: Props) {
             placeholderTextColor={S.ter}
             editable={!publishing}
             maxLength={40}
+            accessibilityLabel={t("publish.name_placeholder")}
             style={{
               flex: 1,
               paddingVertical: 12,
-              fontSize: 14,
+              fontSize: 16,
               color: S.ink,
-              fontWeight: "700",
+              fontFamily: FONT.w800,
+              letterSpacing: -0.2,
             }}
           />
         </View>
 
-        {/* Locator + event count */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 8,
-            paddingVertical: 6,
-            paddingHorizontal: 4,
-            marginBottom: 14,
+        <PillButton
+          label={publishing ? t("publish.publishing") : t("publish.publish")}
+          icon={<GlobeIcon color="#fff" size={17} />}
+          loading={publishing}
+          onPress={handlePublish}
+          style={{ marginTop: 18 }}
+        />
+        <QuietButton
+          label={t("common.cancel")}
+          onPress={() => {
+            if (!publishing) onClose();
           }}
-        >
-          <PinIcon color={S.sec} size={13} />
-          <Text
-            style={{
-              flex: 1,
-              fontSize: 12.5,
-              color: S.sec,
-              fontWeight: "700",
-              letterSpacing: -0.1,
-            }}
-            numberOfLines={1}
-          >
-            {locator || t("publish.no_city")}
-          </Text>
-          <Text style={{ fontSize: 12, color: S.ter, fontWeight: "700" }}>
-            {t(calendar.events.length === 1 ? "share.dates_one" : "share.dates_other", { n: calendar.events.length })}
-          </Text>
-        </View>
-
-        {/* CTA + cancel */}
-        <View style={{ flexDirection: "row", gap: 10, marginBottom: Math.max(insets.bottom, 10) }}>
-          <Pressable
-            onPress={onClose}
-            disabled={publishing}
-            style={{
-              flex: 1,
-              paddingVertical: 15,
-              borderRadius: 18,
-              backgroundColor: "#F0EAE4",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Text style={{ fontSize: 15, fontWeight: "800", color: S.ink }}>{t("common.cancel")}</Text>
-          </Pressable>
-          <Pressable
-            onPress={handlePublish}
-            disabled={publishing}
-            style={{
-              flex: 1.6,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              paddingVertical: 15,
-              borderRadius: 18,
-              backgroundColor: S.ink,
-              opacity: publishing ? 0.7 : 1,
-              shadowColor: S.ink,
-              shadowOffset: { width: 0, height: 6 },
-              shadowOpacity: 0.22,
-              shadowRadius: 14,
-              elevation: 4,
-            }}
-          >
-            {publishing ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <CheckIcon color="#fff" size={15} />
-            )}
-            <Text style={{ fontSize: 15, fontWeight: "800", color: "#fff" }}>
-              {publishing ? t("publish.publishing") : t("publish.publish")}
-            </Text>
-          </Pressable>
-        </View>
+        />
       </View>
     </SlideUpSheet>
   );
