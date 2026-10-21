@@ -3,7 +3,7 @@ import { View, Text, Pressable, TextInput, Alert, Linking, Platform, ActivityInd
 import * as Location from "expo-location";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
 import { PillButton, SheetHeader } from "./ui/sheet";
-import { S, ST } from "../theme/colors";
+import { useTheme } from "../theme/ThemeContext";
 import { PinIcon, XIcon } from "./icons/Icons";
 import { searchPlaces, type PlaceSuggestion } from "../services/geocoding";
 import { useT } from "../context/LocaleContext";
@@ -51,6 +51,7 @@ interface Props {
 }
 
 export function LocationEditSheet({ visible, onClose, current, onSave }: Props) {
+  const { S, ST } = useTheme();
   const { t } = useT();
   const [value, setValue] = useState(current || "");
   const [autoLocating, setAutoLocating] = useState(false);
@@ -252,7 +253,7 @@ export function LocationEditSheet({ visible, onClose, current, onSave }: Props) 
             paddingRight: 14,
             minHeight: 60,
             borderRadius: 20,
-            backgroundColor: "#fff",
+            backgroundColor: S.card,
           }}
         >
           <View
@@ -298,7 +299,7 @@ export function LocationEditSheet({ visible, onClose, current, onSave }: Props) 
                 width: 26,
                 height: 26,
                 borderRadius: 99,
-                backgroundColor: "#F4EFEA",
+                backgroundColor: S.chip,
                 alignItems: "center",
                 justifyContent: "center",
                 transform: [{ scale: pressed ? 0.9 : 1 }],
@@ -315,7 +316,7 @@ export function LocationEditSheet({ visible, onClose, current, onSave }: Props) 
             style={{
               marginTop: 8,
               borderRadius: 20,
-              backgroundColor: "#fff",
+              backgroundColor: S.card,
               padding: 6,
               maxHeight: dropdownMaxHeight,
               overflow: "hidden",
@@ -410,7 +411,7 @@ export function LocationEditSheet({ visible, onClose, current, onSave }: Props) 
                 width: 36,
                 height: 36,
                 borderRadius: 99,
-                backgroundColor: "#fff",
+                backgroundColor: S.onTint,
                 alignItems: "center",
                 justifyContent: "center",
                 transform: [{ scale: pressed ? 0.92 : 1 }],

@@ -8,7 +8,8 @@
 import { View } from "react-native";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
 import { OptionRow, QuietButton, SheetHeader } from "./ui/sheet";
-import { ST } from "../theme/colors";
+import { type Palette, type WasteStreamId } from "../theme/colors";
+import { useTheme } from "../theme/ThemeContext";
 import { CalIcon, GoogleIcon } from "./icons/Icons";
 import { BrandMark } from "./ui/BrandMark";
 import {
@@ -24,22 +25,29 @@ interface Props {
   onPick: (next: NotificationDestination) => void;
 }
 
-const ICONS: Record<NotificationDestination, React.ReactNode> = {
-  abfall: <BrandMark size={26} />,
-  phone: <CalIcon color={ST.gruengut.ink} size={20} />,
-  google: <GoogleIcon size={20} />,
-  none: <CalIcon color={ST.sonstiges.ink} size={18} />,
-};
+function icon(id: NotificationDestination, ST: Palette["ST"]): React.ReactNode {
+  switch (id) {
+    case "abfall":
+      return <BrandMark size={26} />;
+    case "phone":
+      return <CalIcon color={ST.gruengut.ink} size={20} />;
+    case "google":
+      return <GoogleIcon size={20} />;
+    case "none":
+      return <CalIcon color={ST.sonstiges.ink} size={18} />;
+  }
+}
 
-const ICON_BG: Record<NotificationDestination, string> = {
-  abfall: ST.kehricht.soft,
-  phone: ST.gruengut.soft,
-  google: ST.glas.soft,
-  none: ST.sonstiges.soft,
+const ICON_BG: Record<NotificationDestination, WasteStreamId> = {
+  abfall: "kehricht",
+  phone: "gruengut",
+  google: "glas",
+  none: "sonstiges",
 };
 
 export function DestinationPicker({ visible, onClose, current, onPick }: Props) {
   const { t } = useT();
+  const { ST } = useTheme();
 
   return (
     <SlideUpSheet visible={visible} onClose={onClose}>
@@ -51,8 +59,8 @@ export function DestinationPicker({ visible, onClose, current, onPick }: Props) 
             <OptionRow
               key={d.id}
               label={t(d.labelKey)}
-              icon={ICONS[d.id]}
-              iconBg={ICON_BG[d.id]}
+              icon={icon(d.id, ST)}
+              iconBg={ST[ICON_BG[d.id]].soft}
               selected={d.id === current}
               onPress={() => {
                 onPick(d.id);

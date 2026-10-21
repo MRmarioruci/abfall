@@ -1,5 +1,6 @@
 import Svg, { G, Path, Rect, Circle } from "react-native-svg";
-import { S, ST, type WasteStreamId } from "../../theme/colors";
+import { type WasteStreamId } from "../../theme/colors";
+import { useTheme } from "../../theme/ThemeContext";
 
 interface Props {
   stream: WasteStreamId;
@@ -10,6 +11,7 @@ interface Props {
 const SW = 3;
 
 export function StreamGlyph({ stream, size = 96, color }: Props) {
+  const { S, ST } = useTheme();
   const col = color || ST[stream]?.ink || S.ink;
 
   const glyphs: Record<WasteStreamId, React.ReactNode> = {

@@ -22,7 +22,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 import type { SavedCalendar, CollectionEvent, ReminderRule } from "../types/calendar";
 import type { WasteStreamId } from "../theme/colors";
-import { ST } from "../theme/colors";
+import { ST_STATIC as ST } from "../theme/colors";
 import { parseReminderTime } from "./notifications";
 import { parseISODate } from "../lib/dates";
 

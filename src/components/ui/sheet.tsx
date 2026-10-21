@@ -12,7 +12,7 @@
 //     waste palette's soft colours instead of grey boxes.
 
 import { View, Text, Pressable, ActivityIndicator, type ViewStyle } from "react-native";
-import { S } from "../../theme/colors";
+import { useTheme } from "../../theme/ThemeContext";
 import { CheckIcon } from "../icons/Icons";
 import { haptics } from "../../lib/haptics";
 import { FONT, TYPE } from "../../theme/type";
@@ -28,6 +28,7 @@ export function SheetHeader({
   /** Optional element on the title's right (a close or edit button). */
   right?: React.ReactNode;
 }) {
+  const { S } = useTheme();
   return (
     <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 18 }}>
       <View style={{ flex: 1 }}>
@@ -59,6 +60,7 @@ export function ArtTile({
   children: React.ReactNode;
   style?: ViewStyle;
 }) {
+  const { S } = useTheme();
   return (
     <Pressable
       onPress={() => {
@@ -86,8 +88,6 @@ export function ArtTile({
   );
 }
 
-export const DANGER = "#C8341A";
-
 export function PillButton({
   label,
   onPress,
@@ -105,8 +105,9 @@ export function PillButton({
   disabled?: boolean;
   style?: ViewStyle;
 }) {
-  const bg = variant === "primary" ? S.ink : variant === "danger" ? DANGER : "#fff";
-  const fg = variant === "secondary" ? S.ink : "#fff";
+  const { S } = useTheme();
+  const bg = variant === "primary" ? S.ink : variant === "danger" ? S.danger : S.card;
+  const fg = variant === "secondary" ? S.ink : variant === "danger" ? S.white : S.onInk;
   return (
     <Pressable
       onPress={() => {
@@ -156,6 +157,7 @@ export function QuietButton({
   onPress: () => void;
   danger?: boolean;
 }) {
+  const { S } = useTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -163,7 +165,7 @@ export function QuietButton({
       hitSlop={10}
       style={({ pressed }) => ({ alignSelf: "center", paddingVertical: 12, paddingHorizontal: 18, opacity: pressed ? 0.55 : 1 })}
     >
-      <Text style={{ fontSize: 15, fontFamily: FONT.w800, color: danger ? DANGER : S.sec }}>{label}</Text>
+      <Text style={{ fontSize: 15, fontFamily: FONT.w800, color: danger ? S.danger : S.sec }}>{label}</Text>
     </Pressable>
   );
 }
@@ -173,7 +175,7 @@ export function OptionRow({
   label,
   subtitle,
   icon,
-  iconBg = "#F4EFEA",
+  iconBg,
   selected,
   onPress,
   right,
@@ -188,6 +190,7 @@ export function OptionRow({
   /** Replaces the tick, e.g. a count or a chevron. */
   right?: React.ReactNode;
 }) {
+  const { S } = useTheme();
   return (
     <Pressable
       onPress={() => {
@@ -204,14 +207,14 @@ export function OptionRow({
         paddingHorizontal: 14,
         paddingVertical: 10,
         borderRadius: 20,
-        backgroundColor: "#fff",
+        backgroundColor: S.card,
         borderWidth: 2,
         borderColor: selected ? S.ink : "transparent",
         transform: [{ scale: pressed ? 0.98 : 1 }],
       })}
     >
       {icon && (
-        <View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: iconBg, alignItems: "center", justifyContent: "center" }}>
+        <View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: iconBg ?? S.chip, alignItems: "center", justifyContent: "center" }}>
           {icon}
         </View>
       )}
@@ -228,7 +231,7 @@ export function OptionRow({
       {right ??
         (selected && (
           <View style={{ width: 24, height: 24, borderRadius: 99, backgroundColor: S.ink, alignItems: "center", justifyContent: "center" }}>
-            <CheckIcon color="#fff" size={12} />
+            <CheckIcon color={S.onInk} size={12} />
           </View>
         ))}
     </Pressable>

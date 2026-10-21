@@ -1,11 +1,12 @@
 import Svg, { Rect, Path } from "react-native-svg";
-import { ST } from "../../theme/colors";
+import { useTheme } from "../../theme/ThemeContext";
 
 interface Props {
   size?: number;
 }
 
 export function BrandMark({ size = 36 }: Props) {
+  const { ST } = useTheme();
   const cols = [ST.papier.c, ST.karton.c, ST.kehricht.c, ST.gruengut.c, ST.metall.c];
   const w = [20, 30, 24, 32, 18];
 
@@ -29,7 +30,7 @@ export function BrandMark({ size = 36 }: Props) {
       <Path
         d="M35.1 11.9C37.3 8.9 39.9 6.7 42.9 5.1"
         fill="none"
-        stroke="#211F1C"
+        stroke={ST.gruengut.onC}
         strokeWidth={0.9}
         strokeLinecap="round"
         opacity={0.45}

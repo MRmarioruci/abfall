@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { View, Text, ScrollView, Pressable, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { S, ST, STREAM_ORDER, type WasteStreamId } from "../theme/colors";
+import { STREAM_ORDER, type WasteStreamId } from "../theme/colors";
+import { useTheme } from "../theme/ThemeContext";
 import { StreamGlyph } from "../components/icons/StreamGlyph";
 import { SoftSwitch } from "../components/ui/SoftSwitch";
 import { SunIcon, MoonIcon, BellIcon, PlusIcon, XIcon, ChevRIcon, CalIcon, GoogleIcon } from "../components/icons/Icons";
@@ -69,6 +70,7 @@ export function RemindersScreen({
   /** Opens the add-calendar flow; the no-calendar state shows a button for it when given. */
   onAddCalendar?: () => void;
 }) {
+  const { S, ST } = useTheme();
   const insets = useSafeAreaInsets();
   const { active, patchCalendar } = useCalendars();
   const { t, wasteLabel, whenLabel, monthShort } = useT();
@@ -381,7 +383,7 @@ export function RemindersScreen({
           bg={ST.papier.soft}
           action={
             onAddCalendar
-              ? { label: t("add.title"), onPress: onAddCalendar, icon: <PlusIcon color="#fff" size={18} /> }
+              ? { label: t("add.title"), onPress: onAddCalendar, icon: <PlusIcon color={S.onInk} size={18} /> }
               : undefined
           }
         />
@@ -429,7 +431,7 @@ export function RemindersScreen({
                 paddingLeft: 6,
                 paddingRight: 10,
                 borderRadius: 99,
-                backgroundColor: "#fff",
+                backgroundColor: S.card,
                 transform: [{ scale: pressed ? 0.96 : 1 }],
               })}
             >
@@ -438,7 +440,7 @@ export function RemindersScreen({
                   width: 22,
                   height: 22,
                   borderRadius: 99,
-                  backgroundColor: destination === "google" ? "#fff" : ST.papier.soft,
+                  backgroundColor: destination === "google" ? S.white : ST.papier.soft,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
@@ -485,11 +487,11 @@ export function RemindersScreen({
                   minHeight: 44,
                   paddingHorizontal: 16,
                   borderRadius: 99,
-                  backgroundColor: on ? S.ink : "#fff",
+                  backgroundColor: on ? S.ink : S.card,
                   transform: [{ scale: pressed ? 0.96 : 1 }],
                 })}
               >
-                <Text style={[TYPE.label, { color: on ? "#fff" : S.ink }]}>{t("reminders.all")}</Text>
+                <Text style={[TYPE.label, { color: on ? S.onInk : S.ink }]}>{t("reminders.all")}</Text>
                 {totalActiveCount > 0 && (
                   <View
                     style={{
@@ -497,12 +499,12 @@ export function RemindersScreen({
                       height: 20,
                       paddingHorizontal: 5,
                       borderRadius: 99,
-                      backgroundColor: on ? "rgba(255,255,255,0.18)" : S.bg,
+                      backgroundColor: on ? S.onInk + "2E" : S.bg,
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
-                    <Text style={[TYPE.micro, { color: on ? "#fff" : S.sec }]}>{totalActiveCount}</Text>
+                    <Text style={[TYPE.micro, { color: on ? S.onInk : S.sec }]}>{totalActiveCount}</Text>
                   </View>
                 )}
               </Pressable>
@@ -532,7 +534,7 @@ export function RemindersScreen({
                   paddingRight: 14,
                   paddingLeft: 7,
                   borderRadius: 99,
-                  backgroundColor: on ? cc.c : "#fff",
+                  backgroundColor: on ? cc.c : S.card,
                   transform: [{ scale: pressed ? 0.96 : 1 }],
                 })}
               >
@@ -541,14 +543,14 @@ export function RemindersScreen({
                     width: 30,
                     height: 30,
                     borderRadius: 99,
-                    backgroundColor: on ? "rgba(255,255,255,0.55)" : cc.soft,
+                    backgroundColor: on ? S.white + "8C" : cc.soft,
                     alignItems: "center",
                     justifyContent: "center",
                   }}
                 >
-                  <StreamGlyph stream={id} size={18} color={cc.ink} />
+                  <StreamGlyph stream={id} size={18} color={on ? cc.onC : cc.ink} />
                 </View>
-                <Text style={[TYPE.label, { color: on ? cc.ink : S.ink }]}>{wasteLabel(id)}</Text>
+                <Text style={[TYPE.label, { color: on ? cc.onC : S.ink }]}>{wasteLabel(id)}</Text>
                 {n > 0 && (
                   <View
                     style={{
@@ -556,12 +558,12 @@ export function RemindersScreen({
                       height: 20,
                       paddingHorizontal: 5,
                       borderRadius: 99,
-                      backgroundColor: on ? cc.ink : cc.soft,
+                      backgroundColor: on ? cc.onC : cc.soft,
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
-                    <Text style={[TYPE.micro, { color: on ? "#fff" : cc.ink }]}>{n}</Text>
+                    <Text style={[TYPE.micro, { color: on ? S.white : cc.ink }]}>{n}</Text>
                   </View>
                 )}
               </Pressable>
@@ -582,7 +584,7 @@ export function RemindersScreen({
                 }
                 art={<BellArt />}
                 bg={sel === "all" ? ST.papier.soft : ST[sel].soft}
-                action={{ label: t("reminders.add"), onPress: openAdd, icon: <PlusIcon color="#fff" size={18} /> }}
+                action={{ label: t("reminders.add"), onPress: openAdd, icon: <PlusIcon color={S.onInk} size={18} /> }}
               />
               {/* Quick start: one tap creates the two most common rules. */}
               <View style={{ flexDirection: "row", gap: 10 }}>
@@ -644,7 +646,7 @@ export function RemindersScreen({
                         marginBottom: 3,
                       }}
                     >
-                      <Text style={[TYPE.micro, { color: cc.ink }]}>{wasteLabel(stream)}</Text>
+                      <Text style={[TYPE.micro, { color: r.on ? cc.onC : cc.ink }]}>{wasteLabel(stream)}</Text>
                     </View>
                   )}
                   <Text style={[TYPE.label, { color: r.on ? S.ink : S.sec }]} numberOfLines={1}>

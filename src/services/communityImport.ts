@@ -1,7 +1,7 @@
 // Turning a community calendar into a local one, shared by the browse
 // sheet and the shared-link handler.
 
-import { ST } from "../theme/colors";
+import { ST_STATIC as ST } from "../theme/colors";
 import { parseISODate } from "../lib/dates";
 import { generateCalendarId } from "./storage";
 import type { CommunityCalendarDetail } from "./api";

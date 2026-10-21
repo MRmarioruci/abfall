@@ -35,7 +35,8 @@ import Animated, {
   type SharedValue,
 } from "react-native-reanimated";
 import Svg, { Circle, Ellipse, G, Path } from "react-native-svg";
-import { S, ST } from "../theme/colors";
+import { ST_STATIC } from "../theme/colors";
+import { useTheme } from "../theme/ThemeContext";
 import { useT } from "../context/LocaleContext";
 import { t as translate, type StringKey } from "../i18n";
 import { REST_POSE, rig, type Pose, type Rig } from "./recyclops/rig";
@@ -133,8 +134,13 @@ const RECENT_HISTORY_LEN = 8;
 // bounds, even on narrow phones).
 const BUBBLE_WIDTH = Math.round(Dimensions.get("window").width * 0.5);
 
-const BODY = ST.gruengut.c;
-const INK = ST.gruengut.ink;
+// He keeps his own colours in both modes; on dark he stands on his pastel
+// body, and the outline stays his dark green ink.
+const BODY = ST_STATIC.gruengut.c;
+const INK = ST_STATIC.gruengut.ink;
+// On a dark background his dark-green limbs would vanish, so in dark mode
+// they take a mid green that reads against the plum surfaces.
+const LIMB_ON_DARK = "#7FA864";
 const BELLY = "#C9DDB5";
 const LEAF = "#7FB069";
 const CHEEK = "rgba(232,128,120,0.45)";
@@ -143,12 +149,13 @@ const TAU = Math.PI * 2;
 // Speech bubble: light-on-dark card so it pops against the dark calendar.
 // The tail slides along the bottom edge to stay over his head as he walks.
 function SpeechBubble({ text, tailStyle }: { text: string; tailStyle: object }) {
+  const { S } = useTheme();
   return (
     <View style={{ width: BUBBLE_WIDTH }}>
       <View
         style={{
           alignSelf: "stretch",
-          backgroundColor: "#fff",
+          backgroundColor: S.white,
           paddingHorizontal: 13,
           paddingVertical: 10,
           borderRadius: 14,
@@ -161,7 +168,7 @@ function SpeechBubble({ text, tailStyle }: { text: string; tailStyle: object }) 
       >
         <Text
           style={{
-            color: S.ink,
+            color: S.calendar,
             fontSize: 10.5,
             fontFamily: FONT.w700,
             lineHeight: 14,
@@ -185,7 +192,7 @@ function SpeechBubble({ text, tailStyle }: { text: string; tailStyle: object }) 
             borderTopWidth: 8,
             borderLeftColor: "transparent",
             borderRightColor: "transparent",
-            borderTopColor: "#fff",
+            borderTopColor: S.white,
           },
           tailStyle,
         ]}
@@ -247,6 +254,8 @@ function usePointProps(R: SharedValue<Rig>, part: PointPart) {
 
 export function Recyclops({ size = 76, onPress, planSwap, walkRange = 60 }: Props) {
   const { t } = useT();
+  const { isDark } = useTheme();
+  const limb = isDark ? LIMB_ON_DARK : INK;
   const P = usePoseValues();
   // People who ask the system for less motion get a calm, blinking mascot.
   const reduceMotion = useReducedMotion();
@@ -653,23 +662,23 @@ export function Recyclops({ size = 76, onPress, planSwap, walkRange = 60 }: Prop
             <Ellipse cx={50} cy={97} rx={26} ry={2.6} fill="rgba(0,0,0,0.14)" />
 
             {/* Legs and feet */}
-            <APath animatedProps={legL} stroke={INK} strokeWidth={9.5} strokeLinecap="round" />
-            <APath animatedProps={legR} stroke={INK} strokeWidth={9.5} strokeLinecap="round" />
+            <APath animatedProps={legL} stroke={limb} strokeWidth={9.5} strokeLinecap="round" />
+            <APath animatedProps={legR} stroke={limb} strokeWidth={9.5} strokeLinecap="round" />
             <APath animatedProps={legL} stroke={BODY} strokeWidth={6.5} strokeLinecap="round" />
             <APath animatedProps={legR} stroke={BODY} strokeWidth={6.5} strokeLinecap="round" />
-            <AEllipse animatedProps={footL} rx={7.5} ry={3.4} fill={INK} />
-            <AEllipse animatedProps={footR} rx={7.5} ry={3.4} fill={INK} />
+            <AEllipse animatedProps={footL} rx={7.5} ry={3.4} fill={limb} />
+            <AEllipse animatedProps={footR} rx={7.5} ry={3.4} fill={limb} />
 
             {/* Arms, behind the body so the shoulders tuck in */}
-            <APath animatedProps={armL} stroke={INK} strokeWidth={11} strokeLinecap="round" />
-            <APath animatedProps={armR} stroke={INK} strokeWidth={11} strokeLinecap="round" />
+            <APath animatedProps={armL} stroke={limb} strokeWidth={11} strokeLinecap="round" />
+            <APath animatedProps={armR} stroke={limb} strokeWidth={11} strokeLinecap="round" />
             <APath animatedProps={armL} stroke={BODY} strokeWidth={8} strokeLinecap="round" />
             <APath animatedProps={armR} stroke={BODY} strokeWidth={8} strokeLinecap="round" />
             <ACircle animatedProps={handL} r={5.8} fill={BODY} stroke={INK} strokeWidth={1.6} />
             <ACircle animatedProps={handR} r={5.8} fill={BODY} stroke={INK} strokeWidth={1.6} />
 
             {/* Leaf */}
-            <APath animatedProps={leafStem} stroke={INK} strokeWidth={2.4} fill="none" strokeLinecap="round" />
+            <APath animatedProps={leafStem} stroke={limb} strokeWidth={2.4} fill="none" strokeLinecap="round" />
             <APath animatedProps={leafBlade} fill={LEAF} stroke={INK} strokeWidth={1.8} strokeLinejoin="round" />
 
             <APath animatedProps={body} fill={BODY} stroke={INK} strokeWidth={2.2} />

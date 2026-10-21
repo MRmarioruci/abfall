@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { View, Text, ScrollView, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { S, ST, type WasteStreamId } from "../theme/colors";
+import { type WasteStreamId } from "../theme/colors";
+import { useTheme } from "../theme/ThemeContext";
 import { CircBtn } from "../components/ui/CircBtn";
 import { StreamGlyph } from "../components/icons/StreamGlyph";
 import { BackIcon, HeartIcon, BellIcon, CheckIcon } from "../components/icons/Icons";
@@ -16,6 +17,7 @@ const LEADS = [
 ];
 
 export function DetailScreen({ route, navigation }: any) {
+  const { S, ST } = useTheme();
   const stream: WasteStreamId = route?.params?.stream ?? "papier";
   const s = ST[stream];
   const insets = useSafeAreaInsets();
@@ -23,7 +25,7 @@ export function DetailScreen({ route, navigation }: any) {
   const [reminderOn, setReminderOn] = useState(true);
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#F5F2F7" }}>
+    <View style={{ flex: 1, backgroundColor: S.sheet }}>
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingTop: insets.top + 10, paddingBottom: 160 }}
@@ -66,7 +68,7 @@ export function DetailScreen({ route, navigation }: any) {
               elevation: 10,
             }}
           >
-            <StreamGlyph stream={stream} size={120} color={s.ink} />
+            <StreamGlyph stream={stream} size={120} color={s.onC} />
           </View>
         </View>
 
@@ -111,7 +113,7 @@ export function DetailScreen({ route, navigation }: any) {
                         paddingHorizontal: 8,
                         alignItems: "center",
                         minWidth: 52,
-                        shadowColor: S.ink,
+                        shadowColor: S.inkShadow,
                         shadowOffset: { width: 0, height: 10 },
                         shadowOpacity: 0.28,
                         shadowRadius: 22,
@@ -122,7 +124,7 @@ export function DetailScreen({ route, navigation }: any) {
                         style={{
                           fontSize: 21,
                           fontFamily: FONT.w800,
-                          color: "#fff",
+                          color: S.onInk,
                           letterSpacing: -0.5,
                         }}
                       >
@@ -132,7 +134,8 @@ export function DetailScreen({ route, navigation }: any) {
                         style={{
                           fontSize: 9,
                           fontFamily: FONT.w700,
-                          color: "rgba(255,255,255,0.6)",
+                          color: S.onInk,
+                          opacity: 0.6,
                           marginTop: 4,
                           letterSpacing: 0.5,
                         }}
@@ -165,7 +168,7 @@ export function DetailScreen({ route, navigation }: any) {
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
-          backgroundColor: "rgba(236,223,212,0.95)",
+          backgroundColor: S.float,
         }}
       >
         <View>
@@ -190,8 +193,8 @@ export function DetailScreen({ route, navigation }: any) {
             gap: 8,
             padding: 5,
             borderRadius: 99,
-            backgroundColor: reminderOn ? S.ink : "#fff",
-            shadowColor: "rgb(150,118,96)",
+            backgroundColor: reminderOn ? S.ink : S.card,
+            shadowColor: S.shadow,
             shadowOffset: { width: 0, height: 6 },
             shadowOpacity: 0.12,
             shadowRadius: 18,
@@ -203,12 +206,12 @@ export function DetailScreen({ route, navigation }: any) {
               width: 42,
               height: 42,
               borderRadius: 99,
-              backgroundColor: reminderOn ? "rgba(255,255,255,0.16)" : "rgba(33,31,28,0.06)",
+              backgroundColor: reminderOn ? S.onInk + "29" : S.fill,
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <BellIcon color={reminderOn ? "#fff" : S.ter} size={19} />
+            <BellIcon color={reminderOn ? S.onInk : S.ter} size={19} />
           </View>
           <View style={{ flexDirection: "row", gap: 3, paddingHorizontal: 2 }}>
             {[0, 1, 2].map((i) => (
@@ -218,7 +221,7 @@ export function DetailScreen({ route, navigation }: any) {
                   width: 5,
                   height: 5,
                   borderRadius: 99,
-                  backgroundColor: reminderOn ? "rgba(255,255,255,0.5)" : S.ter,
+                  backgroundColor: reminderOn ? S.onInk + "80" : S.ter,
                 }}
               />
             ))}
@@ -228,7 +231,7 @@ export function DetailScreen({ route, navigation }: any) {
               width: 42,
               height: 42,
               borderRadius: 99,
-              backgroundColor: reminderOn ? "#fff" : "rgba(33,31,28,0.06)",
+              backgroundColor: reminderOn ? S.onInk : S.fill,
               alignItems: "center",
               justifyContent: "center",
             }}

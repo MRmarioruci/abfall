@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
 import { PillButton, QuietButton, SheetHeader, SoftCard } from "./ui/sheet";
 import { NeighboursArt } from "./art/Art";
-import { S, ST } from "../theme/colors";
+import { useTheme } from "../theme/ThemeContext";
 import { GlobeIcon, UserIcon, XIcon } from "./icons/Icons";
 import type { SavedCalendar } from "../types/calendar";
 import { ApiError, shareCalendar } from "../services/api";
@@ -57,6 +57,7 @@ function derivePublishRegion(c: SavedCalendar): string {
 }
 
 export function PublishDialog({ visible, onClose, calendar }: Props) {
+  const { S, ST } = useTheme();
   const insets = useSafeAreaInsets();
   const toast = useToast();
   const { t } = useT();
@@ -146,7 +147,7 @@ export function PublishDialog({ visible, onClose, calendar }: Props) {
                 width: 34,
                 height: 34,
                 borderRadius: 99,
-                backgroundColor: "#fff",
+                backgroundColor: S.card,
                 alignItems: "center",
                 justifyContent: "center",
                 transform: [{ scale: pressed ? 0.92 : 1 }],
@@ -175,7 +176,7 @@ export function PublishDialog({ visible, onClose, calendar }: Props) {
               paddingVertical: 12,
               paddingHorizontal: 14,
               borderRadius: 18,
-              backgroundColor: "#fff",
+              backgroundColor: S.card,
               fontSize: 18,
               color: S.ink,
               fontFamily: FONT.w800,
@@ -195,7 +196,7 @@ export function PublishDialog({ visible, onClose, calendar }: Props) {
             paddingRight: 14,
             minHeight: 60,
             borderRadius: 20,
-            backgroundColor: "#fff",
+            backgroundColor: S.card,
           }}
         >
           <View
@@ -235,7 +236,7 @@ export function PublishDialog({ visible, onClose, calendar }: Props) {
 
         <PillButton
           label={publishing ? t("publish.publishing") : t("publish.publish")}
-          icon={<GlobeIcon color="#fff" size={17} />}
+          icon={<GlobeIcon color={S.onInk} size={17} />}
           loading={publishing}
           onPress={handlePublish}
           style={{ marginTop: 18 }}

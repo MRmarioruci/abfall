@@ -2,7 +2,7 @@ import { View, Text } from "react-native";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
 import { PillButton, QuietButton, SheetHeader, SoftCard } from "./ui/sheet";
 import { NeighboursArt } from "./art/Art";
-import { ST } from "../theme/colors";
+import { useTheme } from "../theme/ThemeContext";
 import { CheckIcon, GlobeIcon } from "./icons/Icons";
 import type { SavedCalendar } from "../types/calendar";
 import { useT } from "../context/LocaleContext";
@@ -21,6 +21,7 @@ interface Props {
  * keeping it private is the quiet option underneath.
  */
 export function PostScanShareDialog({ visible, calendar, onShare, onSkip }: Props) {
+  const { S, ST } = useTheme();
   const { t } = useT();
   if (!calendar) return null;
 
@@ -46,12 +47,12 @@ export function PostScanShareDialog({ visible, calendar, onShare, onSkip }: Prop
                   width: 28,
                   height: 28,
                   borderRadius: 99,
-                  backgroundColor: "#5BA86B",
+                  backgroundColor: S.success,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <CheckIcon color="#fff" size={14} />
+                <CheckIcon color={S.white} size={14} />
               </View>
             </View>
           }
@@ -74,7 +75,7 @@ export function PostScanShareDialog({ visible, calendar, onShare, onSkip }: Prop
           </Text>
           <PillButton
             label={t("share.post_scan.confirm")}
-            icon={<GlobeIcon color="#fff" size={17} />}
+            icon={<GlobeIcon color={S.onInk} size={17} />}
             onPress={onShare}
             style={{ alignSelf: "stretch", marginTop: 18 }}
           />

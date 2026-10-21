@@ -1,5 +1,5 @@
 import { Pressable, View } from "react-native";
-import { S } from "../../theme/colors";
+import { useTheme } from "../../theme/ThemeContext";
 import { haptics } from "../../lib/haptics";
 
 interface Props {
@@ -10,6 +10,7 @@ interface Props {
 }
 
 export function SoftSwitch({ on, onChange, accessibilityLabel }: Props) {
+  const { S } = useTheme();
   return (
     <Pressable
       onPress={() => {
@@ -25,7 +26,7 @@ export function SoftSwitch({ on, onChange, accessibilityLabel }: Props) {
         height: 30,
         borderRadius: 99,
         padding: 2,
-        backgroundColor: on ? S.ink : "rgba(33,31,28,0.14)",
+        backgroundColor: on ? S.ink : S.fillStrong,
         flexDirection: "row",
         justifyContent: on ? "flex-end" : "flex-start",
       }}
@@ -35,7 +36,7 @@ export function SoftSwitch({ on, onChange, accessibilityLabel }: Props) {
           width: 26,
           height: 26,
           borderRadius: 99,
-          backgroundColor: "#fff",
+          backgroundColor: on ? S.onInk : S.white,
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 1 },
           shadowOpacity: 0.2,

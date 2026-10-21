@@ -1,7 +1,8 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { View, Text, ScrollView, Pressable, Alert, Animated, Easing } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { S, ST, type WasteStreamId } from "../theme/colors";
+import { type WasteStreamId } from "../theme/colors";
+import { useTheme } from "../theme/ThemeContext";
 import { BrandMark } from "../components/ui/BrandMark";
 import { CircBtn } from "../components/ui/CircBtn";
 import { CalendarMonth } from "../components/CalendarMonth";
@@ -42,6 +43,7 @@ interface Props {
 }
 
 export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders }: Props) {
+  const { S, ST } = useTheme();
   const insets = useSafeAreaInsets();
   const { active, loading, patchCalendar, homeLocation, setHomeLocation } = useCalendars();
   const { t, monthShort, locale } = useT();
@@ -365,7 +367,7 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders }: Pro
                 gap: 6,
                 paddingHorizontal: 14,
                 borderRadius: 99,
-                backgroundColor: "#fff",
+                backgroundColor: S.card,
                 transform: [{ scale: pressed ? 0.97 : 1 }],
               })}
             >
@@ -386,7 +388,7 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders }: Pro
               (editMode ? (
                 // While editing, the slot is the way out: one tap to finish.
                 <CircBtn size={44} bg={S.ink} shadow={false} accessibilityLabel={t("common.done")} onPress={() => setEditMode(false)}>
-                  <CheckIcon color="#fff" size={17} />
+                  <CheckIcon color={S.onInk} size={17} />
                 </CircBtn>
               ) : (
                 <HeaderMenu
@@ -438,7 +440,7 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders }: Pro
                 justifyContent: "center",
               }}
             >
-              <PencilIcon color={ST.karton.ink} size={12} />
+              <PencilIcon color={ST.karton.onC} size={12} />
             </View>
             <Text style={[TYPE.caption, { flexShrink: 1, color: ST.karton.ink }]}>
               {t("home.edit_banner")}
@@ -473,7 +475,7 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders }: Pro
                 <NextPickupHero events={heroEvents} onPress={openReminder} />
               ) : (
                 <SoftCard
-                  bg="#fff"
+                  bg={S.card}
                   style={{ flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 16 }}
                 >
                   <View
@@ -511,7 +513,7 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders }: Pro
                     }}
                   >
                     <Animated.View style={{ transform: [{ rotate: bellRotation }] }}>
-                      <BellIcon color={ST.papier.ink} size={20} />
+                      <BellIcon color={ST.papier.onC} size={20} />
                     </Animated.View>
                   </View>
                   <View style={{ flex: 1, alignItems: "flex-start" }}>
@@ -526,7 +528,7 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders }: Pro
                   </View>
                   <CircBtn
                     size={28}
-                    bg="rgba(255,255,255,0.7)"
+                    bg={S.glass}
                     shadow={false}
                     accessibilityLabel={t("reminder_edit.close")}
                     onPress={handleDismissNudge}
@@ -563,7 +565,7 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders }: Pro
                   paddingVertical: 7,
                   paddingHorizontal: 12,
                   borderRadius: 99,
-                  backgroundColor: "#fff",
+                  backgroundColor: S.card,
                 }}
               >
                 <Text style={[TYPE.caption, { color: S.ink }]}>{t("home.switch")}</Text>
@@ -612,7 +614,7 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders }: Pro
                       justifyContent: "center",
                     }}
                   >
-                    <StreamGlyph stream={factStream} size={32} color={ST[factStream].ink} />
+                    <StreamGlyph stream={factStream} size={32} color={ST[factStream].onC} />
                   </View>
                   <Animated.Text
                     style={[TYPE.caption, { flex: 1, color: ST[factStream].ink, opacity: factOpacity }]}

@@ -2,7 +2,8 @@
 // stream's tint, a big glyph, the waste type, and a countdown.
 
 import { View, Text, Pressable } from "react-native";
-import { S, ST, type WasteStreamId } from "../../theme/colors";
+import { type WasteStreamId } from "../../theme/colors";
+import { useTheme } from "../../theme/ThemeContext";
 import { TYPE } from "../../theme/type";
 import { StreamGlyph } from "../icons/StreamGlyph";
 import { BellIcon } from "../icons/Icons";
@@ -21,6 +22,7 @@ export function NextPickupHero({
   /** Opens the reminder flow for a stream on that day. */
   onPress: (stream: WasteStreamId, date: string) => void;
 }) {
+  const { S, ST } = useTheme();
   const { t, locale, wasteLabel, weekdayLong, weekdayShort, monthShort } = useT();
   const first = events[0]!;
   const s = ST[first.type] ?? ST.sonstiges;
@@ -74,7 +76,7 @@ export function NextPickupHero({
             justifyContent: "center",
           }}
         >
-          <StreamGlyph stream={first.type} size={80} color={s.ink} />
+          <StreamGlyph stream={first.type} size={80} color={s.onC} />
           <View
             style={{
               position: "absolute",
@@ -83,7 +85,7 @@ export function NextPickupHero({
               width: 32,
               height: 32,
               borderRadius: 99,
-              backgroundColor: "#fff",
+              backgroundColor: S.card,
               alignItems: "center",
               justifyContent: "center",
             }}
@@ -113,7 +115,7 @@ export function NextPickupHero({
                 paddingLeft: 5,
                 paddingRight: 12,
                 borderRadius: 99,
-                backgroundColor: "rgba(255,255,255,0.7)",
+                backgroundColor: S.glass,
                 transform: [{ scale: pressed ? 0.96 : 1 }],
               })}
             >
@@ -127,7 +129,7 @@ export function NextPickupHero({
                   justifyContent: "center",
                 }}
               >
-                <StreamGlyph stream={id} size={18} color={ST[id].ink} />
+                <StreamGlyph stream={id} size={18} color={ST[id].onC} />
               </View>
               <Text style={[TYPE.micro, { color: S.ink }]}>{wasteLabel(id)}</Text>
             </Pressable>

@@ -4,7 +4,7 @@ import { SlideUpSheet } from "./ui/SlideUpSheet";
 import { ArtTile, SheetHeader } from "./ui/sheet";
 import { ScanArt, BrowseArt } from "./art/Art";
 import { CommunityCalendarsSheet } from "./CommunityCalendarsSheet";
-import { ST } from "../theme/colors";
+import { useTheme } from "../theme/ThemeContext";
 import { useT } from "../context/LocaleContext";
 
 interface Props {
@@ -21,6 +21,7 @@ interface Props {
  * so this sheet is only the choice.
  */
 export function AddCalendarSheet({ visible, onClose, onScan }: Props) {
+  const { ST } = useTheme();
   const { t } = useT();
   const [showCommunity, setShowCommunity] = useState(false);
 

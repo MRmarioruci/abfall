@@ -1,5 +1,6 @@
 import { View, Text, Pressable } from "react-native";
-import { ST, type WasteStreamId } from "../theme/colors";
+import { type WasteStreamId } from "../theme/colors";
+import { useTheme } from "../theme/ThemeContext";
 import { StreamGlyph } from "./icons/StreamGlyph";
 import { ArrowURIcon } from "./icons/Icons";
 import { useT } from "../context/LocaleContext";
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function StreamGridCard({ stream, rel, date, tall = false, onPress }: Props) {
+  const { S, ST } = useTheme();
   const s = ST[stream];
   const { wasteLabel } = useT();
 
@@ -31,7 +33,7 @@ export function StreamGridCard({ stream, rel, date, tall = false, onPress }: Pro
       }}
     >
       <View style={{ position: "absolute", right: -16, bottom: -10, opacity: 0.18 }}>
-        <StreamGlyph stream={stream} size={tall ? 150 : 124} color={s.ink} />
+        <StreamGlyph stream={stream} size={tall ? 150 : 124} color={s.onC} />
       </View>
 
       <View style={{ flex: 1 }}>
@@ -39,7 +41,7 @@ export function StreamGridCard({ stream, rel, date, tall = false, onPress }: Pro
           style={{
             fontSize: 10.5,
             fontFamily: FONT.w800,
-            color: s.ink,
+            color: s.onC,
             opacity: 0.62,
             letterSpacing: 1,
             textTransform: "uppercase",
@@ -51,7 +53,7 @@ export function StreamGridCard({ stream, rel, date, tall = false, onPress }: Pro
           style={{
             fontSize: 21,
             fontFamily: FONT.w800,
-            color: s.ink,
+            color: s.onC,
             letterSpacing: -0.5,
             lineHeight: 22,
             marginTop: 5,
@@ -63,7 +65,7 @@ export function StreamGridCard({ stream, rel, date, tall = false, onPress }: Pro
           style={{
             fontSize: 13,
             fontFamily: FONT.w600,
-            color: s.ink,
+            color: s.onC,
             opacity: 0.7,
             marginTop: 3,
           }}
@@ -78,12 +80,12 @@ export function StreamGridCard({ stream, rel, date, tall = false, onPress }: Pro
             width: 40,
             height: 40,
             borderRadius: 99,
-            backgroundColor: "rgba(255,255,255,0.55)",
+            backgroundColor: S.white + "8C",
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <ArrowURIcon color={s.ink} size={19} />
+          <ArrowURIcon color={s.onC} size={19} />
         </View>
       </View>
     </Pressable>

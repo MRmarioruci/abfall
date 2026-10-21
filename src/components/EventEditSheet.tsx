@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { View, Text, Pressable, TextInput, ScrollView } from "react-native";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
-import { S, ST, STREAM_ORDER, type WasteStreamId } from "../theme/colors";
+import { STREAM_ORDER, type WasteStreamId } from "../theme/colors";
+import { useTheme } from "../theme/ThemeContext";
 import { StreamGlyph } from "./icons/StreamGlyph";
 import { CheckIcon } from "./icons/Icons";
 import { PillButton, QuietButton, SheetHeader } from "./ui/sheet";
@@ -23,6 +24,7 @@ interface Props {
 }
 
 export function EventEditSheet({ visible, onClose, event, year, zones, onSave, onDelete }: Props) {
+  const { S, ST } = useTheme();
   const { t, wasteLabel, monthShort } = useT();
   const [type, setType] = useState<WasteStreamId>("kehricht");
   const [month, setMonth] = useState(1);
@@ -100,9 +102,9 @@ export function EventEditSheet({ visible, onClose, event, year, zones, onSave, o
                   transform: [{ scale: pressed ? 0.96 : 1 }],
                 })}
               >
-                <StreamGlyph stream={id} size={34} color={s.ink} />
+                <StreamGlyph stream={id} size={34} color={active ? s.onC : s.ink} />
                 <Text
-                  style={{ fontSize: 12, fontFamily: FONT.w800, color: s.ink, textAlign: "center", lineHeight: 14 }}
+                  style={{ fontSize: 12, fontFamily: FONT.w800, color: active ? s.onC : s.ink, textAlign: "center", lineHeight: 14 }}
                   numberOfLines={2}
                 >
                   {wasteLabel(id)}
@@ -148,11 +150,11 @@ export function EventEditSheet({ visible, onClose, event, year, zones, onSave, o
                     borderRadius: 18,
                     alignItems: "center",
                     justifyContent: "center",
-                    backgroundColor: active ? S.ink : "#fff",
+                    backgroundColor: active ? S.ink : S.card,
                     transform: [{ scale: pressed ? 0.95 : 1 }],
                   })}
                 >
-                  <Text style={{ fontSize: 14, fontFamily: FONT.w800, color: active ? "#fff" : S.sec }}>{monthShort(m)}</Text>
+                  <Text style={{ fontSize: 14, fontFamily: FONT.w800, color: active ? S.onInk : S.sec }}>{monthShort(m)}</Text>
                 </Pressable>
               );
             })}
@@ -177,12 +179,12 @@ export function EventEditSheet({ visible, onClose, event, year, zones, onSave, o
                     height: 40,
                     paddingHorizontal: 16,
                     borderRadius: 99,
-                    backgroundColor: active ? S.ink : "#fff",
+                    backgroundColor: active ? S.ink : S.card,
                     transform: [{ scale: pressed ? 0.95 : 1 }],
                   })}
                 >
-                  {active && <CheckIcon color="#fff" size={12} />}
-                  <Text style={{ fontSize: 14, fontFamily: FONT.w800, color: active ? "#fff" : S.sec }}>
+                  {active && <CheckIcon color={S.onInk} size={12} />}
+                  <Text style={{ fontSize: 14, fontFamily: FONT.w800, color: active ? S.onInk : S.sec }}>
                     {z === "all" ? t("event_edit.all_zones") : z}
                   </Text>
                 </Pressable>

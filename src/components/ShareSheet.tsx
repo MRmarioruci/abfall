@@ -7,7 +7,8 @@ import { ConfirmSheet } from "./ConfirmSheet";
 import { PublishDialog } from "./PublishDialog";
 import { PillButton, QuietButton, SheetHeader, SoftCard } from "./ui/sheet";
 import { NeighboursArt } from "./art/Art";
-import { S, ST } from "../theme/colors";
+import { LIGHT } from "../theme/colors";
+import { useTheme } from "../theme/ThemeContext";
 import { ShareIcon, LinkIcon, GlobeIcon } from "./icons/Icons";
 import type { SavedCalendar } from "../types/calendar";
 import { useCalendars } from "../context/CalendarContext";
@@ -24,6 +25,7 @@ interface Props {
 }
 
 export function ShareSheet({ visible, onClose, calendar }: Props) {
+  const { S, ST } = useTheme();
   const { patchCalendar } = useCalendars();
   const toast = useToast();
   const { t } = useT();
@@ -119,7 +121,7 @@ export function ShareSheet({ visible, onClose, calendar }: Props) {
             </Text>
             <PillButton
               label={t("share.publish_now")}
-              icon={<GlobeIcon color="#fff" size={17} />}
+              icon={<GlobeIcon color={S.onInk} size={17} />}
               onPress={togglePublish}
               style={{ alignSelf: "stretch", marginTop: 18 }}
             />
@@ -129,11 +131,12 @@ export function ShareSheet({ visible, onClose, calendar }: Props) {
             {/* Live: the QR code is the hero; scanning it is the quickest share. */}
             <SoftCard bg={ST.gruengut.soft} style={{ alignItems: "center", paddingVertical: 22 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 16 }}>
-                <View style={{ width: 8, height: 8, borderRadius: 99, backgroundColor: "#5BA86B" }} />
+                <View style={{ width: 8, height: 8, borderRadius: 99, backgroundColor: S.success }} />
                 <Text style={{ fontSize: 13, fontFamily: FONT.w800, color: ST.gruengut.ink }}>{t("share.live_title")}</Text>
               </View>
-              <View style={{ padding: 14, borderRadius: 22, backgroundColor: "#fff" }}>
-                <QRCode value={shareUrl} size={168} backgroundColor="#ffffff" color={S.ink} ecl="M" />
+              {/* Dark on white in both modes, so every scanner reads it. */}
+              <View style={{ padding: 14, borderRadius: 22, backgroundColor: S.white }}>
+                <QRCode value={shareUrl} size={168} backgroundColor={S.white} color={LIGHT.S.ink} ecl="M" />
               </View>
               <Text style={{ fontSize: 13, color: ST.gruengut.ink, fontFamily: FONT.w700, marginTop: 12, opacity: 0.75 }} numberOfLines={1}>
                 {shareUrl.replace(/^https?:\/\//, "")}
@@ -149,7 +152,7 @@ export function ShareSheet({ visible, onClose, calendar }: Props) {
               />
               <PillButton
                 label={t("share.share")}
-                icon={<ShareIcon color="#fff" size={16} />}
+                icon={<ShareIcon color={S.onInk} size={16} />}
                 onPress={handleNativeShare}
                 style={{ flex: 1 }}
               />

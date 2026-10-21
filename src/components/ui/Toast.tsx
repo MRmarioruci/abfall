@@ -13,7 +13,7 @@ import {
 } from "react";
 import { Animated, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { S } from "../../theme/colors";
+import { useTheme } from "../../theme/ThemeContext";
 import { CheckIcon } from "../icons/Icons";
 import { haptics } from "../../lib/haptics";
 import { FONT } from "../../theme/type";
@@ -44,6 +44,7 @@ interface ToastState {
 }
 
 export function ToastProvider({ children }: { children: ReactNode }) {
+  const { S } = useTheme();
   const insets = useSafeAreaInsets();
   const [toast, setToast] = useState<ToastState | null>(null);
   const opacity = useRef(new Animated.Value(0)).current;
@@ -82,6 +83,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Toasts are inverted against the screen; errors stay red in both modes.
+  const fg = toast?.variant === "error" ? S.white : S.onInk;
+
   return (
     <Ctx.Provider value={{ show }}>
       {children}
@@ -102,12 +106,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               flexDirection: "row",
               alignItems: "center",
               gap: 10,
-              backgroundColor: toast.variant === "error" ? "#7A2414" : S.ink,
+              backgroundColor: toast.variant === "error" ? S.dangerSurface : S.ink,
               paddingVertical: toast.action ? 8 : 12,
               paddingLeft: toast.variant === "info" ? 20 : 12,
               paddingRight: toast.action ? 8 : 18,
               borderRadius: 99,
-              shadowColor: "#000",
+              shadowColor: S.shadow,
               shadowOffset: { width: 0, height: 8 },
               shadowOpacity: 0.25,
               shadowRadius: 18,
@@ -123,22 +127,22 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                   width: 22,
                   height: 22,
                   borderRadius: 99,
-                  backgroundColor: "rgba(255,255,255,0.18)",
+                  backgroundColor: fg + "2E",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
                 {toast.variant === "error" ? (
-                  <Text style={{ color: "#fff", fontSize: 13, fontFamily: FONT.w900, lineHeight: 15 }}>!</Text>
+                  <Text style={{ color: fg, fontSize: 13, fontFamily: FONT.w900, lineHeight: 15 }}>!</Text>
                 ) : (
-                  <CheckIcon color="#fff" size={13} />
+                  <CheckIcon color={fg} size={13} />
                 )}
               </View>
             )}
             <Text
               style={{
                 flexShrink: 1,
-                color: "#fff",
+                color: fg,
                 fontSize: 14.5,
                 fontFamily: FONT.w700,
                 letterSpacing: -0.2,
@@ -161,10 +165,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                   paddingHorizontal: 14,
                   paddingVertical: 8,
                   borderRadius: 99,
-                  backgroundColor: pressed ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.18)",
+                  backgroundColor: fg + (pressed ? "4D" : "2E"),
                 })}
               >
-                <Text style={{ color: "#fff", fontSize: 14, fontFamily: FONT.w800 }}>{toast.action.label}</Text>
+                <Text style={{ color: fg, fontSize: 14, fontFamily: FONT.w800 }}>{toast.action.label}</Text>
               </Pressable>
             )}
           </Animated.View>

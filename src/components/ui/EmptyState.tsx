@@ -2,7 +2,7 @@
 // one line of title, at most one short line under it, and one button.
 
 import { View, Text } from "react-native";
-import { S } from "../../theme/colors";
+import { useTheme } from "../../theme/ThemeContext";
 import { TYPE } from "../../theme/type";
 import { Recyclops } from "../Recyclops";
 import { PillButton, SoftCard } from "./sheet";
@@ -12,18 +12,19 @@ export function EmptyState({
   subtitle,
   art,
   action,
-  bg = "#fff",
+  bg,
 }: {
   title: string;
   subtitle?: string;
   /** Picture above the title; Recyclops when omitted. */
   art?: React.ReactNode;
   action?: { label: string; onPress: () => void; icon?: React.ReactNode };
-  /** Card tint; a soft palette colour fits most states. */
+  /** Card tint; a soft palette colour fits most states. Defaults to a card. */
   bg?: string;
 }) {
+  const { S } = useTheme();
   return (
-    <SoftCard bg={bg} style={{ alignItems: "center", paddingVertical: 26, paddingHorizontal: 22 }}>
+    <SoftCard bg={bg ?? S.card} style={{ alignItems: "center", paddingVertical: 26, paddingHorizontal: 22 }}>
       <View style={{ height: 120, alignItems: "center", justifyContent: "center" }}>
         {art ?? <Recyclops size={92} walkRange={0} />}
       </View>

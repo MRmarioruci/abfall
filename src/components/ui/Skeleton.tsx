@@ -1,8 +1,10 @@
 import { useEffect, useRef } from "react";
 import { Animated, type ViewStyle } from "react-native";
+import { useTheme } from "../../theme/ThemeContext";
 
 /** A placeholder block that pulses while content loads. */
 export function Skeleton({ style }: { style?: ViewStyle }) {
+  const { S } = useTheme();
   const pulse = useRef(new Animated.Value(0.55)).current;
   useEffect(() => {
     const loop = Animated.loop(
@@ -18,7 +20,7 @@ export function Skeleton({ style }: { style?: ViewStyle }) {
     <Animated.View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={[{ backgroundColor: "#E9E2DA", borderRadius: 16, opacity: pulse }, style]}
+      style={[{ backgroundColor: S.skeleton, borderRadius: 16, opacity: pulse }, style]}
     />
   );
 }

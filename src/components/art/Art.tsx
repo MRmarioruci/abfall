@@ -4,15 +4,17 @@
 import { useEffect, useRef } from "react";
 import { View, Animated, Easing } from "react-native";
 import Svg, { Rect, Circle, Path } from "react-native-svg";
-import { ST } from "../../theme/colors";
+import { type WasteStreamId } from "../../theme/colors";
+import { useTheme } from "../../theme/ThemeContext";
 
 // A paper calendar page inside scan brackets, with a scan line sweeping
 // over it. The coloured dots are pickup days in the waste palette.
 export const ART = 112;
-const DOT_COLORS = [ST.kehricht.c, ST.papier.c, ST.karton.c, ST.gruengut.c];
+const DOT_STREAMS: WasteStreamId[] = ["kehricht", "papier", "karton", "gruengut"];
 const MARKED: Record<number, number> = { 2: 0, 6: 1, 9: 2, 13: 0, 15: 3, 18: 1, 22: 2, 25: 0 };
 
 export function ScanArt() {
+  const { S, ST } = useTheme();
   const sweep = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     const loop = Animated.loop(
@@ -29,7 +31,7 @@ export function ScanArt() {
     <View style={{ width: ART, height: ART }}>
       <Svg width={ART} height={ART} viewBox="0 0 112 112">
         {/* Page */}
-        <Rect x={24} y={20} width={64} height={74} rx={8} fill="#fff" />
+        <Rect x={24} y={20} width={64} height={74} rx={8} fill={S.card} />
         <Rect x={32} y={28} width={30} height={5} rx={2.5} fill={ST.kehricht.ink} opacity={0.75} />
         {Array.from({ length: 28 }, (_, i) => {
           const col = i % 7;
@@ -41,7 +43,7 @@ export function ScanArt() {
               cx={33 + col * 7.6}
               cy={45 + row * 11}
               r={marked !== undefined ? 3 : 1.6}
-              fill={marked !== undefined ? DOT_COLORS[marked] : "#E4DBD2"}
+              fill={marked !== undefined ? ST[DOT_STREAMS[marked]].c : S.dot}
             />
           );
         })}
@@ -75,23 +77,24 @@ export function ScanArt() {
 
 // Shared calendars nearby: a map pin over two stacked calendar cards.
 export function BrowseArt() {
+  const { S, ST } = useTheme();
   return (
     <Svg width={ART} height={ART} viewBox="0 0 112 112">
-      <Rect x={20} y={46} width={60} height={46} rx={9} fill="#fff" opacity={0.6} transform="rotate(-8 50 69)" />
-      <Rect x={32} y={44} width={60} height={46} rx={9} fill="#fff" />
+      <Rect x={20} y={46} width={60} height={46} rx={9} fill={S.card} opacity={0.6} transform="rotate(-8 50 69)" />
+      <Rect x={32} y={44} width={60} height={46} rx={9} fill={S.card} />
       <Rect x={40} y={53} width={26} height={5} rx={2.5} fill={ST.papier.ink} opacity={0.75} />
       {[0, 1, 2, 3, 4].map((i) => (
-        <Circle key={i} cx={44 + i * 9.5} cy={70} r={i === 1 || i === 3 ? 3 : 1.7} fill={i === 1 ? ST.karton.c : i === 3 ? ST.gruengut.c : "#E1E2F0"} />
+        <Circle key={i} cx={44 + i * 9.5} cy={70} r={i === 1 || i === 3 ? 3 : 1.7} fill={i === 1 ? ST.karton.c : i === 3 ? ST.gruengut.c : S.dot} />
       ))}
       {[0, 1, 2, 3, 4].map((i) => (
-        <Circle key={i} cx={44 + i * 9.5} cy={80} r={i === 2 ? 3 : 1.7} fill={i === 2 ? ST.kehricht.c : "#E1E2F0"} />
+        <Circle key={i} cx={44 + i * 9.5} cy={80} r={i === 2 ? 3 : 1.7} fill={i === 2 ? ST.kehricht.c : S.dot} />
       ))}
       {/* Pin */}
       <Path
         d="M74 14c-9.4 0-16 7-16 15.6C58 41 74 54 74 54s16-13 16-24.4C90 21 83.4 14 74 14Z"
         fill={ST.papier.ink}
       />
-      <Circle cx={74} cy={29.5} r={6} fill="#fff" />
+      <Circle cx={74} cy={29.5} r={6} fill={S.card} />
     </Svg>
   );
 }
@@ -99,6 +102,7 @@ export function BrowseArt() {
 // Sharing with neighbours: a calendar card with three little houses
 // around it, linked by dotted lines.
 export function NeighboursArt({ size = ART }: { size?: number }) {
+  const { S, ST } = useTheme();
   const house = (x: number, y: number, fill: string, roof: string) => (
     <>
       <Path d={`M${x} ${y + 10}l12-10 12 10v14a2 2 0 0 1-2 2H${x + 2}a2 2 0 0 1-2-2V${y + 10}Z`} fill={fill} />
@@ -109,13 +113,13 @@ export function NeighboursArt({ size = ART }: { size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 112 112">
       <Path d="M56 56 22 30M56 56 90 30M56 56v32" stroke={ST.papier.ink} strokeWidth={2} strokeDasharray="3 4" strokeLinecap="round" opacity={0.45} />
-      <Rect x={36} y={38} width={40} height={36} rx={8} fill="#fff" />
+      <Rect x={36} y={38} width={40} height={36} rx={8} fill={S.card} />
       <Rect x={42} y={45} width={18} height={4} rx={2} fill={ST.papier.ink} opacity={0.75} />
       {[0, 1, 2, 3].map((i) => (
-        <Circle key={i} cx={45 + i * 7.5} cy={58} r={i === 1 ? 2.8 : 1.6} fill={i === 1 ? ST.kehricht.c : "#E1E2F0"} />
+        <Circle key={i} cx={45 + i * 7.5} cy={58} r={i === 1 ? 2.8 : 1.6} fill={i === 1 ? ST.kehricht.c : S.dot} />
       ))}
       {[0, 1, 2, 3].map((i) => (
-        <Circle key={i} cx={45 + i * 7.5} cy={66} r={i === 2 ? 2.8 : 1.6} fill={i === 2 ? ST.gruengut.c : "#E1E2F0"} />
+        <Circle key={i} cx={45 + i * 7.5} cy={66} r={i === 2 ? 2.8 : 1.6} fill={i === 2 ? ST.gruengut.c : S.dot} />
       ))}
       {house(10, 12, ST.karton.soft, ST.karton.ink)}
       {house(78, 12, ST.kehricht.soft, ST.kehricht.ink)}

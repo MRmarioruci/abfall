@@ -1,6 +1,6 @@
 import { View, Pressable, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { S } from "../theme/colors";
+import { useTheme } from "../theme/ThemeContext";
 import { HomeIcon, PinIcon, PlusIcon, BellIcon, UserIcon } from "./icons/Icons";
 import { useT } from "../context/LocaleContext";
 import type { StringKey } from "../i18n";
@@ -29,6 +29,7 @@ const TABS: TabDef[] = [
 ];
 
 export function BottomTabBar({ activeTab, onTabPress, onAddPress, badges }: Props) {
+  const { S } = useTheme();
   const insets = useSafeAreaInsets();
   const { t } = useT();
 
@@ -41,8 +42,8 @@ export function BottomTabBar({ activeTab, onTabPress, onAddPress, badges }: Prop
         right: 18,
         height: 66,
         borderRadius: 99,
-        backgroundColor: "#fff",
-        shadowColor: "rgb(150,118,96)",
+        backgroundColor: S.card,
+        shadowColor: S.shadow,
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.2,
         shadowRadius: 30,
@@ -71,16 +72,16 @@ export function BottomTabBar({ activeTab, onTabPress, onAddPress, badges }: Prop
                   alignItems: "center",
                   justifyContent: "center",
                   marginTop: -24,
-                  shadowColor: S.ink,
+                  shadowColor: S.inkShadow,
                   shadowOffset: { width: 0, height: 12 },
                   shadowOpacity: 0.32,
                   shadowRadius: 24,
                   elevation: 12,
                   borderWidth: 4,
-                  borderColor: "#fff",
+                  borderColor: S.card,
                 })}
               >
-                <PlusIcon color="#fff" size={26} />
+                <PlusIcon color={S.onInk} size={26} />
               </Pressable>
             </View>
           );
@@ -124,7 +125,7 @@ export function BottomTabBar({ activeTab, onTabPress, onAddPress, badges }: Prop
                     borderRadius: 99,
                     backgroundColor: S.ink,
                     borderWidth: 1.5,
-                    borderColor: "#fff",
+                    borderColor: S.card,
                     alignItems: "center",
                     justifyContent: "center",
                   }}
@@ -133,7 +134,7 @@ export function BottomTabBar({ activeTab, onTabPress, onAddPress, badges }: Prop
                     style={{
                       fontSize: 10,
                       fontFamily: FONT.w800,
-                      color: "#fff",
+                      color: S.onInk,
                       lineHeight: 12,
                     }}
                   >

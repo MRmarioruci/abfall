@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { View, Text, Animated, Easing, Image, Pressable, StyleSheet } from "react-native";
-import { S, ST } from "../theme/colors";
+import { LIGHT, type WasteStreamId } from "../theme/colors";
+import { useTheme } from "../theme/ThemeContext";
 import type { ParseStage } from "../services/parseCalendar";
 import { useT } from "../context/LocaleContext";
 import type { StringKey } from "../i18n";
@@ -13,7 +14,7 @@ const STEPS: Array<{ id: ParseStage; labelKey: StringKey }> = [
 ];
 
 // One segment colour per step, from the waste palette.
-const SEGMENT_COLORS = [ST.kehricht.c, ST.papier.c, ST.gruengut.c];
+const SEGMENT_STREAMS: WasteStreamId[] = ["kehricht", "papier", "gruengut"];
 
 interface Props {
   stage: ParseStage;
@@ -27,6 +28,7 @@ interface Props {
 }
 
 export function ScanProgress({ stage, detail, imageUri, pageCount = 1, onCancel }: Props) {
+  const { S, ST } = useTheme();
   const { t } = useT();
   const currentIndex = Math.max(0, STEPS.findIndex((s) => s.id === stage));
   const step = STEPS[Math.min(currentIndex, STEPS.length - 1)];
@@ -54,9 +56,9 @@ export function ScanProgress({ stage, detail, imageUri, pageCount = 1, onCancel 
   return (
     <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 28, paddingBottom: 28 }}>
       {/* Photo with scan line */}
-      <View style={{ flex: 1, borderRadius: 28, overflow: "hidden", backgroundColor: "#E9E1D8" }}>
+      <View style={{ flex: 1, borderRadius: 28, overflow: "hidden", backgroundColor: S.skeleton }}>
         {imageUri && <Image source={{ uri: imageUri }} style={{ flex: 1 }} resizeMode="cover" />}
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(245,242,247,0.18)" }]} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: S.sheet + "2E" }]} />
         <Animated.View
           pointerEvents="none"
           style={{
@@ -67,12 +69,12 @@ export function ScanProgress({ stage, detail, imageUri, pageCount = 1, onCancel 
             top: sweep.interpolate({ inputRange: [0, 1], outputRange: ["-12%", "88%"] }),
           }}
         >
-          <View style={{ flex: 1, backgroundColor: "rgba(230,154,128,0.22)" }} />
+          <View style={{ flex: 1, backgroundColor: ST.kehricht.c + "38" }} />
           <View style={{ height: 3, backgroundColor: ST.kehricht.c }} />
         </Animated.View>
         {pageCount > 1 && (
-          <View style={{ position: "absolute", top: 14, right: 14, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99, backgroundColor: "rgba(33,31,28,0.75)" }}>
-            <Text style={{ fontSize: 12, fontFamily: FONT.w800, color: "#fff" }}>
+          <View style={{ position: "absolute", top: 14, right: 14, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99, backgroundColor: LIGHT.S.ink + "BF" }}>
+            <Text style={{ fontSize: 12, fontFamily: FONT.w800, color: S.white }}>
               {t("add.camera.ready_other", { n: pageCount })}
             </Text>
           </View>
@@ -89,7 +91,7 @@ export function ScanProgress({ stage, detail, imageUri, pageCount = 1, onCancel 
                 flex: 1,
                 height: 6,
                 borderRadius: 99,
-                backgroundColor: i <= currentIndex ? SEGMENT_COLORS[i] : "#E6DED6",
+                backgroundColor: i <= currentIndex ? ST[SEGMENT_STREAMS[i]].c : S.skeleton,
               }}
             />
           ))}

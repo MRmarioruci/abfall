@@ -21,7 +21,7 @@ import {
   HankenGrotesk_800ExtraBold,
   HankenGrotesk_900Black,
 } from "@expo-google-fonts/hanken-grotesk";
-import { S } from "./src/theme/colors";
+import { ThemeProvider, loadStoredThemeMode, useTheme, type ThemeMode } from "./src/theme/ThemeContext";
 
 Notifications?.setNotificationHandler({
   handleNotification: async () => ({
@@ -39,6 +39,7 @@ export default function App() {
   // never flash the wrong screen, language or font.
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
   const [initialLocale, setInitialLocale] = useState<Locale | null>(null);
+  const [initialTheme, setInitialTheme] = useState<ThemeMode | null>(null);
   // A font that fails to load falls back to the system font rather than
   // blocking the app.
   const [fontsLoaded, fontError] = useFonts({
@@ -53,6 +54,7 @@ export default function App() {
   useEffect(() => {
     hasOnboarded().then((done) => setShowOnboarding(!done));
     loadStoredLocale().then((l) => setInitialLocale(l ?? deviceLocale()));
+    loadStoredThemeMode().then(setInitialTheme);
   }, []);
 
   const handleOnboardingDone = () => {
@@ -60,28 +62,41 @@ export default function App() {
     setShowOnboarding(false);
   };
 
-  const ready = showOnboarding !== null && initialLocale !== null && (fontsLoaded || !!fontError);
+  const ready =
+    showOnboarding !== null && initialLocale !== null && initialTheme !== null && (fontsLoaded || !!fontError);
 
   return (
     <SafeAreaProvider>
       {ready ? (
-        <LocaleProvider initialLocale={initialLocale}>
-          <ToastProvider>
-            <CalendarProvider>
-              <NavigationContainer>
-                {showOnboarding ? (
-                  <OnboardingScreen onDone={handleOnboardingDone} />
-                ) : (
-                  <TabNavigator />
-                )}
-                <StatusBar style="dark" />
-              </NavigationContainer>
-            </CalendarProvider>
-          </ToastProvider>
-        </LocaleProvider>
+        <ThemeProvider initialMode={initialTheme}>
+          <LocaleProvider initialLocale={initialLocale}>
+            <ToastProvider>
+              <CalendarProvider>
+                <NavigationContainer>
+                  {showOnboarding ? (
+                    <OnboardingScreen onDone={handleOnboardingDone} />
+                  ) : (
+                    <TabNavigator />
+                  )}
+                  <ThemedStatusBar />
+                </NavigationContainer>
+              </CalendarProvider>
+            </ToastProvider>
+          </LocaleProvider>
+        </ThemeProvider>
       ) : (
-        <View style={{ flex: 1, backgroundColor: S.bg }} />
+        <BootPlaceholder />
       )}
     </SafeAreaProvider>
   );
+}
+
+function ThemedStatusBar() {
+  const { isDark } = useTheme();
+  return <StatusBar style={isDark ? "light" : "dark"} />;
+}
+
+function BootPlaceholder() {
+  const { S } = useTheme();
+  return <View style={{ flex: 1, backgroundColor: S.bg }} />;
 }

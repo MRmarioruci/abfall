@@ -5,17 +5,18 @@
 import { View } from "react-native";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
 import { OptionRow, QuietButton, SheetHeader } from "./ui/sheet";
-import { ST } from "../theme/colors";
+import { type WasteStreamId } from "../theme/colors";
+import { useTheme } from "../theme/ThemeContext";
 import { FlagIcon } from "./icons/Flags";
 import { useLocale, useT } from "../context/LocaleContext";
 import { LOCALES, type Locale } from "../i18n";
 
 // A soft tint behind each flag so the list reads as colour, not grey.
-const CHIP_BG: Record<Locale, string> = {
-  en: ST.papier.soft,
-  de: ST.karton.soft,
-  fr: ST.glas.soft,
-  it: ST.gruengut.soft,
+const CHIP_BG: Record<Locale, WasteStreamId> = {
+  en: "papier",
+  de: "karton",
+  fr: "glas",
+  it: "gruengut",
 };
 
 interface Props {
@@ -26,6 +27,7 @@ interface Props {
 export function LanguagePickerSheet({ visible, onClose }: Props) {
   const { locale, setLocale } = useLocale();
   const { t } = useT();
+  const { ST } = useTheme();
 
   return (
     <SlideUpSheet visible={visible} onClose={onClose}>
@@ -38,7 +40,7 @@ export function LanguagePickerSheet({ visible, onClose }: Props) {
               key={l.id}
               label={l.endonym}
               icon={<FlagIcon locale={l.id} width={24} />}
-              iconBg={CHIP_BG[l.id]}
+              iconBg={ST[CHIP_BG[l.id]].soft}
               selected={l.id === locale}
               onPress={() => {
                 setLocale(l.id);

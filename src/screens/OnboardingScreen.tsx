@@ -12,7 +12,8 @@ import {
   PanResponder,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { S, ST } from "../theme/colors";
+import { type WasteStreamId } from "../theme/colors";
+import { useTheme } from "../theme/ThemeContext";
 import { BrandMark } from "../components/ui/BrandMark";
 import { BellIcon, CheckIcon } from "../components/icons/Icons";
 import { LOCALES, type StringKey } from "../i18n";
@@ -24,11 +25,11 @@ import { Recyclops } from "../components/Recyclops";
 import { FONT, TYPE } from "../theme/type";
 
 // Language chips share the tints used by the language picker sheet.
-const LOCALE_TINT: Record<string, string> = {
-  en: ST.papier.soft,
-  de: ST.karton.soft,
-  fr: ST.glas.soft,
-  it: ST.gruengut.soft,
+const LOCALE_TINT: Record<string, WasteStreamId> = {
+  en: "papier",
+  de: "karton",
+  fr: "glas",
+  it: "gruengut",
 };
 
 interface Props {
@@ -50,6 +51,7 @@ const STEP_COPY: Record<(typeof STEP_KEYS)[number], { title: StringKey; body: St
 const SCREEN_W = Dimensions.get("window").width;
 
 export function OnboardingScreen({ onDone }: Props) {
+  const { S } = useTheme();
   const insets = useSafeAreaInsets();
   const { t } = useT();
   const [step, setStep] = useState(0);
@@ -179,7 +181,7 @@ export function OnboardingScreen({ onDone }: Props) {
                 width: i === step ? 22 : 8,
                 height: 8,
                 borderRadius: 99,
-                backgroundColor: i === step ? S.ink : "rgba(33,31,28,0.18)",
+                backgroundColor: i === step ? S.ink : S.fillStrong,
               }}
             />
           </Pressable>
@@ -191,7 +193,7 @@ export function OnboardingScreen({ onDone }: Props) {
         <PillButton
           label={isLast ? t("common.get_started") : t("common.next")}
           onPress={() => (isLast ? onDone() : goTo(step + 1))}
-          icon={isLast ? <CheckIcon color="#fff" size={16} /> : undefined}
+          icon={isLast ? <CheckIcon color={S.onInk} size={16} /> : undefined}
         />
       </View>
     </View>
@@ -206,6 +208,7 @@ export function OnboardingScreen({ onDone }: Props) {
 // "Continue" needs no extra wiring.
 
 function LanguageMockup() {
+  const { ST } = useTheme();
   const { locale, setLocale } = useLocale();
 
   return (
@@ -223,7 +226,7 @@ function LanguageMockup() {
           key={l.id}
           label={l.endonym}
           icon={<FlagIcon locale={l.id} width={26} />}
-          iconBg={LOCALE_TINT[l.id] ?? ST.papier.soft}
+          iconBg={ST[LOCALE_TINT[l.id] ?? "papier"].soft}
           selected={l.id === locale}
           onPress={() => setLocale(l.id)}
         />
@@ -237,6 +240,7 @@ function LanguageMockup() {
 // uses. Illustrative only, so touches pass through to the swipe handler.
 
 function SortedArt() {
+  const { ST } = useTheme();
   const { t } = useT();
   return (
     <View pointerEvents="none" style={{ width: SCREEN_W - 44, flexDirection: "row", gap: 12 }}>
@@ -254,6 +258,7 @@ function SortedArt() {
 // A big bell in a soft circle, with Recyclops standing beside it.
 
 function RemindersArt() {
+  const { ST } = useTheme();
   return (
     <View style={{ width: 260, height: 240, alignItems: "center", justifyContent: "center" }}>
       <View
@@ -279,6 +284,7 @@ function RemindersArt() {
 // Recyclops on his own, on a soft halo, ready to go.
 
 function WelcomeArt() {
+  const { ST } = useTheme();
   return (
     <View style={{ width: 240, height: 240, alignItems: "center", justifyContent: "center" }}>
       <View

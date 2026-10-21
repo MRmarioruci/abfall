@@ -10,7 +10,7 @@ module.exports = ({ config }) => ({
   version: "1.0.0",
   orientation: "portrait",
   icon: "./assets/icon.png",
-  userInterfaceStyle: "light",
+  userInterfaceStyle: "automatic",
   // Used by expo-auth-session as the OAuth redirect scheme so Google's
   // callback can reach the app on iOS/Android.
   scheme: "abfall",

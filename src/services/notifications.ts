@@ -1,7 +1,7 @@
 import { Platform } from "react-native";
 import { Notifications } from "./notificationsModule";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { ST } from "../theme/colors";
+import { ST_STATIC as ST } from "../theme/colors";
 import { t, wasteLabel, weekdayLong, monthShort } from "../i18n";
 import type { WasteStreamId } from "../theme/colors";
 import type { ReminderRule, SavedCalendar } from "../types/calendar";

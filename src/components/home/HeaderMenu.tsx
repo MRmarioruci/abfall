@@ -4,7 +4,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Modal, Pressable, Text, View } from "react-native";
-import { S, ST } from "../../theme/colors";
+import { useTheme } from "../../theme/ThemeContext";
 import { TYPE } from "../../theme/type";
 import { CircBtn } from "../ui/CircBtn";
 import { MoreIcon } from "../icons/Icons";
@@ -19,6 +19,7 @@ export interface HeaderMenuItem {
 }
 
 export function HeaderMenu({ items, accessibilityLabel }: { items: HeaderMenuItem[]; accessibilityLabel: string }) {
+  const { S, ST } = useTheme();
   const anchor = useRef<View>(null);
   const [open, setOpen] = useState(false);
   const [top, setTop] = useState(0);
@@ -67,8 +68,8 @@ export function HeaderMenu({ items, accessibilityLabel }: { items: HeaderMenuIte
               minWidth: 210,
               padding: 6,
               borderRadius: 22,
-              backgroundColor: "#fff",
-              shadowColor: "rgb(120,90,70)",
+              backgroundColor: S.card,
+              shadowColor: S.shadow,
               shadowOffset: { width: 0, height: 12 },
               shadowOpacity: 0.18,
               shadowRadius: 28,

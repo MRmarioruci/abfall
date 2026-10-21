@@ -2,7 +2,8 @@ import { useState } from "react";
 import { View, Pressable } from "react-native";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
 import { OptionRow, SheetHeader } from "./ui/sheet";
-import { S, ST, type WasteStreamId } from "../theme/colors";
+import { type WasteStreamId } from "../theme/colors";
+import { useTheme } from "../theme/ThemeContext";
 import { CalIcon, CheckIcon, XIcon, ShareIcon } from "./icons/Icons";
 import { useCalendars } from "../context/CalendarContext";
 import { ShareSheet } from "./ShareSheet";
@@ -27,6 +28,7 @@ function RowAction({
   onPress: () => void;
   children: React.ReactNode;
 }) {
+  const { S } = useTheme();
   return (
     <Pressable
       hitSlop={8}
@@ -37,7 +39,7 @@ function RowAction({
         width: 34,
         height: 34,
         borderRadius: 99,
-        backgroundColor: "#F4EFEA",
+        backgroundColor: S.chip,
         alignItems: "center",
         justifyContent: "center",
         transform: [{ scale: pressed ? 0.92 : 1 }],
@@ -49,6 +51,7 @@ function RowAction({
 }
 
 export function CalendarSwitcher({ visible, onClose }: Props) {
+  const { S, ST } = useTheme();
   const { t } = useT();
   const { calendars, switchCalendar, removeCalendar } = useCalendars();
   const [shareTarget, setShareTarget] = useState<SavedCalendar | null>(null);
@@ -101,7 +104,7 @@ export function CalendarSwitcher({ visible, onClose }: Props) {
                           justifyContent: "center",
                         }}
                       >
-                        <CheckIcon color="#fff" size={14} />
+                        <CheckIcon color={S.onInk} size={14} />
                       </View>
                     ) : (
                       <RowAction label={t("switcher.remove")} onPress={() => removeCalendar(cal.id)}>

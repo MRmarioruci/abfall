@@ -11,7 +11,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { S } from "../../theme/colors";
+import { useTheme } from "../../theme/ThemeContext";
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
 
@@ -35,6 +35,7 @@ export function SlideUpSheet({
   children,
   scrollable = true,
 }: Props) {
+  const { S } = useTheme();
   const insets = useSafeAreaInsets();
   const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const opacity = useRef(new Animated.Value(0)).current;
@@ -110,7 +111,7 @@ export function SlideUpSheet({
         <Animated.View
           style={{
             ...({ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 } as ViewStyle),
-            backgroundColor: "rgba(0,0,0,0.3)",
+            backgroundColor: S.scrim,
             opacity,
           }}
         >
@@ -127,7 +128,7 @@ export function SlideUpSheet({
             // real constraint that makes content scroll when it would not
             // otherwise fit on screen.
             maxHeight: screenCap,
-            backgroundColor: "#F5F2F7",
+            backgroundColor: S.sheet,
             borderTopLeftRadius: 28,
             borderTopRightRadius: 28,
             paddingBottom: bottomPad,

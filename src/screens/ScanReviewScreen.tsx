@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator, TextInput, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { S, ST, STREAM_ORDER } from "../theme/colors";
+import { STREAM_ORDER } from "../theme/colors";
+import { useTheme } from "../theme/ThemeContext";
 import { CircBtn } from "../components/ui/CircBtn";
 import { CalendarMonth } from "../components/CalendarMonth";
 import { BackIcon, CalIcon, PencilIcon } from "../components/icons/Icons";
@@ -31,6 +32,7 @@ interface Props {
 }
 
 export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
+  const { S, ST } = useTheme();
   const insets = useSafeAreaInsets();
   const { t, wasteLabel } = useT();
   const { addCalendar, active: previouslyActive, homeLocation } = useCalendars();
@@ -203,7 +205,7 @@ export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
 
   if (phase === "parsing") {
     return (
-      <View style={{ flex: 1, backgroundColor: "#F5F2F7", paddingTop: insets.top, paddingBottom: insets.bottom }}>
+      <View style={{ flex: 1, backgroundColor: S.sheet, paddingTop: insets.top, paddingBottom: insets.bottom }}>
         <ScanProgress
           stage={progress.stage}
           detail={progress.detail}
@@ -217,7 +219,7 @@ export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
 
   if (phase === "error") {
     return (
-      <View style={{ flex: 1, backgroundColor: "#F5F2F7", justifyContent: "center", alignItems: "center", paddingHorizontal: 40 }}>
+      <View style={{ flex: 1, backgroundColor: S.sheet, justifyContent: "center", alignItems: "center", paddingHorizontal: 40 }}>
         <Text style={{ fontSize: 22, fontFamily: FONT.w800, color: S.ink, textAlign: "center" }}>
           {t("scan.review.error_title")}
         </Text>
@@ -228,14 +230,14 @@ export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
           onPress={onBack}
           style={{ marginTop: 24, height: 50, paddingHorizontal: 32, borderRadius: 99, backgroundColor: S.ink, alignItems: "center", justifyContent: "center" }}
         >
-          <Text style={{ fontSize: 16, fontFamily: FONT.w700, color: "#fff" }}>{t("scan.review.try_again")}</Text>
+          <Text style={{ fontSize: 16, fontFamily: FONT.w700, color: S.onInk }}>{t("scan.review.try_again")}</Text>
         </Pressable>
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#F5F2F7" }}>
+    <View style={{ flex: 1, backgroundColor: S.sheet }}>
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingTop: insets.top + 10, paddingBottom: 130 }}
@@ -246,8 +248,8 @@ export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
           <CircBtn size={44} onPress={onBack}>
             <BackIcon color={S.ink} size={20} />
           </CircBtn>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: "#fff", paddingVertical: 8, paddingHorizontal: 14, borderRadius: 99, shadowColor: "rgb(150,118,96)", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 18, elevation: 3 }}>
-            <View style={{ width: 7, height: 7, borderRadius: 99, backgroundColor: "#5BA86B" }} />
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: S.card, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 99, shadowColor: S.shadow, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 18, elevation: 3 }}>
+            <View style={{ width: 7, height: 7, borderRadius: 99, backgroundColor: S.success }} />
             <Text style={{ fontSize: 12, fontFamily: FONT.w800, color: S.ink, letterSpacing: 0.3 }}>
               {events.length === 1 ? t("scan.review.dates_one") : t("scan.review.dates_other", { n: events.length })}
             </Text>
@@ -333,7 +335,7 @@ export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
                       paddingLeft: 8,
                       paddingRight: 10,
                       borderRadius: 99,
-                      backgroundColor: "#fff",
+                      backgroundColor: S.onTint,
                     }}
                   >
                     <View style={{ width: 8, height: 8, borderRadius: 99, backgroundColor: ST[id].c }} />
@@ -364,7 +366,7 @@ export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
           paddingHorizontal: 20,
           paddingBottom: insets.bottom + 30,
           paddingTop: 14,
-          backgroundColor: "rgba(245,242,247,0.95)",
+          backgroundColor: S.sheetFloat,
         }}
       >
         <Pressable
@@ -378,7 +380,7 @@ export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
             justifyContent: "center",
             flexDirection: "row",
             gap: 9,
-            shadowColor: S.ink,
+            shadowColor: S.inkShadow,
             shadowOffset: { width: 0, height: 12 },
             shadowOpacity: 0.28,
             shadowRadius: 26,
@@ -387,11 +389,11 @@ export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
           }}
         >
           {saving ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={S.onInk} />
           ) : (
             <>
-              <CalIcon color="#fff" size={20} />
-              <Text style={{ fontSize: 17, fontFamily: FONT.w700, color: "#fff" }}>
+              <CalIcon color={S.onInk} size={20} />
+              <Text style={{ fontSize: 17, fontFamily: FONT.w700, color: S.onInk }}>
                 {t("scan.review.save")}
               </Text>
             </>

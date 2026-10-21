@@ -4,7 +4,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Pressable, Text, View } from "react-native";
-import { S, ST, type WasteStreamId } from "../../theme/colors";
+import { type WasteStreamId } from "../../theme/colors";
+import { useTheme } from "../../theme/ThemeContext";
 import { TYPE } from "../../theme/type";
 import { StreamGlyph } from "../icons/StreamGlyph";
 import { ArrowURIcon, ChevRIcon, XIcon } from "../icons/Icons";
@@ -48,6 +49,7 @@ function materialChips(center: CollectionCenter, t: (k: StringKey) => string): C
 }
 
 function MaterialChip({ chip }: { chip: Chip }) {
+  const { S, ST } = useTheme();
   const s = chip.stream ? ST[chip.stream] : null;
   return (
     <View
@@ -59,7 +61,7 @@ function MaterialChip({ chip }: { chip: Chip }) {
         paddingRight: 11,
         paddingVertical: 5,
         borderRadius: 99,
-        backgroundColor: s ? s.soft : "#F4EFEA",
+        backgroundColor: s ? s.soft : S.chip,
       }}
     >
       {chip.stream && <StreamGlyph stream={chip.stream} size={20} />}
@@ -88,6 +90,7 @@ export function PlaceCard({
   onClose: () => void;
   onDirections: (c: CollectionCenter) => void;
 }) {
+  const { S } = useTheme();
   // Keep showing the last place while the card slides out.
   const [shown, setShown] = useState<CollectionCenter | null>(center);
   const [lastSubtitle, setLastSubtitle] = useState(subtitle);
@@ -126,9 +129,9 @@ export function PlaceCard({
         bottom,
         padding: 20,
         paddingTop: 18,
-        backgroundColor: "#fff",
+        backgroundColor: S.card,
         borderRadius: 28,
-        shadowColor: "rgb(150,118,96)",
+        shadowColor: S.shadow,
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.16,
         shadowRadius: 22,
@@ -140,7 +143,7 @@ export function PlaceCard({
         title={shown.name || t("map.default_name")}
         subtitle={lastSubtitle}
         right={
-          <CircBtn size={36} bg="#F4EFEA" shadow={false} onPress={onClose} accessibilityLabel={closeLabel}>
+          <CircBtn size={36} bg={S.chip} shadow={false} onPress={onClose} accessibilityLabel={closeLabel}>
             <XIcon color={S.ink} size={15} />
           </CircBtn>
         }
@@ -192,7 +195,7 @@ export function PlaceCard({
 
       <PillButton
         label={t("map.directions")}
-        icon={<ArrowURIcon color="#fff" size={16} />}
+        icon={<ArrowURIcon color={S.onInk} size={16} />}
         onPress={() => onDirections(shown)}
         style={{ marginTop: 18 }}
       />

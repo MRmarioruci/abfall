@@ -3,6 +3,8 @@ import { View } from "react-native";
 import Svg, { Path, Rect, G } from "react-native-svg";
 import type { CenterCategory } from "../types/collectionCenters";
 
+// Map pins keep these colours (with a white ring) in both themes: they sit
+// on the map tiles, not on the app surface, and read on light and dark maps.
 const CATEGORY_COLORS: Record<CenterCategory, string> = {
   centre: "#4A5568",   // slate
   glass: "#38A169",    // green

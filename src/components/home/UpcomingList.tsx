@@ -2,7 +2,7 @@
 // date shown once per day.
 
 import { View, Text } from "react-native";
-import { S, ST } from "../../theme/colors";
+import { useTheme } from "../../theme/ThemeContext";
 import { TYPE } from "../../theme/type";
 import { StreamGlyph } from "../icons/StreamGlyph";
 import { useT } from "../../context/LocaleContext";
@@ -11,6 +11,7 @@ import { relativeDayLabel } from "./relativeDay";
 import type { CollectionEvent } from "../../types/calendar";
 
 export function UpcomingList({ events }: { events: CollectionEvent[] }) {
+  const { S, ST } = useTheme();
   const { t, locale, wasteLabel, weekdayShort, weekdayLong, monthShort } = useT();
   if (events.length === 0) return null;
 

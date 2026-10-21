@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { View, Text, TextInput, Pressable, ActivityIndicator, ScrollView, Keyboard } from "react-native";
-import { S } from "../theme/colors";
+import { useTheme } from "../theme/ThemeContext";
 import { PinIcon, XIcon } from "./icons/Icons";
 import { searchPlaces, type PlaceSuggestion } from "../services/geocoding";
 import { useT } from "../context/LocaleContext";
@@ -28,6 +28,7 @@ export function LocationSearchInput({
   suggestionsMaxHeight = 240,
   autoFocus = false,
 }: Props) {
+  const { S } = useTheme();
   const { t } = useT();
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [searching, setSearching] = useState(false);
@@ -94,7 +95,7 @@ export function LocationSearchInput({
           paddingHorizontal: 14,
           paddingVertical: 4,
           borderRadius: 14,
-          backgroundColor: "#fff",
+          backgroundColor: S.card,
           borderWidth: 1.5,
           borderColor: focused ? S.ink : S.line,
         }}
@@ -136,7 +137,7 @@ export function LocationSearchInput({
               width: 22,
               height: 22,
               borderRadius: 99,
-              backgroundColor: "#F0EAE4",
+              backgroundColor: S.chip,
               alignItems: "center",
               justifyContent: "center",
             }}
@@ -151,7 +152,7 @@ export function LocationSearchInput({
           style={{
             marginTop: 8,
             borderRadius: 14,
-            backgroundColor: "#fff",
+            backgroundColor: S.card,
             borderWidth: 1.5,
             borderColor: S.line,
             maxHeight: suggestionsMaxHeight,

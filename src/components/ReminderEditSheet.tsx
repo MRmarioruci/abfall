@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { View, Text, Pressable, ScrollView, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { S, ST, STREAM_ORDER, type WasteStreamId } from "../theme/colors";
+import { STREAM_ORDER, type WasteStreamId } from "../theme/colors";
+import { useTheme } from "../theme/ThemeContext";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
 import { StreamGlyph } from "./icons/StreamGlyph";
 import { XIcon, CheckIcon, SunIcon, MoonIcon, BellIcon, CalIcon } from "./icons/Icons";
@@ -68,6 +69,7 @@ interface Props {
 }
 
 export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate, initialWhen, onSave }: Props) {
+  const { S, ST } = useTheme();
   const insets = useSafeAreaInsets();
   const toast = useToast();
   const { t, whenLabel, wasteLabel } = useT();
@@ -166,7 +168,7 @@ export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate,
                 width: 36,
                 height: 36,
                 borderRadius: 99,
-                backgroundColor: "#fff",
+                backgroundColor: S.card,
                 alignItems: "center",
                 justifyContent: "center",
                 transform: [{ scale: pressed ? 0.92 : 1 }],
@@ -180,18 +182,18 @@ export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate,
         {/* Recurring vs one-off: a two-way segmented switch. */}
         <View
           accessibilityRole="tablist"
-          style={{ flexDirection: "row", backgroundColor: "#fff", borderRadius: 99, padding: 4, marginBottom: 18 }}
+          style={{ flexDirection: "row", backgroundColor: S.card, borderRadius: 99, padding: 4, marginBottom: 18 }}
         >
           <Segment
             active={mode === "recurring"}
             label={t("reminder_edit.recurring")}
-            icon={<BellIcon color={mode === "recurring" ? "#fff" : S.sec} size={16} />}
+            icon={<BellIcon color={mode === "recurring" ? S.onInk : S.sec} size={16} />}
             onPress={() => setMode("recurring")}
           />
           <Segment
             active={mode === "specific"}
             label={t("reminder_edit.one_off")}
-            icon={<CalIcon color={mode === "specific" ? "#fff" : S.sec} size={16} />}
+            icon={<CalIcon color={mode === "specific" ? S.onInk : S.sec} size={16} />}
             onPress={() => setMode("specific")}
           />
         </View>
@@ -227,9 +229,9 @@ export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate,
                   transform: [{ scale: pressed ? 0.96 : 1 }],
                 })}
               >
-                <StreamGlyph stream={id} size={34} color={cc.ink} />
+                <StreamGlyph stream={id} size={34} color={on ? cc.onC : cc.ink} />
                 <Text
-                  style={{ fontSize: 12, fontFamily: FONT.w800, color: cc.ink, textAlign: "center", lineHeight: 14 }}
+                  style={{ fontSize: 12, fontFamily: FONT.w800, color: on ? cc.onC : cc.ink, textAlign: "center", lineHeight: 14 }}
                   numberOfLines={2}
                 >
                   {wasteLabel(id)}
@@ -257,12 +259,12 @@ export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate,
                     height: 40,
                     paddingHorizontal: 14,
                     borderRadius: 99,
-                    backgroundColor: on ? S.ink : "#fff",
+                    backgroundColor: on ? S.ink : S.card,
                     transform: [{ scale: pressed ? 0.96 : 1 }],
                   })}
                 >
-                  {whenIcon(opt.value, on ? "#fff" : S.sec, 15)}
-                  <Text style={{ fontSize: 14, fontFamily: FONT.w800, color: on ? "#fff" : S.ink, letterSpacing: -0.2 }}>
+                  {whenIcon(opt.value, on ? S.onInk : S.sec, 15)}
+                  <Text style={{ fontSize: 14, fontFamily: FONT.w800, color: on ? S.onInk : S.ink, letterSpacing: -0.2 }}>
                     {whenLabel(opt.value)}
                   </Text>
                 </Pressable>
@@ -298,7 +300,7 @@ export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate,
               />
             </View>
           )}
-          {mode === "specific" && <View style={{ height: 1, backgroundColor: "rgba(0,0,0,0.06)", marginHorizontal: 8 }} />}
+          {mode === "specific" && <View style={{ height: 1, backgroundColor: S.fill, marginHorizontal: 8 }} />}
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}>
             <Spinner
               label={t("reminder_edit.hour")}
@@ -316,7 +318,7 @@ export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate,
           </View>
         </SoftCard>
 
-        <PillButton label={t("reminder_edit.save")} icon={<CheckIcon color="#fff" size={18} />} onPress={handleSave} />
+        <PillButton label={t("reminder_edit.save")} icon={<CheckIcon color={S.onInk} size={18} />} onPress={handleSave} />
 
         <Pressable
           onPress={handleSendTest}
@@ -356,6 +358,7 @@ function Segment({
   icon: React.ReactNode;
   onPress: () => void;
 }) {
+  const { S } = useTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -374,7 +377,7 @@ function Segment({
       })}
     >
       {icon}
-      <Text style={{ fontSize: 15, fontFamily: FONT.w800, color: active ? "#fff" : S.sec, letterSpacing: -0.2 }}>
+      <Text style={{ fontSize: 15, fontFamily: FONT.w800, color: active ? S.onInk : S.sec, letterSpacing: -0.2 }}>
         {label}
       </Text>
     </Pressable>
@@ -382,6 +385,7 @@ function Segment({
 }
 
 function StepButton({ label, onPress, ink }: { label: string; onPress: () => void; ink: string }) {
+  const { S } = useTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -391,7 +395,7 @@ function StepButton({ label, onPress, ink }: { label: string; onPress: () => voi
         width: 34,
         height: 34,
         borderRadius: 99,
-        backgroundColor: "rgba(255,255,255,0.75)",
+        backgroundColor: S.glass,
         alignItems: "center",
         justifyContent: "center",
         transform: [{ scale: pressed ? 0.9 : 1 }],

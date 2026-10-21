@@ -9,7 +9,8 @@
 import { useEffect, useState } from "react";
 import { View, Text, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { S, ST, STREAM_ORDER, type WasteStreamId } from "../theme/colors";
+import { STREAM_ORDER, type WasteStreamId } from "../theme/colors";
+import { useTheme } from "../theme/ThemeContext";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
 import { StreamGlyph } from "./icons/StreamGlyph";
 import { XIcon, CheckIcon, PlusIcon } from "./icons/Icons";
@@ -32,6 +33,7 @@ interface Props {
 
 
 export function DayEventsEditSheet({ visible, onClose, date, events, defaultZone, onSave }: Props) {
+  const { S, ST } = useTheme();
   const insets = useSafeAreaInsets();
   const { t, wasteLabel, weekdayLong, monthLong } = useT();
   const formatDayLabel = (iso: string): string => {
@@ -83,7 +85,7 @@ export function DayEventsEditSheet({ visible, onClose, date, events, defaultZone
                 width: 36,
                 height: 36,
                 borderRadius: 99,
-                backgroundColor: "#fff",
+                backgroundColor: S.card,
                 alignItems: "center",
                 justifyContent: "center",
                 transform: [{ scale: pressed ? 0.92 : 1 }],
@@ -97,7 +99,7 @@ export function DayEventsEditSheet({ visible, onClose, date, events, defaultZone
         {/* What's on this day: one soft row per pickup. */}
         <View style={{ gap: 8, marginBottom: 20 }}>
           {draft.length === 0 && (
-            <SoftCard bg="#fff" style={{ paddingVertical: 16 }}>
+            <SoftCard bg={S.card} style={{ paddingVertical: 16 }}>
               <Text style={{ fontSize: 14, fontFamily: FONT.w700, color: S.sec, textAlign: "center" }}>
                 {t("day_edit.empty")}
               </Text>
@@ -129,7 +131,7 @@ export function DayEventsEditSheet({ visible, onClose, date, events, defaultZone
                     justifyContent: "center",
                   }}
                 >
-                  <StreamGlyph stream={evt.type} size={26} color={cc.ink} />
+                  <StreamGlyph stream={evt.type} size={26} color={cc.onC} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 16, fontFamily: FONT.w800, color: cc.ink, letterSpacing: -0.3 }}>
@@ -149,7 +151,7 @@ export function DayEventsEditSheet({ visible, onClose, date, events, defaultZone
                     width: 32,
                     height: 32,
                     borderRadius: 99,
-                    backgroundColor: "rgba(255,255,255,0.75)",
+                    backgroundColor: S.glass,
                     alignItems: "center",
                     justifyContent: "center",
                     transform: [{ scale: pressed ? 0.9 : 1 }],
@@ -200,7 +202,7 @@ export function DayEventsEditSheet({ visible, onClose, date, events, defaultZone
 
         <PillButton
           label={t("day_edit.save_changes")}
-          icon={<CheckIcon color="#fff" size={18} />}
+          icon={<CheckIcon color={S.onInk} size={18} />}
           onPress={handleSave}
           style={{ marginBottom: Math.max(insets.bottom, 8) }}
         />

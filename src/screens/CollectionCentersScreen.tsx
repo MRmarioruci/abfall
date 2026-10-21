@@ -3,7 +3,7 @@ import { View, Text, Pressable, ActivityIndicator, Linking, Alert, ScrollView } 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import MapView, { Marker, UrlTile, type Region } from "react-native-maps";
 import * as Location from "expo-location";
-import { S } from "../theme/colors";
+import { useTheme } from "../theme/ThemeContext";
 import { PinIcon } from "../components/icons/Icons";
 import { CircBtn } from "../components/ui/CircBtn";
 import { EmptyState } from "../components/ui/EmptyState";
@@ -117,6 +117,7 @@ const CategoryChip = memo(function CategoryChip({
   dotColor?: string;
   onPress: () => void;
 }) {
+  const { S } = useTheme();
   return (
     <Pressable
       onPress={() => {
@@ -133,10 +134,10 @@ const CategoryChip = memo(function CategoryChip({
         paddingVertical: 8,
         paddingHorizontal: 13,
         borderRadius: 99,
-        backgroundColor: active ? S.ink : "rgba(255,255,255,0.95)",
+        backgroundColor: active ? S.ink : S.float,
         borderWidth: 1.5,
-        borderColor: active ? S.ink : "rgba(40,28,18,0.10)",
-        shadowColor: "rgb(150,118,96)",
+        borderColor: active ? S.ink : S.line,
+        shadowColor: S.shadow,
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.1,
         shadowRadius: 8,
@@ -152,11 +153,11 @@ const CategoryChip = memo(function CategoryChip({
             borderRadius: 99,
             backgroundColor: dotColor,
             borderWidth: active ? 1.5 : 0,
-            borderColor: "#fff",
+            borderColor: S.onInk,
           }}
         />
       )}
-      <Text style={[TYPE.caption, { fontFamily: FONT.w800, color: active ? "#fff" : S.ink }]}>
+      <Text style={[TYPE.caption, { fontFamily: FONT.w800, color: active ? S.onInk : S.ink }]}>
         {label}
       </Text>
     </Pressable>
@@ -240,7 +241,6 @@ function distanceLabel(from: LatLon, to: LatLon): string {
 }
 
 const SHADOW = {
-  shadowColor: "rgb(150,118,96)",
   shadowOffset: { width: 0, height: 4 },
   shadowOpacity: 0.1,
   shadowRadius: 12,
@@ -248,6 +248,7 @@ const SHADOW = {
 } as const;
 
 export function CollectionCentersScreen() {
+  const { S, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const { active, homeLocation } = useCalendars();
   const { t } = useT();
@@ -569,7 +570,7 @@ export function CollectionCentersScreen() {
     : "";
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#F5F2F7" }}>
+    <View style={{ flex: 1, backgroundColor: S.sheet }}>
       {/* Header */}
       <View
         style={{
@@ -657,7 +658,13 @@ export function CollectionCentersScreen() {
           onRegionChangeComplete={handleRegionChangeComplete}
         >
           <UrlTile
-            urlTemplate="https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
+            // CARTO Voyager by day, Dark Matter in dark mode.
+            key={isDark ? "dark" : "light"}
+            urlTemplate={
+              isDark
+                ? "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
+                : "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
+            }
             maximumZ={19}
             tileSize={256}
             shouldReplaceMapContent
@@ -692,7 +699,7 @@ export function CollectionCentersScreen() {
           position: "absolute",
           bottom: Math.max(insets.bottom, 18) + 74,
           right: 14,
-          backgroundColor: "rgba(255,255,255,0.85)",
+          backgroundColor: S.float,
           paddingHorizontal: 6,
           paddingVertical: 3,
           borderRadius: 6,
@@ -719,8 +726,9 @@ export function CollectionCentersScreen() {
             gap: 8,
             paddingHorizontal: 14,
             paddingVertical: 8,
-            backgroundColor: "rgba(255,255,255,0.94)",
+            backgroundColor: S.float,
             borderRadius: 99,
+            shadowColor: S.shadow,
             ...SHADOW,
           }}
         >
@@ -737,7 +745,7 @@ export function CollectionCentersScreen() {
           <EmptyState
             title={t("map.error_title")}
             subtitle={error ?? undefined}
-            bg="#fff"
+            bg={S.card}
             action={{ label: t("common.try_again"), onPress: retry }}
           />
         </View>
@@ -764,8 +772,9 @@ export function CollectionCentersScreen() {
             left: 14,
             right: 14,
             padding: 18,
-            backgroundColor: "#fff",
+            backgroundColor: S.card,
             borderRadius: 24,
+            shadowColor: S.shadow,
             ...SHADOW,
           }}
         >

@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { View, Text, Pressable, ScrollView, Dimensions } from "react-native";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
-import { S, ST, STREAM_ORDER, type WasteStreamId } from "../theme/colors";
+import { STREAM_ORDER, type WasteStreamId } from "../theme/colors";
+import { useTheme } from "../theme/ThemeContext";
 import { StreamGlyph } from "./icons/StreamGlyph";
 import { CheckIcon } from "./icons/Icons";
 import { PillButton, SheetHeader } from "./ui/sheet";
@@ -27,6 +28,7 @@ interface Props {
 }
 
 export function DayEditSheet({ visible, onClose, date, currentEvents, zones, onSave }: Props) {
+  const { S, ST } = useTheme();
   const { t, wasteLabel, weekdayLong, monthLong } = useT();
   const [typeZones, setTypeZones] = useState<Map<WasteStreamId, Set<string>>>(new Map());
 
@@ -115,7 +117,7 @@ export function DayEditSheet({ visible, onClose, date, currentEvents, zones, onS
                   paddingVertical: 8,
                   paddingHorizontal: 14,
                   borderRadius: 99,
-                  backgroundColor: "#fff",
+                  backgroundColor: S.card,
                   transform: [{ scale: pressed ? 0.95 : 1 }],
                 })}
               >
@@ -172,12 +174,12 @@ export function DayEditSheet({ visible, onClose, date, currentEvents, zones, onS
                           justifyContent: "center",
                         }}
                       >
-                        <CheckIcon color="#fff" size={11} />
+                        <CheckIcon color={S.onInk} size={11} />
                       </View>
                     )}
-                    <StreamGlyph stream={type} size={Math.min(44, TILE_W * 0.42)} color={s.ink} />
+                    <StreamGlyph stream={type} size={Math.min(44, TILE_W * 0.42)} color={isActive ? s.onC : s.ink} />
                     <Text
-                      style={{ fontSize: 13, fontFamily: FONT.w800, color: s.ink, textAlign: "center", lineHeight: 15 }}
+                      style={{ fontSize: 13, fontFamily: FONT.w800, color: isActive ? s.onC : s.ink, textAlign: "center", lineHeight: 15 }}
                       numberOfLines={2}
                     >
                       {wasteLabel(type)}
@@ -200,7 +202,7 @@ export function DayEditSheet({ visible, onClose, date, currentEvents, zones, onS
                       borderRadius: 22,
                       padding: 12,
                       gap: 12,
-                      backgroundColor: isActive ? s.soft : "#fff",
+                      backgroundColor: isActive ? s.soft : S.card,
                     }}
                   >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -214,7 +216,7 @@ export function DayEditSheet({ visible, onClose, date, currentEvents, zones, onS
                           justifyContent: "center",
                         }}
                       >
-                        <StreamGlyph stream={type} size={26} color={s.ink} />
+                        <StreamGlyph stream={type} size={26} color={isActive ? s.onC : s.ink} />
                       </View>
                       <Text
                         style={{ flex: 1, fontSize: 16, fontFamily: FONT.w800, color: S.ink, letterSpacing: -0.2 }}
@@ -239,12 +241,12 @@ export function DayEditSheet({ visible, onClose, date, currentEvents, zones, onS
                               height: 36,
                               paddingHorizontal: 14,
                               borderRadius: 99,
-                              backgroundColor: on ? s.c : isActive ? "#fff" : s.soft,
+                              backgroundColor: on ? s.c : isActive ? S.onTint : s.soft,
                               transform: [{ scale: pressed ? 0.95 : 1 }],
                             })}
                           >
-                            {on && <CheckIcon color={s.ink} size={12} />}
-                            <Text style={{ fontSize: 14, fontFamily: FONT.w800, color: on ? s.ink : S.sec }}>{zone}</Text>
+                            {on && <CheckIcon color={s.onC} size={12} />}
+                            <Text style={{ fontSize: 14, fontFamily: FONT.w800, color: on ? s.onC : S.sec }}>{zone}</Text>
                           </Pressable>
                         );
                       })}

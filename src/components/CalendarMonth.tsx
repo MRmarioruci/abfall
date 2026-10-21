@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { View, Text, Pressable, Animated, PanResponder, Dimensions, type LayoutRectangle } from "react-native";
 import Reanimated, { LinearTransition } from "react-native-reanimated";
-import { S, ST, STREAM_ORDER, type WasteStreamId } from "../theme/colors";
+import { LIGHT, STREAM_ORDER, type WasteStreamId } from "../theme/colors";
+import { useTheme } from "../theme/ThemeContext";
 import { CircBtn } from "./ui/CircBtn";
 import { ChevRIcon } from "./icons/Icons";
 import { Recyclops, type SwapPlan } from "./Recyclops";
@@ -46,24 +47,30 @@ const RECYCLOPS_RIGHT = 6;
 const RECYCLOPS_BOTTOM_OVERHANG = 6;
 
 export function CalendarMonth({ marks = EMPTY_MARKS, municipality = "", onDayPress }: Props) {
+  const { S, ST } = useTheme();
   const { t, monthLong, weekdayMin, weekdayLong, wasteLabel } = useT();
-  // Dark theme tokens. The calendar reads as an inverted card against the
-  // light home screen so it stands out and so the colored pickup stripes pop.
+  // The calendar is always a dark card: inverted against the light home
+  // screen, and a lifted plum card on the dark one, so the coloured pickup
+  // stripes pop in both. Its text is white on top of `S.calendar`.
+  const W = S.white;
   const T = {
-    card: S.ink,
-    primaryText: "#fff",
-    secondaryText: "rgba(255,255,255,0.65)",
-    legendText: "rgba(255,255,255,0.75)",
-    legendBorder: "rgba(255,255,255,0.12)",
-    chevronBg: "rgba(255,255,255,0.12)",
-    chevronInk: "#fff",
+    card: S.calendar,
+    primaryText: W,
+    secondaryText: W + "A6",
+    legendText: W + "BF",
+    legendBorder: W + "1F",
+    chevronBg: W + "1F",
+    chevronInk: W,
     // Empty day cells: a touch lighter than the card so they read as buttons.
-    dayEmptyBg: "rgba(255,255,255,0.06)",
-    dayEmptyText: "rgba(255,255,255,0.55)",
+    dayEmptyBg: W + "0F",
+    dayEmptyText: W + "8C",
     // Today indicator: white pill with black text, contrasts cleanly on dark.
-    todayBg: "#fff",
-    todayText: S.ink,
+    todayBg: W,
+    todayText: S.calendar,
   };
+  // Pickup cells keep the light pastels in both modes: the card is dark
+  // either way, and the pastels are what make it read at a glance.
+  const CELL = LIGHT.ST;
 
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth());
@@ -272,7 +279,7 @@ export function CalendarMonth({ marks = EMPTY_MARKS, municipality = "", onDayPre
         padding: 20,
         paddingBottom: 18,
         overflow: "hidden",
-        shadowColor: S.ink,
+        shadowColor: S.inkShadow,
         shadowOffset: { width: 0, height: 16 },
         shadowOpacity: 0.3,
         shadowRadius: 36,
@@ -391,7 +398,7 @@ export function CalendarMonth({ marks = EMPTY_MARKS, municipality = "", onDayPre
                     key={s}
                     style={{
                       flex: 1,
-                      backgroundColor: ST[s].soft,
+                      backgroundColor: CELL[s].soft,
                     }}
                   />
                 ))}
@@ -415,7 +422,7 @@ export function CalendarMonth({ marks = EMPTY_MARKS, municipality = "", onDayPre
                       color: isToday
                         ? T.todayText
                         : primary
-                        ? ST[primary].ink
+                        ? CELL[primary].ink
                         : T.dayEmptyText,
                     }}
                   >

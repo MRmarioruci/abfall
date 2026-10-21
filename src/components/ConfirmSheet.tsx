@@ -6,7 +6,7 @@
 
 import { View, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { S } from "../theme/colors";
+import { useTheme } from "../theme/ThemeContext";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
 import { PillButton, QuietButton, SheetHeader } from "./ui/sheet";
 import { useT } from "../context/LocaleContext";
@@ -33,6 +33,7 @@ export function ConfirmSheet({
   variant = "default",
   onConfirm,
 }: Props) {
+  const { S } = useTheme();
   const insets = useSafeAreaInsets();
   const { t } = useT();
 

@@ -1,5 +1,6 @@
 import { Pressable, type ViewStyle } from "react-native";
 import { haptics } from "../../lib/haptics";
+import { useTheme } from "../../theme/ThemeContext";
 
 interface Props {
   size?: number;
@@ -14,13 +15,14 @@ interface Props {
 
 export function CircBtn({
   size = 48,
-  bg = "#fff",
+  bg,
   shadow = true,
   onPress,
   accessibilityLabel,
   style,
   children,
 }: Props) {
+  const { S } = useTheme();
   return (
     <Pressable
       onPress={
@@ -38,10 +40,10 @@ export function CircBtn({
         width: size,
         height: size,
         borderRadius: 99,
-        backgroundColor: bg,
+        backgroundColor: bg ?? S.card,
         ...(shadow
           ? {
-              shadowColor: "rgb(150,118,96)",
+              shadowColor: S.shadow,
               shadowOffset: { width: 0, height: 6 },
               shadowOpacity: 0.12,
               shadowRadius: 18,

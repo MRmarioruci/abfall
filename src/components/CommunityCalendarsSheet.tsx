@@ -22,7 +22,8 @@ import { SlideUpSheet } from "./ui/SlideUpSheet";
 import { PillButton, QuietButton, SheetHeader, SoftCard } from "./ui/sheet";
 import { BrowseArt } from "./art/Art";
 import { StreamGlyph } from "./icons/StreamGlyph";
-import { S, ST, STREAM_ORDER, type WasteStreamId } from "../theme/colors";
+import { STREAM_ORDER, type WasteStreamId, type Palette } from "../theme/colors";
+import { useTheme } from "../theme/ThemeContext";
 import {
   BackIcon,
   SearchIcon,
@@ -92,6 +93,7 @@ function deriveSearchLocation(
 }
 
 export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Props) {
+  const { S, ST } = useTheme();
   const insets = useSafeAreaInsets();
   const { active, addCalendar, homeLocation } = useCalendars();
   const toast = useToast();
@@ -386,7 +388,7 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
               {scanInstead && (
                 <PillButton
                   label={t("community.scan_instead")}
-                  icon={<ScanIcon color="#fff" size={17} />}
+                  icon={<ScanIcon color={S.onInk} size={17} />}
                   onPress={scanInstead}
                   style={{ alignSelf: "stretch", marginTop: 18 }}
                 />
@@ -455,7 +457,7 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
 // its initial, so the list still reads as distinct cards at a glance.
 const ROW_TINTS: WasteStreamId[] = ["papier", "gruengut", "karton", "kehricht", "glas", "textilien", "metall", "verpackung"];
 
-function tintFor(key: string) {
+function tintFor(key: string, ST: Palette["ST"]) {
   let h = 0;
   for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
   return ST[ROW_TINTS[Math.abs(h) % ROW_TINTS.length]];
@@ -484,8 +486,9 @@ function ResultRow({
   item: CommunityCalendarSummary;
   onPress: () => void;
 }) {
+  const { S, ST } = useTheme();
   const { t } = useT();
-  const tint = tintFor(item.city || item.id);
+  const tint = tintFor(item.city || item.id, ST);
   const initial = item.city?.trim().charAt(0).toUpperCase() || "·";
   const dots = rowTypes(item);
   return (
@@ -498,7 +501,7 @@ function ResultRow({
         alignItems: "center",
         gap: 14,
         minHeight: 68,
-        backgroundColor: "#fff",
+        backgroundColor: S.card,
         borderRadius: 22,
         paddingVertical: 12,
         paddingHorizontal: 14,
@@ -580,8 +583,9 @@ function PreviewBody({
   onReport: () => void;
   importing: boolean;
 }) {
+  const { S, ST } = useTheme();
   const { t, wasteLabel } = useT();
-  const tint = tintFor(summary.city || summary.id);
+  const tint = tintFor(summary.city || summary.id, ST);
 
   // Display only: read the calendar's events to show which waste types it
   // covers. Import still fetches its own copy; a failure here just leaves
@@ -636,7 +640,7 @@ function PreviewBody({
             width: 38,
             height: 38,
             borderRadius: 99,
-            backgroundColor: "#fff",
+            backgroundColor: S.card,
             alignItems: "center",
             justifyContent: "center",
             transform: [{ scale: pressed ? 0.92 : 1 }],
@@ -666,7 +670,7 @@ function PreviewBody({
                   paddingRight: 12,
                   paddingVertical: 5,
                   borderRadius: 99,
-                  backgroundColor: "#fff",
+                  backgroundColor: S.onTint,
                 }}
               >
                 <View
@@ -679,7 +683,7 @@ function PreviewBody({
                     justifyContent: "center",
                   }}
                 >
-                  <StreamGlyph stream={id} size={16} />
+                  <StreamGlyph stream={id} size={16} color={ST[id].onC} />
                 </View>
                 <Text style={{ fontSize: 13.5, fontFamily: FONT.w800, color: S.ink }}>{wasteLabel(id)}</Text>
               </View>
@@ -699,7 +703,7 @@ function PreviewBody({
                   paddingHorizontal: 10,
                   paddingVertical: 5,
                   borderRadius: 99,
-                  backgroundColor: "rgba(255,255,255,0.55)",
+                  backgroundColor: S.glass,
                   maxWidth: "100%",
                 }}
               >
@@ -741,6 +745,7 @@ function SearchField({
   onSubmit: () => void;
   autoFocus?: boolean;
 }) {
+  const { S } = useTheme();
   return (
     <View
       style={{
@@ -748,7 +753,7 @@ function SearchField({
         alignItems: "center",
         gap: 10,
         height: 52,
-        backgroundColor: "#fff",
+        backgroundColor: S.card,
         borderRadius: 99,
         paddingLeft: 18,
         paddingRight: 18,

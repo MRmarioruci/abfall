@@ -3,12 +3,14 @@ import { View, Text, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Constants from "expo-constants";
 import Svg, { Path, Rect, Circle } from "react-native-svg";
-import { S, ST } from "../theme/colors";
+import { type WasteStreamId } from "../theme/colors";
+import { useTheme } from "../theme/ThemeContext";
 import { BrandMark } from "../components/ui/BrandMark";
 import { ConfirmSheet } from "../components/ConfirmSheet";
 import { LanguagePickerSheet } from "../components/LanguagePickerSheet";
 import { SlideUpSheet } from "../components/ui/SlideUpSheet";
-import { OptionRow, QuietButton, SheetHeader, DANGER } from "../components/ui/sheet";
+import { OptionRow, QuietButton, SheetHeader } from "../components/ui/sheet";
+import { APPEARANCE_OPTIONS, AppearanceGlyph, AppearancePickerSheet } from "../components/AppearancePickerSheet";
 import { Recyclops } from "../components/Recyclops";
 import { ChevRIcon, XIcon, CalIcon } from "../components/icons/Icons";
 import { FlagIcon } from "../components/icons/Flags";
@@ -27,11 +29,11 @@ import { TYPE } from "../theme/type";
 type ConfirmKind = "onboarding" | "calendars" | "all" | null;
 
 // The language row's chip takes the same tint as in the language picker.
-const LOCALE_TINT: Record<string, string> = {
-  en: ST.papier.soft,
-  de: ST.karton.soft,
-  fr: ST.glas.soft,
-  it: ST.gruengut.soft,
+const LOCALE_TINT: Record<string, WasteStreamId> = {
+  en: "papier",
+  de: "karton",
+  fr: "glas",
+  it: "gruengut",
 };
 
 // Lets the reset sheet slide away before the confirmation opens; iOS
@@ -39,6 +41,7 @@ const LOCALE_TINT: Record<string, string> = {
 const SHEET_SWAP_MS = 320;
 
 export function ProfileScreen() {
+  const { S, ST, mode } = useTheme();
   const insets = useSafeAreaInsets();
   const { reload } = useCalendars();
   const { locale } = useLocale();
@@ -46,9 +49,11 @@ export function ProfileScreen() {
   const toast = useToast();
   const [confirm, setConfirm] = useState<ConfirmKind>(null);
   const [langSheet, setLangSheet] = useState(false);
+  const [appearanceSheet, setAppearanceSheet] = useState(false);
   const [resetSheet, setResetSheet] = useState(false);
 
   const currentLocaleMeta = LOCALES.find((l) => l.id === locale) ?? LOCALES[0];
+  const currentAppearance = APPEARANCE_OPTIONS.find((o) => o.id === mode) ?? APPEARANCE_OPTIONS[0];
 
   const handleReplayOnboarding = async () => {
     await resetOnboarded();
@@ -112,12 +117,26 @@ export function ProfileScreen() {
           <OptionRow
             label={t("profile.language_row")}
             icon={<FlagIcon locale={locale} width={24} />}
-            iconBg={LOCALE_TINT[locale] ?? ST.papier.soft}
+            iconBg={ST[LOCALE_TINT[locale] ?? "papier"].soft}
             onPress={() => setLangSheet(true)}
             right={
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                 <Text style={[TYPE.caption, { color: S.sec }]} numberOfLines={1}>
                   {currentLocaleMeta.endonym}
+                </Text>
+                <ChevRIcon color={S.ter} size={13} />
+              </View>
+            }
+          />
+          <OptionRow
+            label={t("profile.appearance_row")}
+            icon={<AppearanceGlyph mode={mode} color={ST[currentAppearance.tint].ink} size={20} />}
+            iconBg={ST[currentAppearance.tint].soft}
+            onPress={() => setAppearanceSheet(true)}
+            right={
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Text style={[TYPE.caption, { color: S.sec }]} numberOfLines={1}>
+                  {t(currentAppearance.labelKey)}
                 </Text>
                 <ChevRIcon color={S.ter} size={13} />
               </View>
@@ -183,7 +202,7 @@ export function ProfileScreen() {
             />
             <OptionRow
               label={t("profile.reset_everything")}
-              icon={<XIcon color={DANGER} size={18} />}
+              icon={<XIcon color={S.danger} size={18} />}
               iconBg={ST.sonderabfall.soft}
               onPress={() => openFromResetSheet("all")}
               right={<ChevRIcon color={S.ter} size={13} />}
@@ -225,6 +244,7 @@ export function ProfileScreen() {
       />
 
       <LanguagePickerSheet visible={langSheet} onClose={() => setLangSheet(false)} />
+      <AppearancePickerSheet visible={appearanceSheet} onClose={() => setAppearanceSheet(false)} />
     </View>
   );
 }
@@ -248,11 +268,12 @@ function ReplayGlyph({ color, size = 20 }: { color: string; size?: number }) {
 
 /** A small padlock for the privacy note. */
 function LockGlyph({ color, size = 16 }: { color: string; size?: number }) {
+  const { ST } = useTheme();
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" stroke={color} strokeWidth={2.2} strokeLinecap="round" fill="none" />
       <Rect x={5} y={10.5} width={14} height={10} rx={3} fill={color} />
-      <Circle cx={12} cy={15.5} r={1.6} fill="#fff" />
+      <Circle cx={12} cy={15.5} r={1.6} fill={ST.metall.soft} />
     </Svg>
   );
 }

@@ -3,7 +3,7 @@ import { View, Text, Pressable, Image, ScrollView, ActivityIndicator, StyleSheet
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { S } from "../theme/colors";
+import { useTheme } from "../theme/ThemeContext";
 import { CameraIcon, CheckIcon, FlashIcon, ImageIcon, XIcon } from "../components/icons/Icons";
 import type { ImageInput } from "../services/parseCalendar";
 import { useT } from "../context/LocaleContext";
@@ -20,6 +20,7 @@ interface Props {
  * gallery), then tick to read them all together.
  */
 export function ScanCameraScreen({ onClose, onDone }: Props) {
+  const { S, ST } = useTheme();
   const insets = useSafeAreaInsets();
   const { t } = useT();
   const [permission, requestPermission] = useCameraPermissions();
@@ -68,8 +69,8 @@ export function ScanCameraScreen({ onClose, onDone }: Props) {
           <XIcon color={S.ink} size={16} />
         </RoundButton>
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 14 }}>
-          <View style={{ width: 84, height: 84, borderRadius: 28, backgroundColor: "#F6DDD2", alignItems: "center", justifyContent: "center" }}>
-            <CameraIcon color="#4A1B10" size={38} />
+          <View style={{ width: 84, height: 84, borderRadius: 28, backgroundColor: ST.kehricht.soft, alignItems: "center", justifyContent: "center" }}>
+            <CameraIcon color={ST.kehricht.ink} size={38} />
           </View>
           <Text style={{ fontSize: 24, fontFamily: FONT.w800, color: S.ink, letterSpacing: -0.5 }}>
             {t("add.camera.permission_title")}
@@ -121,7 +122,7 @@ export function ScanCameraScreen({ onClose, onDone }: Props) {
         </RoundButton>
         <Text style={st.title}>{t("add.scan.title").toUpperCase()}</Text>
         <RoundButton label={t("add.camera.flash")} onPress={() => setTorch((v) => !v)} active={torch}>
-          <FlashIcon color={torch ? S.ink : "#fff"} size={18} />
+          <FlashIcon color={torch ? CAM_INK : "#fff"} size={18} />
         </RoundButton>
       </View>
 
@@ -143,7 +144,7 @@ export function ScanCameraScreen({ onClose, onDone }: Props) {
                     hitSlop={8}
                     style={st.thumbRemove}
                   >
-                    <XIcon color={S.ink} size={9} />
+                    <XIcon color={CAM_INK} size={9} />
                   </Pressable>
                 </View>
               ))}
@@ -162,7 +163,7 @@ export function ScanCameraScreen({ onClose, onDone }: Props) {
             accessibilityLabel={t("add.scan.take_photo")}
             style={({ pressed }) => [st.shutter, { transform: [{ scale: pressed ? 0.94 : 1 }] }]}
           >
-            {shooting ? <ActivityIndicator color={S.ink} /> : <View style={st.shutterInner} />}
+            {shooting ? <ActivityIndicator color={CAM_INK} /> : <View style={st.shutterInner} />}
           </Pressable>
           {pages.length > 0 ? (
             <Pressable
@@ -171,7 +172,7 @@ export function ScanCameraScreen({ onClose, onDone }: Props) {
               accessibilityLabel={t("common.continue")}
               style={({ pressed }) => [st.done, { transform: [{ scale: pressed ? 0.94 : 1 }] }]}
             >
-              <CheckIcon color={S.ink} size={22} />
+              <CheckIcon color={CAM_INK} size={22} />
               <View style={st.badge}>
                 <Text style={st.badgeText}>{pages.length}</Text>
               </View>
@@ -200,6 +201,7 @@ function RoundButton({
   active?: boolean;
   light?: boolean;
 }) {
+  const { S } = useTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -212,7 +214,7 @@ function RoundButton({
         borderRadius: 99,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: active ? "#fff" : light ? "#F4EFEA" : "rgba(20,18,16,0.5)",
+        backgroundColor: active ? "#fff" : light ? S.chip : "rgba(20,18,16,0.5)",
         borderWidth: light ? 0 : 1,
         borderColor: "rgba(255,255,255,0.14)",
         transform: [{ scale: pressed ? 0.94 : 1 }],
@@ -234,6 +236,7 @@ function PillButton({
   secondary?: boolean;
   style?: object;
 }) {
+  const { S } = useTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -244,16 +247,20 @@ function PillButton({
           borderRadius: 99,
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: secondary ? "#fff" : S.ink,
+          backgroundColor: secondary ? S.card : S.ink,
           transform: [{ scale: pressed ? 0.98 : 1 }],
         },
         style,
       ]}
     >
-      <Text style={{ fontSize: 16, fontFamily: FONT.w800, color: secondary ? S.ink : "#fff" }}>{label}</Text>
+      <Text style={{ fontSize: 16, fontFamily: FONT.w800, color: secondary ? S.ink : S.onInk }}>{label}</Text>
     </Pressable>
   );
 }
+
+// The camera view is always dark, whatever the app theme: its controls are
+// fixed white with this ink on them.
+const CAM_INK = "#211F1C";
 
 const st = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#000" },
@@ -271,5 +278,5 @@ const st = StyleSheet.create({
   shutterInner: { width: 62, height: 62, borderRadius: 99, backgroundColor: "#fff" },
   done: { width: 54, height: 54, borderRadius: 99, backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
   badge: { position: "absolute", top: -4, right: -4, minWidth: 20, height: 20, paddingHorizontal: 5, borderRadius: 99, backgroundColor: "#E69A80", alignItems: "center", justifyContent: "center" },
-  badgeText: { fontSize: 11, fontFamily: FONT.w800, color: S.ink },
+  badgeText: { fontSize: 11, fontFamily: FONT.w800, color: CAM_INK },
 });

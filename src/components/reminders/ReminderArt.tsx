@@ -2,11 +2,12 @@
 // drawn from the waste palette so they sit next to the calendar's colours.
 
 import { View } from "react-native";
-import { ST } from "../../theme/colors";
+import { useTheme } from "../../theme/ThemeContext";
 import { BellIcon, MoonIcon, SunIcon } from "../icons/Icons";
 
 /** A bell in a soft disc, ringed by a few pickup-coloured dots. */
 export function BellArt({ size = 112 }: { size?: number }) {
+  const { S, ST } = useTheme();
   const disc = size * 0.72;
   const dots: { c: string; x: number; y: number; r: number }[] = [
     { c: ST.kehricht.c, x: 0.1, y: 0.22, r: 0.07 },
@@ -21,7 +22,7 @@ export function BellArt({ size = 112 }: { size?: number }) {
           width: disc,
           height: disc,
           borderRadius: disc,
-          backgroundColor: "#fff",
+          backgroundColor: S.onTint,
           alignItems: "center",
           justifyContent: "center",
         }}
@@ -50,13 +51,14 @@ export function BellArt({ size = 112 }: { size?: number }) {
 
 /** Moon or sun on a white disc, for the "Evening before" / "Morning of" tiles. */
 export function WhenArt({ kind, ink }: { kind: "evening" | "morning"; ink: string }) {
+  const { S } = useTheme();
   return (
     <View
       style={{
         width: 64,
         height: 64,
         borderRadius: 64,
-        backgroundColor: "rgba(255,255,255,0.7)",
+        backgroundColor: S.glass,
         alignItems: "center",
         justifyContent: "center",
       }}
