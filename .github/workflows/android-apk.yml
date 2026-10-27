@@ -1,0 +1,103 @@
+name: Android APK
+
+# Builds an installable APK on every push to main and publishes it as the GitHub
+# Release for the version in package.json (bump the version for a new release;
+# pushing the same version again replaces that release's APK). Same as hush and due.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check
+        run: npx tsc --noEmit
+
+      # Baked into the app at build time (EXPO_PUBLIC_*). Set them under
+      # Settings → Secrets and variables → Actions. A missing secret is left unset
+      # (not empty) so the app's own fallback applies.
+      - name: Build-time config
+        env:
+          API_BASE_URL: ${{ secrets.ABFALL_API_BASE_URL }}
+          API_KEY: ${{ secrets.ABFALL_API_KEY }}
+          GOOGLE_MAPS_KEY: ${{ secrets.ABFALL_GOOGLE_MAPS_KEY }}
+          GOOGLE_CLIENT_ID_ANDROID: ${{ secrets.ABFALL_GOOGLE_CLIENT_ID_ANDROID }}
+          GOOGLE_CLIENT_ID_WEB: ${{ secrets.ABFALL_GOOGLE_CLIENT_ID_WEB }}
+        run: |
+          echo "EXPO_PUBLIC_API_BASE_URL=${API_BASE_URL:-https://abfall-api.vercel.app}" >> "$GITHUB_ENV"
+          for name in API_KEY GOOGLE_MAPS_KEY GOOGLE_CLIENT_ID_ANDROID GOOGLE_CLIENT_ID_WEB; do
+            if [ -n "${!name}" ]; then
+              echo "EXPO_PUBLIC_${name}=${!name}" >> "$GITHUB_ENV"
+            else
+              echo "::warning::Secret ABFALL_${name} is not set; the app is built without it."
+            fi
+          done
+
+      - name: Generate Android project
+        run: npx expo prebuild --platform android --no-install
+
+      # arm64 only: every current phone, and a much smaller APK and faster build.
+      - name: Build release APK
+        working-directory: android
+        run: |
+          set -o pipefail
+          ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a 2>&1 | tee build.log || {
+            # Surface the real error as an annotation (readable without downloading logs).
+            grep -E -A4 "^e: |What went wrong" build.log | grep -v "^--$" | head -9 | while IFS= read -r line; do echo "::error::$line"; done
+            exit 1
+          }
+
+      - name: Name the APK
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          mkdir -p dist
+          cp android/app/build/outputs/apk/release/app-release.apk "dist/abfall-${VERSION}.apk"
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: abfall-apk
+          path: dist/*.apk
+          retention-days: 30
+
+      - name: Publish release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}
+          name: abfall ${{ env.VERSION }}
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          overwrite_files: true
+          files: dist/*.apk
+          body: |
+            Download the APK below on your Android phone and open it to install.
+            If Android asks, allow your browser to install unknown apps.
