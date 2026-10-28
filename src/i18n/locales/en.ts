@@ -39,7 +39,7 @@ export const en = {
   "onboarding.sorted.body": "Scan your paper calendar or use one your neighbours already shared.",
   "onboarding.community.title": "Or borrow one nearby",
   "onboarding.community.body": "Use a calendar your neighbours already shared.",
-  "onboarding.reminders.title": "Never miss a pickup",
+  "onboarding.reminders.title": "Never miss a waste pickup",
   "onboarding.reminders.body": "A gentle nudge before every pickup.",
   "onboarding.map.title": "Find drop-offs nearby",
   "onboarding.map.body": "Find nearby drop-off points in one tap.",

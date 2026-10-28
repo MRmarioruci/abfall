@@ -5,7 +5,7 @@
 
 module.exports = ({ config }) => ({
   ...config,
-  name: "abfall",
+  name: "Abfall",
   slug: "abfall",
   version: "1.0.0",
   orientation: "portrait",
@@ -15,6 +15,7 @@ module.exports = ({ config }) => ({
   // callback can reach the app on iOS/Android.
   scheme: "abfall",
   ios: {
+    bundleIdentifier: "com.mrmarioruci.abfall",
     supportsTablet: true,
     infoPlist: {
       NSLocationWhenInUseUsageDescription:
@@ -30,7 +31,8 @@ module.exports = ({ config }) => ({
   },
   android: {
     adaptiveIcon: {
-      backgroundColor: "#E6F4FE",
+      // Same cream as the icon's background layer (S.cardWarm).
+      backgroundColor: "#FBF6F1",
       foregroundImage: "./assets/android-icon-foreground.png",
       backgroundImage: "./assets/android-icon-background.png",
       monochromeImage: "./assets/android-icon-monochrome.png",
@@ -63,7 +65,7 @@ module.exports = ({ config }) => ({
       "android.permission.READ_EXTERNAL_STORAGE",
       "android.permission.WRITE_EXTERNAL_STORAGE",
     ],
-    package: "com.anonymous.abfall",
+    package: "com.mrmarioruci.abfall",
     config: {
       googleMaps: {
         apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY,
@@ -75,6 +77,17 @@ module.exports = ({ config }) => ({
   },
   plugins: [
     "expo-font",
+    [
+      "expo-splash-screen",
+      {
+        image: "./assets/splash-icon.png",
+        imageWidth: 180,
+        resizeMode: "contain",
+        // The app's page background, light and dark (src/theme/colors.ts).
+        backgroundColor: "#F3EFF4",
+        dark: { image: "./assets/splash-icon.png", backgroundColor: "#141217" },
+      },
+    ],
     [
       "expo-image-picker",
       {
