@@ -5,7 +5,7 @@ name: Android APK
 # pushing the same version again replaces that release's APK). Same as hush and due.
 on:
   push:
-    branches: [main, ccr-dc19cdba-o6yn78]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
