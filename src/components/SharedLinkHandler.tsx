@@ -1,5 +1,6 @@
 // Handles shared-calendar links that open the app (abfall://c/<id>, from
-// the landing page's "Open in Abfall" button or a QR code): fetches the
+// the landing page's "Open in Abfall" button or a QR code scanned with the
+// phone's camera) and QR codes scanned inside the app: fetches the
 // calendar and asks whether to add it. Renders nothing until a link comes in.
 
 import { useEffect, useRef, useState } from "react";
@@ -14,7 +15,7 @@ import {
   type CommunityCalendarDetail,
 } from "../services/api";
 import { communityToSaved } from "../services/communityImport";
-import { sharedCalendarIdFromUrl } from "../lib/shareLinks";
+import { onSharedLink, sharedCalendarIdFromUrl } from "../lib/shareLinks";
 
 // The initial URL survives remounts (e.g. after onboarding), so remember
 // which ids were already offered this session.
@@ -29,9 +30,11 @@ export function SharedLinkHandler() {
   toastRef.current = toast;
 
   useEffect(() => {
-    const open = async (url: string | null | undefined) => {
+    // `again`: scanned on purpose in the app, so offer it even if this
+    // session already saw it (the user may have said no the first time).
+    const open = async (url: string | null | undefined, again = false) => {
       const id = sharedCalendarIdFromUrl(url);
-      if (!id || handled.has(id)) return;
+      if (!id || (handled.has(id) && !again)) return;
       handled.add(id);
       try {
         const detail = await getCommunityCalendar(id);
@@ -43,7 +46,11 @@ export function SharedLinkHandler() {
     };
     Linking.getInitialURL().then(open).catch(() => {});
     const sub = Linking.addEventListener("url", ({ url }) => open(url));
-    return () => sub.remove();
+    const unsubscribe = onSharedLink((url) => open(url, true));
+    return () => {
+      sub.remove();
+      unsubscribe();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

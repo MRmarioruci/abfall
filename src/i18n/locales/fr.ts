@@ -493,6 +493,13 @@ export const fr: Record<StringKey, string> = {
   "material.fallback.collection": "Point de collecte",
 
   "add.title": "Ajouter un calendrier",
+  "add.qr.row": "Scanner un code QR",
+  "add.qr.row_sub": "Depuis le téléphone d'un voisin ou un flyer",
+  "add.qr.title": "Scanner le code QR",
+  "add.qr.hint": "Visez le code QR d'un calendrier partagé",
+  "add.qr.not_calendar": "Ce code QR n'est pas un calendrier Abfall",
+  "add.qr.from_photo": "Depuis une capture d'écran",
+  "add.qr.none_found": "Aucun code QR de calendrier sur cette image",
   "add.subtitle": "Comment souhaitez-vous obtenir vos dates de collecte ?",
   "add.option.scan.label": "Scanner le calendrier papier",
   "add.option.scan.desc": "Prenez une ou plusieurs photos, nous lirons les dates",

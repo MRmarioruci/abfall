@@ -23,7 +23,9 @@ export function TabNavigator() {
   const [activeTab, setActiveTab] = useState<TabId>("Home");
   const [addSheetVisible, setAddSheetVisible] = useState(false);
   const [switcherVisible, setSwitcherVisible] = useState(false);
-  const [cameraOpen, setCameraOpen] = useState(false);
+  // Full-screen camera: shooting calendar pages, or a shared calendar's QR code.
+  const [cameraMode, setCameraMode] = useState<"paper" | "qr" | null>(null);
+  const cameraOpen = cameraMode !== null;
   const [scanImages, setScanImages] = useState<ImageInput[] | null>(null);
 
   // Count of reminders currently turned on across all streams of the active
@@ -48,7 +50,7 @@ export function TabNavigator() {
   }, []);
 
   const handleScanConfirm = useCallback((images: ImageInput[]) => {
-    setCameraOpen(false);
+    setCameraMode(null);
     if (images.length === 0) return;
     setScanImages(images);
   }, []);
@@ -68,7 +70,7 @@ export function TabNavigator() {
         return true;
       }
       if (cameraOpen) {
-        setCameraOpen(false);
+        setCameraMode(null);
         return true;
       }
       if (activeTab !== "Home") {
@@ -91,7 +93,7 @@ export function TabNavigator() {
   }
 
   if (cameraOpen) {
-    return <ScanCameraScreen onClose={() => setCameraOpen(false)} onDone={handleScanConfirm} />;
+    return <ScanCameraScreen mode={cameraMode} onClose={() => setCameraMode(null)} onDone={handleScanConfirm} />;
   }
 
   // Conditional render: only the active tab's screen is mounted at any one
@@ -122,7 +124,8 @@ export function TabNavigator() {
       <AddCalendarSheet
         visible={addSheetVisible}
         onClose={() => setAddSheetVisible(false)}
-        onScan={() => setCameraOpen(true)}
+        onScan={() => setCameraMode("paper")}
+        onScanQr={() => setCameraMode("qr")}
       />
       <SharedLinkHandler />
       <CalendarSwitcher

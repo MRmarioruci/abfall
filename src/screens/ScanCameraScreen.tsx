@@ -1,16 +1,21 @@
 import { useRef, useState } from "react";
 import { View, Text, Pressable, Image, ScrollView, ActivityIndicator, StyleSheet } from "react-native";
-import { CameraView, useCameraPermissions } from "expo-camera";
+import { CameraView, scanFromURLAsync, useCameraPermissions, type BarcodeScanningResult } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../theme/ThemeContext";
 import { HAIRLINE, RADIUS } from "../theme/layout";
-import { CameraIcon, CheckIcon, FlashIcon, ImageIcon, XIcon } from "../components/icons/Icons";
+import { CameraIcon, CheckIcon, FlashIcon, ImageIcon, QrIcon, XIcon } from "../components/icons/Icons";
+import { openSharedLink } from "../lib/shareLinks";
+import { haptics } from "../lib/haptics";
 import type { ImageInput } from "../services/parseCalendar";
 import { useT } from "../context/LocaleContext";
 import { FONT } from "../theme/type";
 
 interface Props {
+  /** "paper" shoots calendar pages; "qr" looks for a shared calendar's QR
+   *  code. Paper mode also opens a calendar QR code it happens to see. */
+  mode?: "paper" | "qr";
   onClose: () => void;
   /** All pages the user captured or picked, in order. */
   onDone: (images: ImageInput[]) => void;
@@ -20,7 +25,8 @@ interface Props {
  * Camera-first scan: shoot one or more pages (or pull them from the
  * gallery), then tick to read them all together.
  */
-export function ScanCameraScreen({ onClose, onDone }: Props) {
+export function ScanCameraScreen({ mode = "paper", onClose, onDone }: Props) {
+  const qr = mode === "qr";
   const { S, ST } = useTheme();
   const insets = useSafeAreaInsets();
   const { t } = useT();
@@ -30,6 +36,52 @@ export function ScanCameraScreen({ onClose, onDone }: Props) {
   const [torch, setTorch] = useState(false);
   const [shooting, setShooting] = useState(false);
   const [pages, setPages] = useState<ImageInput[]>([]);
+  // A short note over the hint ("not an Abfall calendar"), cleared after a moment.
+  const [note, setNote] = useState<string | null>(null);
+  const noteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastCode = useRef<string | null>(null);
+  const opened = useRef(false);
+
+  const flashNote = (text: string) => {
+    setNote(text);
+    if (noteTimer.current) clearTimeout(noteTimer.current);
+    noteTimer.current = setTimeout(() => setNote(null), 2600);
+  };
+
+  /** A calendar QR code: close the camera and offer to add it. */
+  const tryOpen = (data: string) => {
+    if (opened.current || !openSharedLink(data)) return false;
+    opened.current = true;
+    haptics.success();
+    onClose();
+    return true;
+  };
+
+  const handleBarcode = ({ data }: BarcodeScanningResult) => {
+    if (opened.current || data === lastCode.current) return;
+    lastCode.current = data;
+    if (tryOpen(data)) return;
+    // Paper mode ignores other codes (calendars often print a QR to the
+    // town's website); QR mode says it isn't one of ours.
+    if (qr) {
+      haptics.warn();
+      flashNote(t("add.qr.not_calendar"));
+    }
+  };
+
+  // QR mode's gallery: read the code from a screenshot someone sent.
+  const pickQr = async () => {
+    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 1 });
+    if (res.canceled || !res.assets[0]) return;
+    try {
+      const codes = await scanFromURLAsync(res.assets[0].uri, ["qr"]);
+      if (codes.some((c) => tryOpen(c.data))) return;
+    } catch (err) {
+      console.warn("[scanCamera] scanFromURL failed:", err);
+    }
+    haptics.warn();
+    flashNote(t("add.qr.none_found"));
+  };
 
   const shoot = async () => {
     if (!ready || shooting) return;
@@ -70,8 +122,8 @@ export function ScanCameraScreen({ onClose, onDone }: Props) {
           <XIcon color={S.ink} size={16} />
         </RoundButton>
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 14 }}>
-          <View style={{ width: 84, height: 84, borderRadius: RADIUS.card, backgroundColor: ST.kehricht.soft, alignItems: "center", justifyContent: "center" }}>
-            <CameraIcon color={ST.kehricht.ink} size={38} />
+          <View style={{ width: 84, height: 84, borderRadius: RADIUS.card, backgroundColor: qr ? ST.papier.soft : ST.kehricht.soft, alignItems: "center", justifyContent: "center" }}>
+            {qr ? <QrIcon color={ST.papier.ink} size={38} /> : <CameraIcon color={ST.kehricht.ink} size={38} />}
           </View>
           <Text style={{ fontSize: 24, fontFamily: FONT.w800, color: S.ink, letterSpacing: -0.5 }}>
             {t("add.camera.permission_title")}
@@ -82,8 +134,11 @@ export function ScanCameraScreen({ onClose, onDone }: Props) {
         </View>
         <View style={{ gap: 10 }}>
           <PillButton label={t("add.camera.allow")} onPress={requestPermission} />
-          <PillButton label={t("add.scan.pick_gallery")} onPress={pick} secondary />
+          <PillButton label={qr ? t("add.qr.from_photo") : t("add.scan.pick_gallery")} onPress={qr ? pickQr : pick} secondary />
         </View>
+        {note && (
+          <Text style={{ fontSize: 14, color: S.danger, fontFamily: FONT.w700, textAlign: "center", marginTop: 12 }}>{note}</Text>
+        )}
         {pages.length > 0 && (
           <PillButton label={t("common.continue")} onPress={() => onDone(pages)} style={{ marginTop: 10 }} />
         )}
@@ -91,8 +146,11 @@ export function ScanCameraScreen({ onClose, onDone }: Props) {
     );
   }
 
-  const hint =
-    pages.length === 0
+  const hint = note
+    ? note
+    : qr
+    ? t("add.qr.hint")
+    : pages.length === 0
       ? t("add.camera.hint")
       : pages.length === 1
       ? t("add.camera.ready_one")
@@ -106,10 +164,20 @@ export function ScanCameraScreen({ onClose, onDone }: Props) {
         facing="back"
         enableTorch={torch}
         onCameraReady={() => setReady(true)}
+        barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+        onBarcodeScanned={handleBarcode}
       />
 
       {/* Frame guide */}
-      <View pointerEvents="none" style={[st.frame, { top: insets.top + 84, bottom: insets.bottom + 236 }]}>
+      <View
+        pointerEvents="none"
+        style={[
+          st.frame,
+          qr
+            ? { top: insets.top + 140, left: 56, right: 56, aspectRatio: 1 }
+            : { top: insets.top + 84, bottom: insets.bottom + 236 },
+        ]}
+      >
         <View style={[st.corner, { top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: 18 }]} />
         <View style={[st.corner, { top: 0, right: 0, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: 18 }]} />
         <View style={[st.corner, { bottom: 0, left: 0, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: 18 }]} />
@@ -121,7 +189,7 @@ export function ScanCameraScreen({ onClose, onDone }: Props) {
         <RoundButton label={t("common.cancel")} onPress={onClose}>
           <XIcon color="#fff" size={16} />
         </RoundButton>
-        <Text style={st.title}>{t("add.scan.title").toUpperCase()}</Text>
+        <Text style={st.title}>{(qr ? t("add.qr.title") : t("add.scan.title")).toUpperCase()}</Text>
         <RoundButton label={t("add.camera.flash")} onPress={() => setTorch((v) => !v)} active={torch}>
           <FlashIcon color={torch ? CAM_INK : "#fff"} size={18} />
         </RoundButton>
@@ -133,55 +201,81 @@ export function ScanCameraScreen({ onClose, onDone }: Props) {
           <Text style={st.hintText}>{hint}</Text>
         </View>
 
-        <View style={{ height: 78, alignSelf: "stretch" }}>
-          {pages.length > 0 && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: 24, paddingTop: 8 }}>
-              {pages.map((p, i) => (
-                <View key={`${p.uri}-${i}`}>
-                  <Image source={{ uri: p.uri }} style={st.thumb} />
-                  <Pressable
-                    onPress={() => setPages((prev) => prev.filter((_, j) => j !== i))}
-                    accessibilityLabel={t("add.camera.remove")}
-                    hitSlop={8}
-                    style={st.thumbRemove}
-                  >
-                    <XIcon color={CAM_INK} size={9} />
-                  </Pressable>
-                </View>
-              ))}
-            </ScrollView>
-          )}
-        </View>
-
-        <View style={st.controls}>
-          <RoundButton label={t("add.scan.gallery")} onPress={pick} size={54}>
-            <ImageIcon color="#fff" size={22} />
-          </RoundButton>
-          <Pressable
-            onPress={shoot}
-            disabled={!ready || shooting}
-            accessibilityRole="button"
-            accessibilityLabel={t("add.scan.take_photo")}
-            style={({ pressed }) => [st.shutter, { transform: [{ scale: pressed ? 0.94 : 1 }] }]}
-          >
-            {shooting ? <ActivityIndicator color={CAM_INK} /> : <View style={st.shutterInner} />}
-          </Pressable>
-          {pages.length > 0 ? (
+        {qr ? (
+          <View style={[st.controls, { justifyContent: "center", marginTop: 18 }]}>
             <Pressable
-              onPress={() => onDone(pages)}
+              onPress={pickQr}
               accessibilityRole="button"
-              accessibilityLabel={t("common.continue")}
-              style={({ pressed }) => [st.done, { transform: [{ scale: pressed ? 0.94 : 1 }] }]}
+              style={({ pressed }) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+                height: 48,
+                paddingHorizontal: 18,
+                borderRadius: 99,
+                backgroundColor: "rgba(20,18,16,0.5)",
+                borderWidth: 1,
+                borderColor: "rgba(255,255,255,0.14)",
+                transform: [{ scale: pressed ? 0.96 : 1 }],
+              })}
             >
-              <CheckIcon color={CAM_INK} size={22} />
-              <View style={st.badge}>
-                <Text style={st.badgeText}>{pages.length}</Text>
-              </View>
+              <ImageIcon color="#fff" size={18} />
+              <Text style={st.hintText}>{t("add.qr.from_photo")}</Text>
             </Pressable>
-          ) : (
-            <View style={{ width: 54 }} />
-          )}
-        </View>
+          </View>
+        ) : (
+          <>
+            <View style={{ height: 78, alignSelf: "stretch" }}>
+              {pages.length > 0 && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: 24, paddingTop: 8 }}>
+                  {pages.map((p, i) => (
+                    <View key={`${p.uri}-${i}`}>
+                      <Image source={{ uri: p.uri }} style={st.thumb} />
+                      <Pressable
+                        onPress={() => setPages((prev) => prev.filter((_, j) => j !== i))}
+                        accessibilityLabel={t("add.camera.remove")}
+                        hitSlop={8}
+                        style={st.thumbRemove}
+                      >
+                        <XIcon color={CAM_INK} size={9} />
+                      </Pressable>
+                    </View>
+                  ))}
+                </ScrollView>
+              )}
+            </View>
+
+            <View style={st.controls}>
+              <RoundButton label={t("add.scan.gallery")} onPress={pick} size={54}>
+                <ImageIcon color="#fff" size={22} />
+              </RoundButton>
+              <Pressable
+                onPress={shoot}
+                disabled={!ready || shooting}
+                accessibilityRole="button"
+                accessibilityLabel={t("add.scan.take_photo")}
+                style={({ pressed }) => [st.shutter, { transform: [{ scale: pressed ? 0.94 : 1 }] }]}
+              >
+                {shooting ? <ActivityIndicator color={CAM_INK} /> : <View style={st.shutterInner} />}
+              </Pressable>
+              {pages.length > 0 ? (
+                <Pressable
+                  onPress={() => onDone(pages)}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("common.continue")}
+                  style={({ pressed }) => [st.done, { transform: [{ scale: pressed ? 0.94 : 1 }] }]}
+                >
+                  <CheckIcon color={CAM_INK} size={22} />
+                  <View style={st.badge}>
+                    <Text style={st.badgeText}>{pages.length}</Text>
+                  </View>
+                </Pressable>
+              ) : (
+                <View style={{ width: 54 }} />
+              )}
+            </View>
+          </>
+        )}
       </View>
     </View>
   );

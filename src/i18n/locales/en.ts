@@ -512,6 +512,13 @@ export const en = {
 
   // ─── scan ───
   "add.title": "Add a calendar",
+  "add.qr.row": "Scan a QR code",
+  "add.qr.row_sub": "From a neighbour's phone or a flyer",
+  "add.qr.title": "Scan QR code",
+  "add.qr.hint": "Point at a shared calendar's QR code",
+  "add.qr.not_calendar": "That QR code isn't an Abfall calendar",
+  "add.qr.from_photo": "From a screenshot",
+  "add.qr.none_found": "No calendar QR code in that picture",
   "add.subtitle": "How do you want to get your collection dates?",
   "add.option.scan.label": "Scan paper calendar",
   "add.option.scan.desc": "Snap one or more photos — we'll read the dates",

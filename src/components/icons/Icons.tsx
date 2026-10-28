@@ -234,6 +234,21 @@ export function ScanIcon({ color, size = 22 }: IconProps) {
   );
 }
 
+export function QrIcon({ color, size = 22 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      {/* Three finder squares and a few data modules */}
+      <Rect x={3.5} y={3.5} width={6.5} height={6.5} rx={1.5} stroke={color} strokeWidth={2} fill="none" />
+      <Rect x={14} y={3.5} width={6.5} height={6.5} rx={1.5} stroke={color} strokeWidth={2} fill="none" />
+      <Rect x={3.5} y={14} width={6.5} height={6.5} rx={1.5} stroke={color} strokeWidth={2} fill="none" />
+      <Rect x={14} y={14} width={2.6} height={2.6} rx={0.6} fill={color} />
+      <Rect x={17.9} y={17.9} width={2.6} height={2.6} rx={0.6} fill={color} />
+      <Rect x={14} y={17.9} width={2.6} height={2.6} rx={0.6} fill={color} />
+      <Rect x={17.9} y={14} width={2.6} height={2.6} rx={0.6} fill={color} />
+    </Svg>
+  );
+}
+
 export function ShareIcon({ color, size = 19 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">

@@ -24,3 +24,31 @@ export function sharedCalendarIdFromUrl(url: string | null | undefined): string 
   if (!url) return null;
   return SHARED_ID_RE.exec(url)?.[1]?.toLowerCase() ?? null;
 }
+
+// Links that come from inside the app (a QR code scanned with the in-app
+// camera) go through the same "add this calendar?" flow as links that
+// open the app. SharedLinkHandler listens.
+type Listener = (url: string) => void;
+const listeners = new Set<Listener>();
+
+// The full-screen camera replaces the tab UI, so the listener may not be
+// mounted at the moment a code is scanned; the link waits here for it.
+let waiting: string | null = null;
+
+/** Hand a scanned link to the shared-calendar flow. False when it isn't one. */
+export function openSharedLink(url: string): boolean {
+  if (!sharedCalendarIdFromUrl(url)) return false;
+  if (listeners.size === 0) waiting = url;
+  else listeners.forEach((l) => l(url));
+  return true;
+}
+
+export function onSharedLink(listener: Listener): () => void {
+  listeners.add(listener);
+  if (waiting) {
+    const url = waiting;
+    waiting = null;
+    listener(url);
+  }
+  return () => listeners.delete(listener);
+}

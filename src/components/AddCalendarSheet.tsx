@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { View } from "react-native";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
-import { ArtTile, SheetHeader } from "./ui/sheet";
+import { ArtTile, OptionRow, SheetHeader } from "./ui/sheet";
+import { ChevRIcon, QrIcon } from "./icons/Icons";
 import { ScanArt, BrowseArt } from "./art/Art";
 import { CommunityCalendarsSheet } from "./CommunityCalendarsSheet";
 import { useTheme } from "../theme/ThemeContext";
@@ -13,15 +14,18 @@ interface Props {
   /** Opens the camera. Also used when the community sheet pivots to
    *  "scan my own calendar". */
   onScan: () => void;
+  /** Opens the camera to scan a shared calendar's QR code. */
+  onScanQr: () => void;
 }
 
 /**
- * Two picture tiles: scan your paper calendar, or find one someone nearby
- * already shared. The camera itself is a full screen (ScanCameraScreen),
- * so this sheet is only the choice.
+ * Two picture tiles (scan your paper calendar, or find one someone nearby
+ * already shared) and a row for the third way in: a QR code someone shows
+ * you. The camera itself is a full screen (ScanCameraScreen), so this
+ * sheet is only the choice.
  */
-export function AddCalendarSheet({ visible, onClose, onScan }: Props) {
-  const { ST } = useTheme();
+export function AddCalendarSheet({ visible, onClose, onScan, onScanQr }: Props) {
+  const { S, ST } = useTheme();
   const { t } = useT();
   const [showCommunity, setShowCommunity] = useState(false);
 
@@ -60,6 +64,19 @@ export function AddCalendarSheet({ visible, onClose, onScan }: Props) {
             >
               <BrowseArt />
             </ArtTile>
+          </View>
+          <View style={{ marginTop: 10 }}>
+            <OptionRow
+              label={t("add.qr.row")}
+              subtitle={t("add.qr.row_sub")}
+              icon={<QrIcon color={ST.metall.ink} size={20} />}
+              iconBg={ST.metall.soft}
+              onPress={() => {
+                onClose();
+                onScanQr();
+              }}
+              right={<ChevRIcon color={S.ter} size={13} />}
+            />
           </View>
         </View>
       </SlideUpSheet>
