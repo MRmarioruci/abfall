@@ -83,6 +83,11 @@ export const it: Record<StringKey, string> = {
 
   "home.calendar": "CALENDARIO",
   "home.switch": "Cambia",
+  "lb.save_failed": "Salvataggio non riuscito. Controlla la connessione e riprova.",
+  "lb.preview_title": "Classifica",
+  "lb.see_all": "Vedi tutto",
+  "lb.you": "Tu",
+  "lb.preview_join": "Porta fuori i bidoni, guadagna punti, supera i vicini.",
   "lb.title": "Classifica",
   "lb.season": "Stagione {range} · termina tra {n} giorni",
   "lb.rank": "La tua posizione",

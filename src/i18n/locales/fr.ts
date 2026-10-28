@@ -83,6 +83,11 @@ export const fr: Record<StringKey, string> = {
 
   "home.calendar": "CALENDRIER",
   "home.switch": "Changer",
+  "lb.save_failed": "Échec de l'enregistrement. Vérifiez la connexion et réessayez.",
+  "lb.preview_title": "Classement",
+  "lb.see_all": "Tout voir",
+  "lb.you": "Vous",
+  "lb.preview_join": "Sortez les poubelles, gagnez des points, dépassez vos voisins.",
   "lb.title": "Classement",
   "lb.season": "Saison {range} · se termine dans {n} jours",
   "lb.rank": "Votre rang",

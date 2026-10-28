@@ -28,6 +28,7 @@ import { ScanArt, BrowseArt } from "../components/art/Art";
 import { haptics } from "../lib/haptics";
 import { NextPickupHero } from "../components/home/NextPickupHero";
 import { DayDetail } from "../components/home/DayDetail";
+import { LeaderboardPreview } from "../components/home/LeaderboardPreview";
 import { TonightCard } from "../components/home/TonightCard";
 import { SortSheet } from "../components/SortSheet";
 import { HomeSkeleton } from "../components/home/HomeSkeleton";
@@ -351,7 +352,7 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders, onOpe
         {/* Top bar: logo · location (centred) · menu. The side slots have
             the same width, so the location sits in the screen's centre. */}
         <View style={{ paddingHorizontal: 20, flexDirection: "row", alignItems: "center" }}>
-          <View style={{ width: 92, alignItems: "flex-start" }}>
+          <View style={{ width: 120, alignItems: "flex-start" }}>
             <BrandMark size={30} />
           </View>
 
@@ -387,7 +388,7 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders, onOpe
             </Pressable>
           </View>
 
-          <View style={{ width: 92, flexDirection: "row", justifyContent: "flex-end", alignItems: "center", gap: 6 }}>
+          <View style={{ width: 120, flexDirection: "row", justifyContent: "flex-end", alignItems: "center", gap: 6 }}>
             {/* Leaderboard: your points once you've joined, a trophy before */}
             {onOpenLeaderboard && !editMode && (
               <Pressable
@@ -414,7 +415,11 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders, onOpe
                 })}
               >
                 <TrophyIcon color={S.ink} size={16} />
-                {player && <Text style={[TYPE.cap, NUMS, { color: S.ink, fontFamily: FONT.w800 }]}>{player.points}</Text>}
+                {player && (
+                  <Text style={[TYPE.cap, NUMS, { color: S.ink, fontFamily: FONT.w800 }]}>
+                    {t("lb.home_chip", { n: player.points })}
+                  </Text>
+                )}
               </Pressable>
             )}
             {active &&
@@ -663,6 +668,17 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders, onOpe
                 onSelect={setSelectedDate}
               />
             </View>
+
+            {/* Leaderboard: the town's top five, and the way in */}
+            {onOpenLeaderboard && (
+              <View style={{ paddingHorizontal: 14, paddingTop: 28 }}>
+                <LeaderboardPreview
+                  canton={active.canton || undefined}
+                  municipality={active.municipality || undefined}
+                  onOpen={onOpenLeaderboard}
+                />
+              </View>
+            )}
 
             {/* Fun fact: one quiet line under a hairline, rotating every 10 s */}
             {!!funFact && (

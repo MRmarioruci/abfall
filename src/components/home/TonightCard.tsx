@@ -196,7 +196,7 @@ export function TonightCard({
         />
       )}
       {/* Not on the leaderboard: what this could have been worth. */}
-      {!player && allOut && onJoin && (
+      {!player && allOut && claimed === null && onJoin && (
         <Pressable onPress={onJoin} accessibilityRole="button" hitSlop={8} style={({ pressed }) => ({ marginTop: 6, opacity: pressed ? 0.6 : 1 })}>
           <Text style={[TYPE.caption, { color: S.ink, fontFamily: FONT.w700 }]}>{t("lb.join_hint")} →</Text>
         </Pressable>

@@ -476,8 +476,10 @@ export async function checkIn(args: { date: string; streams: WasteStreamId[]; du
 export async function getBoard(
   scope: BoardScope,
   place?: { canton?: string; municipality?: string },
+  limit?: number,
 ): Promise<Board> {
   const q = new URLSearchParams({ scope });
+  if (limit) q.set("limit", String(limit));
   if (place?.canton) q.set("canton", place.canton);
   if (place?.municipality) q.set("municipality", place.municipality);
   return request<Board>(`/v1/leaderboard?${q.toString()}`);

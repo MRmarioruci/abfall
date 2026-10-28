@@ -93,6 +93,11 @@ export const en = {
   // ─── home ───────────────────────────────────────────────────────────────
   "home.calendar": "CALENDAR",
   "home.switch": "Switch",
+  "lb.save_failed": "Couldn't save. Check your connection and try again.",
+  "lb.preview_title": "Leaderboard",
+  "lb.see_all": "See all",
+  "lb.you": "You",
+  "lb.preview_join": "Put the bins out, earn points, beat your neighbours.",
   "lb.title": "Leaderboard",
   "lb.season": "Season {range} · ends in {n} days",
   "lb.rank": "Your rank",

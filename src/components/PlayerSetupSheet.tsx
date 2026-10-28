@@ -13,6 +13,7 @@ import { useT } from "../context/LocaleContext";
 import { AVATARS, usePlayer } from "../context/PlayerContext";
 import { useToast } from "./ui/Toast";
 import { haptics } from "../lib/haptics";
+import { ApiError } from "../services/api";
 
 export function PlayerSetupSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { S, ST } = useTheme();
@@ -22,21 +23,22 @@ export function PlayerSetupSheet({ visible, onClose }: { visible: boolean; onClo
   const [nickname, setNickname] = useState("");
   const [avatar, setAvatar] = useState<string>(AVATARS[0]);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(false);
+  // "nickname": the server rejected it; "network": it couldn't save at all.
+  const [error, setError] = useState<"nickname" | "network" | null>(null);
   const [confirmLeave, setConfirmLeave] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
     setNickname(player?.nickname ?? "");
     setAvatar(player?.avatar ?? AVATARS[Math.floor(Math.random() * AVATARS.length)]!);
-    setError(false);
+    setError(null);
   }, [visible, player?.nickname, player?.avatar]);
 
   const valid = /^[\p{L}\p{N} ._-]{2,20}$/u.test(nickname.trim());
 
   const handleSave = async () => {
     if (!valid) {
-      setError(true);
+      setError("nickname");
       return;
     }
     setSaving(true);
@@ -44,8 +46,8 @@ export function PlayerSetupSheet({ visible, onClose }: { visible: boolean; onClo
       await save(nickname.trim(), avatar);
       haptics.success();
       onClose();
-    } catch {
-      setError(true);
+    } catch (err) {
+      setError(err instanceof ApiError && err.status === 400 ? "nickname" : "network");
       haptics.warn();
     } finally {
       setSaving(false);
@@ -66,7 +68,7 @@ export function PlayerSetupSheet({ visible, onClose }: { visible: boolean; onClo
             value={nickname}
             onChangeText={(v) => {
               setNickname(v);
-              setError(false);
+              setError(null);
             }}
             placeholder={t("lb.nickname_ph")}
             placeholderTextColor={S.ter}
@@ -78,14 +80,18 @@ export function PlayerSetupSheet({ visible, onClose }: { visible: boolean; onClo
               paddingHorizontal: 14,
               borderRadius: RADIUS.control,
               backgroundColor: S.card,
-              borderWidth: error ? 1.5 : HAIRLINE,
-              borderColor: error ? S.danger : S.line,
+              borderWidth: error === "nickname" ? 1.5 : HAIRLINE,
+              borderColor: error === "nickname" ? S.danger : S.line,
               fontSize: 17,
               fontFamily: FONT.w700,
               color: S.ink,
             }}
           />
-          {error && <Text style={[TYPE.caption, { color: S.danger, marginTop: 6 }]}>{t("lb.nickname_bad")}</Text>}
+          {error && (
+            <Text style={[TYPE.caption, { color: S.danger, marginTop: 6 }]}>
+              {error === "nickname" ? t("lb.nickname_bad") : t("lb.save_failed")}
+            </Text>
+          )}
 
           <Text style={[TYPE.cap, { color: S.sec, marginTop: 18, marginBottom: 8 }]}>{t("lb.avatar")}</Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
