@@ -24,6 +24,9 @@ interface Props {
   marks?: CollectionMark[];
   municipality?: string;
   onDayPress?: (day: number, month: number, year: number) => void;
+  /** Recyclops on the card. Off where he already stands elsewhere on the
+   *  screen (Home shows him next to the next pickup). */
+  mascot?: boolean;
 }
 
 // Grid uses Monday-first ordering. Map JS Date.getDay() (Sunday-first) to it
@@ -47,7 +50,7 @@ const RECYCLOPS_SIZE = 54;
 const RECYCLOPS_RIGHT = 6;
 const RECYCLOPS_BOTTOM_OVERHANG = 6;
 
-export function CalendarMonth({ marks = EMPTY_MARKS, municipality = "", onDayPress }: Props) {
+export function CalendarMonth({ marks = EMPTY_MARKS, municipality = "", onDayPress, mascot = true }: Props) {
   const { S, ST } = useTheme();
   const { t, monthLong, weekdayMin, weekdayLong, wasteLabel } = useT();
   // A white card with a hairline edge. Pickup days are bold, with a short
@@ -453,21 +456,23 @@ export function CalendarMonth({ marks = EMPTY_MARKS, municipality = "", onDayPre
           the bottom, idles, and occasionally turns his back to shuffle a
           legend label (handleRecyclopsSwap). pointerEvents on the
           wrapper avoid swallowing taps for the day cells. */}
-      <View
-        pointerEvents="box-none"
-        style={{
-          position: "absolute",
-          right: RECYCLOPS_RIGHT,
-          bottom: -RECYCLOPS_BOTTOM_OVERHANG,
-        }}
-      >
-        <Recyclops
-          size={RECYCLOPS_SIZE}
-          walkRange={Math.max(0, (cardWidth ?? 0) - RECYCLOPS_SIZE)}
-          planSwap={planSwap}
-          onPress={() => {}}
-        />
-      </View>
+      {mascot && (
+        <View
+          pointerEvents="box-none"
+          style={{
+            position: "absolute",
+            right: RECYCLOPS_RIGHT,
+            bottom: -RECYCLOPS_BOTTOM_OVERHANG,
+          }}
+        >
+          <Recyclops
+            size={RECYCLOPS_SIZE}
+            walkRange={Math.max(0, (cardWidth ?? 0) - RECYCLOPS_SIZE)}
+            planSwap={planSwap}
+            onPress={() => {}}
+          />
+        </View>
+      )}
     </View>
   );
 }

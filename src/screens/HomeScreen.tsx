@@ -546,7 +546,7 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders }: Pro
 
             {/* Monthly calendar */}
             <View style={{ paddingHorizontal: 14 }}>
-              <CalendarMonth marks={marks} municipality={municipality} onDayPress={handleDayPress} />
+              <CalendarMonth marks={marks} municipality={municipality} onDayPress={handleDayPress} mascot={false} />
             </View>
 
             {/* The rest of the upcoming pickups */}

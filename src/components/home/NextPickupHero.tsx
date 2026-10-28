@@ -1,13 +1,14 @@
 // The main fact on Home: what goes out next, and when. Type does the work:
 // a small label, the countdown as the screen's one headline, then the bins
-// as colour squares and the date on a quiet line.
+// as colour squares and the date on a quiet line. Recyclops stands on the
+// right, so he's on screen as soon as Home opens.
 
 import { View, Text, Pressable } from "react-native";
 import { type WasteStreamId } from "../../theme/colors";
 import { useTheme } from "../../theme/ThemeContext";
-import { TYPE } from "../../theme/type";
+import { FONT, TYPE } from "../../theme/type";
 import { BellIcon } from "../icons/Icons";
-import { CircBtn } from "../ui/CircBtn";
+import { Recyclops } from "../Recyclops";
 import { StreamMark } from "../ui/sheet";
 import { useT } from "../../context/LocaleContext";
 import { parseISODate } from "../../lib/dates";
@@ -45,14 +46,14 @@ export function NextPickupHero({
   };
 
   return (
-    <View accessible={false}>
-      <Text style={[TYPE.cap, { color: S.sec }]}>{t("home.next_pickup")}</Text>
-      <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 12 }}>
+    <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={[TYPE.cap, { color: S.sec }]}>{t("home.next_pickup")}</Text>
         <Pressable
           onPress={() => open(first.type)}
           accessibilityRole="button"
           accessibilityLabel={`${label}, ${countdown}, ${meta.join(", ")}`}
-          style={({ pressed }) => ({ flex: 1, minWidth: 0, opacity: pressed ? 0.6 : 1 })}
+          style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
         >
           <Text
             style={[TYPE.display, { color: S.ink, marginTop: 4 }]}
@@ -63,30 +64,44 @@ export function NextPickupHero({
             {countdown}
           </Text>
         </Pressable>
-        <CircBtn size={42} onPress={() => open(first.type)} accessibilityLabel={t("home.reminder")} style={{ marginBottom: 4 }}>
-          <BellIcon color={S.ink} size={18} />
-        </CircBtn>
+
+        {/* The bins, as colour squares; each opens its own reminder. */}
+        <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: 16, rowGap: 6, marginTop: 10 }}>
+          {streams.map((id) => (
+            <Pressable
+              key={id}
+              onPress={() => open(id)}
+              accessibilityRole="button"
+              accessibilityLabel={wasteLabel(id)}
+              hitSlop={8}
+              style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 8, opacity: pressed ? 0.6 : 1 })}
+            >
+              <StreamMark color={ST[id].c} size={10} />
+              <Text style={[TYPE.label, { color: S.ink }]}>{wasteLabel(id)}</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 6 }}>
+          <Text style={[TYPE.caption, { color: S.sec, flexShrink: 1 }]} numberOfLines={1}>
+            {meta.join(" · ")}
+          </Text>
+          <Pressable
+            onPress={() => open(first.type)}
+            accessibilityRole="button"
+            accessibilityLabel={t("home.remind_me")}
+            hitSlop={10}
+            style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 4, opacity: pressed ? 0.6 : 1 })}
+          >
+            <BellIcon color={S.ink} size={13} />
+            <Text style={[TYPE.caption, { color: S.ink, fontFamily: FONT.w700 }]}>{t("home.remind_me")}</Text>
+          </Pressable>
+        </View>
       </View>
 
-      {/* The bins, as colour squares; each opens its own reminder. */}
-      <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: 16, rowGap: 6, marginTop: 10 }}>
-        {streams.map((id) => (
-          <Pressable
-            key={id}
-            onPress={() => open(id)}
-            accessibilityRole="button"
-            accessibilityLabel={wasteLabel(id)}
-            hitSlop={8}
-            style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 8, opacity: pressed ? 0.6 : 1 })}
-          >
-            <StreamMark color={ST[id].c} size={10} />
-            <Text style={[TYPE.label, { color: S.ink }]}>{wasteLabel(id)}</Text>
-          </Pressable>
-        ))}
+      <View style={{ marginBottom: -4 }}>
+        <Recyclops size={78} walkRange={0} />
       </View>
-      <Text style={[TYPE.caption, { color: S.sec, marginTop: 6 }]} numberOfLines={1}>
-        {meta.join(" · ")}
-      </Text>
     </View>
   );
 }

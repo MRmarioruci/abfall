@@ -7,7 +7,7 @@ import { HAIRLINE, RADIUS } from "../theme/layout";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
 import { StreamGlyph } from "./icons/StreamGlyph";
 import { XIcon, CheckIcon, SunIcon, MoonIcon, BellIcon, CalIcon } from "./icons/Icons";
-import { PillButton, SheetHeader, SoftCard } from "./ui/sheet";
+import { PillButton, QuietButton, SheetHeader, SoftCard } from "./ui/sheet";
 import type { ReminderRule } from "../types/calendar";
 import { sendTestNotification } from "../services/notifications";
 import { useToast } from "./ui/Toast";
@@ -67,9 +67,24 @@ interface Props {
    *  a new rule. Ignored if `rule` is provided (we use the rule's own value). */
   initialWhen?: string;
   onSave: (stream: WasteStreamId, rule: ReminderRule) => void;
+  /** The bin is already decided (opened from that bin's card): show its
+   *  name instead of the row of bins to pick from. */
+  fixedStream?: boolean;
+  /** Shown for an existing rule: removes it (the caller offers Undo). */
+  onDelete?: (stream: WasteStreamId, rule: ReminderRule) => void;
 }
 
-export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate, initialWhen, onSave }: Props) {
+export function ReminderEditSheet({
+  visible,
+  onClose,
+  stream,
+  rule,
+  initialDate,
+  initialWhen,
+  onSave,
+  fixedStream,
+  onDelete,
+}: Props) {
   const { S, ST } = useTheme();
   const insets = useSafeAreaInsets();
   const toast = useToast();
@@ -159,6 +174,7 @@ export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate,
       <View style={{ paddingHorizontal: 20, paddingTop: 4 }}>
         <SheetHeader
           title={rule ? t("reminder_edit.title_edit") : t("reminder_edit.title_add")}
+          subtitle={fixedStream ? wasteLabel(stream) : undefined}
           right={
             <Pressable
               onPress={onClose}
@@ -201,47 +217,49 @@ export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate,
         </View>
 
         {/* Which collection: each type in its own colour. */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ marginHorizontal: -20, marginBottom: 18 }}
-          contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
-        >
-          {STREAM_ORDER.map((id) => {
-            const cc = ST[id];
-            const on = id === selectedStream;
-            return (
-              <Pressable
-                key={id}
-                onPress={() => setSelectedStream(id)}
-                accessibilityRole="button"
-                accessibilityLabel={wasteLabel(id)}
-                accessibilityState={{ selected: on }}
-                style={({ pressed }) => ({
-                  width: 84,
-                  height: 88,
-                  borderRadius: RADIUS.control,
-                  backgroundColor: on ? cc.c : S.card,
-                  borderWidth: on ? 1.5 : HAIRLINE,
-                  borderColor: on ? S.ink : S.line,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 4,
-                  paddingHorizontal: 6,
-                  transform: [{ scale: pressed ? 0.96 : 1 }],
-                })}
-              >
-                <StreamGlyph stream={id} size={34} color={on ? cc.onC : cc.ink} />
-                <Text
-                  style={{ fontSize: 12, fontFamily: FONT.w800, color: on ? cc.onC : S.ink, textAlign: "center", lineHeight: 14 }}
-                  numberOfLines={2}
+        {!fixedStream && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ marginHorizontal: -20, marginBottom: 18 }}
+            contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
+          >
+            {STREAM_ORDER.map((id) => {
+              const cc = ST[id];
+              const on = id === selectedStream;
+              return (
+                <Pressable
+                  key={id}
+                  onPress={() => setSelectedStream(id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={wasteLabel(id)}
+                  accessibilityState={{ selected: on }}
+                  style={({ pressed }) => ({
+                    width: 84,
+                    height: 88,
+                    borderRadius: RADIUS.control,
+                    backgroundColor: on ? cc.c : S.card,
+                    borderWidth: on ? 1.5 : HAIRLINE,
+                    borderColor: on ? S.ink : S.line,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 4,
+                    paddingHorizontal: 6,
+                    transform: [{ scale: pressed ? 0.96 : 1 }],
+                  })}
                 >
-                  {wasteLabel(id)}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+                  <StreamGlyph stream={id} size={34} color={on ? cc.onC : cc.ink} />
+                  <Text
+                    style={{ fontSize: 12, fontFamily: FONT.w800, color: on ? cc.onC : S.ink, textAlign: "center", lineHeight: 14 }}
+                    numberOfLines={2}
+                  >
+                    {wasteLabel(id)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        )}
 
         {/* When, relative to the pickup (recurring only). */}
         {mode === "recurring" && (
@@ -337,7 +355,7 @@ export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate,
             paddingVertical: 12,
             paddingHorizontal: 18,
             marginTop: 2,
-            marginBottom: Math.max(insets.bottom, 8),
+            marginBottom: rule && onDelete ? 0 : Math.max(insets.bottom, 8),
             opacity: pressed ? 0.55 : testing ? 0.7 : 1,
           })}
         >
@@ -346,6 +364,19 @@ export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate,
             {testing ? t("reminder_edit.test_waiting") : t("reminder_edit.test_send")}
           </Text>
         </Pressable>
+
+        {rule && onDelete && (
+          <View style={{ marginBottom: Math.max(insets.bottom, 8) }}>
+            <QuietButton
+              label={t("reminder_edit.delete")}
+              danger
+              onPress={() => {
+                onClose();
+                onDelete(stream, rule);
+              }}
+            />
+          </View>
+        )}
       </View>
     </SlideUpSheet>
   );
