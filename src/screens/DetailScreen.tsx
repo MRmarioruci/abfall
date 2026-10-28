@@ -61,11 +61,6 @@ export function DetailScreen({ route, navigation }: any) {
               backgroundColor: s.c,
               alignItems: "center",
               justifyContent: "center",
-              shadowColor: s.c,
-              shadowOffset: { width: 0, height: 28 },
-              shadowOpacity: 0.53,
-              shadowRadius: 56,
-              elevation: 10,
             }}
           >
             <StreamGlyph stream={stream} size={120} color={s.onC} />
@@ -113,11 +108,6 @@ export function DetailScreen({ route, navigation }: any) {
                         paddingHorizontal: 8,
                         alignItems: "center",
                         minWidth: 52,
-                        shadowColor: S.inkShadow,
-                        shadowOffset: { width: 0, height: 10 },
-                        shadowOpacity: 0.28,
-                        shadowRadius: 22,
-                        elevation: 8,
                       }}
                     >
                       <Text
@@ -194,11 +184,6 @@ export function DetailScreen({ route, navigation }: any) {
             padding: 5,
             borderRadius: 99,
             backgroundColor: reminderOn ? S.ink : S.card,
-            shadowColor: S.shadow,
-            shadowOffset: { width: 0, height: 6 },
-            shadowOpacity: 0.12,
-            shadowRadius: 18,
-            elevation: 4,
           }}
         >
           <View

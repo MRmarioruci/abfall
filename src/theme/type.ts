@@ -11,10 +11,12 @@ export const FONT = {
   w900: "HankenGrotesk_900Black",
 } as const;
 
-/** The type scale. New UI should use these instead of ad-hoc sizes. */
+/** The type scale. New UI should use these instead of ad-hoc sizes. One
+ *  big step between the headline and everything else is what keeps
+ *  screens crisp, so resist sizes in between. */
 export const TYPE = {
-  /** Hero numbers and countdowns ("Tomorrow"). */
-  display: { fontFamily: FONT.w800, fontSize: 34, letterSpacing: -1, lineHeight: 38 },
+  /** The one headline per screen ("Tomorrow"). */
+  display: { fontFamily: FONT.w800, fontSize: 46, letterSpacing: -2, lineHeight: 50 },
   /** Screen titles. */
   title: { fontFamily: FONT.w800, fontSize: 28, letterSpacing: -0.8, lineHeight: 33 },
   /** Sheet titles, card titles. */
@@ -25,6 +27,11 @@ export const TYPE = {
   body: { fontFamily: FONT.w500, fontSize: 15, letterSpacing: -0.1, lineHeight: 21 },
   /** Secondary lines, meta. */
   caption: { fontFamily: FONT.w600, fontSize: 13, letterSpacing: 0, lineHeight: 17 },
+  /** Small section labels above content ("Next pickup", "Coming up"). */
+  cap: { fontFamily: FONT.w600, fontSize: 12, letterSpacing: 0.1, lineHeight: 15 },
   /** Chips, badges. */
   micro: { fontFamily: FONT.w700, fontSize: 11.5, letterSpacing: 0.1, lineHeight: 14 },
 } as const;
+
+/** Spread into a Text style so digits line up in columns (dates, counts). */
+export const NUMS = { fontVariant: ["tabular-nums" as const] };

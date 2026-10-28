@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { View, Text, TextInput, Pressable, ActivityIndicator, ScrollView, Keyboard } from "react-native";
 import { useTheme } from "../theme/ThemeContext";
+import { HAIRLINE } from "../theme/layout";
 import { PinIcon, XIcon } from "./icons/Icons";
 import { searchPlaces, type PlaceSuggestion } from "../services/geocoding";
 import { useT } from "../context/LocaleContext";
@@ -96,7 +97,7 @@ export function LocationSearchInput({
           paddingVertical: 4,
           borderRadius: 14,
           backgroundColor: S.card,
-          borderWidth: 1.5,
+          borderWidth: focused ? 1.5 : HAIRLINE,
           borderColor: focused ? S.ink : S.line,
         }}
       >
@@ -153,7 +154,7 @@ export function LocationSearchInput({
             marginTop: 8,
             borderRadius: 14,
             backgroundColor: S.card,
-            borderWidth: 1.5,
+            borderWidth: HAIRLINE,
             borderColor: S.line,
             maxHeight: suggestionsMaxHeight,
             overflow: "hidden",

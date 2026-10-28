@@ -11,13 +11,14 @@ import { View, Text, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { STREAM_ORDER, type WasteStreamId } from "../theme/colors";
 import { useTheme } from "../theme/ThemeContext";
+import { HAIRLINE, RADIUS } from "../theme/layout";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
 import { StreamGlyph } from "./icons/StreamGlyph";
 import { XIcon, CheckIcon, PlusIcon } from "./icons/Icons";
 import { PillButton, SheetHeader, SoftCard } from "./ui/sheet";
 import type { CollectionEvent } from "../types/calendar";
 import { useT } from "../context/LocaleContext";
-import { FONT } from "../theme/type";
+import { FONT, TYPE } from "../theme/type";
 
 interface Props {
   visible: boolean;
@@ -86,6 +87,8 @@ export function DayEventsEditSheet({ visible, onClose, date, events, defaultZone
                 height: 36,
                 borderRadius: 99,
                 backgroundColor: S.card,
+                borderWidth: HAIRLINE,
+                borderColor: S.line,
                 alignItems: "center",
                 justifyContent: "center",
                 transform: [{ scale: pressed ? 0.92 : 1 }],
@@ -99,7 +102,7 @@ export function DayEventsEditSheet({ visible, onClose, date, events, defaultZone
         {/* What's on this day: one soft row per pickup. */}
         <View style={{ gap: 8, marginBottom: 20 }}>
           {draft.length === 0 && (
-            <SoftCard bg={S.card} style={{ paddingVertical: 16 }}>
+            <SoftCard style={{ paddingVertical: 16 }}>
               <Text style={{ fontSize: 14, fontFamily: FONT.w700, color: S.sec, textAlign: "center" }}>
                 {t("day_edit.empty")}
               </Text>
@@ -115,8 +118,10 @@ export function DayEventsEditSheet({ visible, onClose, date, events, defaultZone
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 12,
-                  backgroundColor: cc.soft,
-                  borderRadius: 20,
+                  backgroundColor: S.card,
+                  borderWidth: HAIRLINE,
+                  borderColor: S.line,
+                  borderRadius: RADIUS.control,
                   padding: 10,
                   paddingRight: 10,
                 }}
@@ -125,7 +130,7 @@ export function DayEventsEditSheet({ visible, onClose, date, events, defaultZone
                   style={{
                     width: 42,
                     height: 42,
-                    borderRadius: 14,
+                    borderRadius: RADIUS.well,
                     backgroundColor: cc.c,
                     alignItems: "center",
                     justifyContent: "center",
@@ -134,11 +139,11 @@ export function DayEventsEditSheet({ visible, onClose, date, events, defaultZone
                   <StreamGlyph stream={evt.type} size={26} color={cc.onC} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 16, fontFamily: FONT.w800, color: cc.ink, letterSpacing: -0.3 }}>
+                  <Text style={[TYPE.label, { color: S.ink }]}>
                     {wasteLabel(evt.type)}
                   </Text>
                   {evt.zone !== "all" && (
-                    <Text style={{ fontSize: 13, color: cc.ink, opacity: 0.7, fontFamily: FONT.w700, marginTop: 1 }}>
+                    <Text style={[TYPE.caption, { color: S.sec, marginTop: 1 }]}>
                       {t("day_edit.zone", { zone: evt.zone })}
                     </Text>
                   )}
@@ -151,13 +156,13 @@ export function DayEventsEditSheet({ visible, onClose, date, events, defaultZone
                     width: 32,
                     height: 32,
                     borderRadius: 99,
-                    backgroundColor: S.glass,
+                    backgroundColor: S.chip,
                     alignItems: "center",
                     justifyContent: "center",
                     transform: [{ scale: pressed ? 0.9 : 1 }],
                   })}
                 >
-                  <XIcon color={cc.ink} size={14} />
+                  <XIcon color={S.sec} size={14} />
                 </Pressable>
               </View>
             );
@@ -184,7 +189,7 @@ export function DayEventsEditSheet({ visible, onClose, date, events, defaultZone
                   height: 40,
                   paddingLeft: 8,
                   paddingRight: 13,
-                  borderRadius: 99,
+                  borderRadius: RADIUS.well,
                   backgroundColor: cc.soft,
                   opacity: alreadyAdded ? 0.4 : 1,
                   transform: [{ scale: pressed ? 0.95 : 1 }],

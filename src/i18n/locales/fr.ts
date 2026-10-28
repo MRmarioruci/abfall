@@ -83,6 +83,10 @@ export const fr: Record<StringKey, string> = {
 
   "home.calendar": "CALENDRIER",
   "home.switch": "Changer",
+  "home.next_pickup": "Prochaine collecte",
+  "home.coming_up": "À venir",
+  "home.this_week": "Cette semaine",
+  "home.reminder": "Rappel",
   "home.edit_banner": "Modification des ramassages — appuyez sur un jour pour ajouter ou retirer.",
   "home.nudge_title": "Soyez averti avant la collecte",
   "home.nudge_body": "Configurez des rappels pour ne jamais sortir la poubelle en retard.",

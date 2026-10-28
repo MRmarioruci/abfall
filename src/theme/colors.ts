@@ -1,82 +1,78 @@
 // Two palettes with the same keys. Components read the active one through
 // useTheme() (src/theme/ThemeContext.tsx); nothing in the UI should
-// hard-code a colour. Dark mode keeps the soft, colourful look: deep plum
-// neutrals instead of grey, pastel waste colours, and soft tints that
-// become deep, saturated panels with light ink.
+// hard-code a colour.
+//
+// The look is crisp and editorial: a warm off-white page, white cards
+// edged with a hairline (`line`) instead of shadows, solid greys for
+// secondary text, and the waste colours used as markers (squares, bars,
+// icon wells) rather than as big panels. Dark mode is the same layout on
+// deep plum neutrals.
 const LIGHT_NEUTRALS = {
   /** Screen background. */
-  bg: "#F3EFF4",
+  bg: "#F6F4F1",
   /** Background of sheets and pushed screens. */
-  sheet: "#F5F2F7",
-  /** Raised surfaces: cards, rows, inputs. */
+  sheet: "#F6F4F1",
+  /** Raised surfaces: cards, rows, inputs. Always edged with `line`. */
   card: "#FFFFFF",
-  cardWarm: "#FBF6F1",
-  /** Warm neutral chip / icon well. */
-  chip: "#F4EFEA",
+  /** Neutral icon well / quiet chip. */
+  chip: "#EFEBE5",
   /** Translucent card for overlays on maps and photos. */
-  float: "rgba(255,255,255,0.95)",
-  /** The sheet colour, translucent, for docks over scrolling content. */
-  sheetFloat: "rgba(245,242,247,0.95)",
+  float: "rgba(255,255,255,0.96)",
+  /** The page colour, translucent, for docks over scrolling content. */
+  sheetFloat: "rgba(246,244,241,0.96)",
   /** Frosted badge on top of a tinted panel. */
   glass: "rgba(255,255,255,0.7)",
   /** Solid white pill on a tinted panel; frosted in dark mode. */
   onTint: "#FFFFFF",
-  ink: "#211F1C",
-  sec: "rgba(33,31,28,0.50)",
-  ter: "rgba(33,31,28,0.32)",
-  line: "rgba(40,28,18,0.07)",
-  /** Faint ink wash: tracks, inactive dots, dividers with body. */
-  fill: "rgba(33,31,28,0.06)",
-  fillStrong: "rgba(33,31,28,0.16)",
-  /** Text and icons on an `ink` filled control (primary buttons). */
+  ink: "#1C1B19",
+  sec: "#8A857E",
+  ter: "#B9B3AA",
+  /** Hairline borders and dividers. */
+  line: "#E4DFD7",
+  /** Faint ink wash: tracks, inactive dots. */
+  fill: "rgba(28,27,25,0.06)",
+  fillStrong: "rgba(28,27,25,0.16)",
+  /** Text and icons on an `ink` filled control (primary buttons, today). */
   onInk: "#FFFFFF",
   /** Content on vivid fills that stay the same in both modes. */
   white: "#FFFFFF",
-  shadow: "rgb(150,118,96)",
-  /** Shadow under ink-filled buttons. */
-  inkShadow: "#211F1C",
+  /** Only for things that float over other content (menus, map cards). */
+  shadow: "rgb(60,48,40)",
   scrim: "rgba(0,0,0,0.3)",
-  skeleton: "#E9E2DA",
+  skeleton: "#ECE7E0",
   /** Empty day dots in the little calendar illustrations. */
-  dot: "#E4DBD2",
+  dot: "#E4DFD7",
   danger: "#C8341A",
   dangerSurface: "#7A2414",
-  success: "#5BA86B",
-  /** The month calendar is a dark card in light mode. */
-  calendar: "#211F1C",
+  success: "#4E9A5E",
 };
 
 export type Neutrals = { [K in keyof typeof LIGHT_NEUTRALS]: string };
 
 const DARK_NEUTRALS: Neutrals = {
-  bg: "#141217",
-  sheet: "#1A181E",
-  card: "#242028",
-  cardWarm: "#28232A",
-  chip: "#302B34",
-  float: "rgba(36,32,40,0.95)",
-  sheetFloat: "rgba(26,24,30,0.95)",
-  glass: "rgba(255,255,255,0.12)",
-  onTint: "rgba(255,255,255,0.12)",
+  bg: "#131115",
+  sheet: "#18161B",
+  card: "#1F1C23",
+  chip: "#2A262E",
+  float: "rgba(31,28,35,0.96)",
+  sheetFloat: "rgba(19,17,21,0.96)",
+  glass: "rgba(255,255,255,0.10)",
+  onTint: "rgba(255,255,255,0.10)",
   ink: "#F4EFF3",
-  sec: "rgba(244,239,243,0.62)",
-  ter: "rgba(244,239,243,0.38)",
-  line: "rgba(255,255,255,0.08)",
+  sec: "#9A93A1",
+  ter: "#5F5967",
+  line: "#2E2A33",
   fill: "rgba(255,255,255,0.08)",
   fillStrong: "rgba(255,255,255,0.20)",
-  onInk: "#18161B",
+  onInk: "#131115",
   white: "#FFFFFF",
   shadow: "#000000",
-  inkShadow: "#000000",
-  scrim: "rgba(0,0,0,0.55)",
-  skeleton: "#2A2630",
-  dot: "rgba(255,255,255,0.16)",
+  scrim: "rgba(0,0,0,0.6)",
+  skeleton: "#25212A",
+  dot: "rgba(255,255,255,0.14)",
   danger: "#E5583B",
   dangerSurface: "#8A2C1A",
   success: "#6DBE7D",
-  // A notch above the background so the calendar still reads as its own
-  // dark card.
-  calendar: "#2B2631",
 };
 
 export type WasteStreamId =

@@ -6,6 +6,7 @@ import { useTheme } from "../../theme/ThemeContext";
 import { TYPE } from "../../theme/type";
 import { Recyclops } from "../Recyclops";
 import { PillButton, SoftCard } from "./sheet";
+import { RADIUS } from "../../theme/layout";
 
 export function EmptyState({
   title,
@@ -19,18 +20,27 @@ export function EmptyState({
   /** Picture above the title; Recyclops when omitted. */
   art?: React.ReactNode;
   action?: { label: string; onPress: () => void; icon?: React.ReactNode };
-  /** Card tint; a soft palette colour fits most states. Defaults to a card. */
+  /** Tint of the picture's well; a soft palette colour fits most states. */
   bg?: string;
 }) {
   const { S } = useTheme();
   return (
-    <SoftCard bg={bg ?? S.card} style={{ alignItems: "center", paddingVertical: 26, paddingHorizontal: 22 }}>
-      <View style={{ height: 120, alignItems: "center", justifyContent: "center" }}>
+    <SoftCard style={{ alignItems: "center", padding: 8, paddingBottom: 20 }}>
+      <View
+        style={{
+          alignSelf: "stretch",
+          height: 136,
+          borderRadius: RADIUS.control,
+          backgroundColor: bg ?? S.chip,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
         {art ?? <Recyclops size={92} walkRange={0} />}
       </View>
-      <Text style={[TYPE.heading, { color: S.ink, textAlign: "center", marginTop: 10 }]}>{title}</Text>
+      <Text style={[TYPE.heading, { color: S.ink, textAlign: "center", marginTop: 16, paddingHorizontal: 14 }]}>{title}</Text>
       {!!subtitle && (
-        <Text style={[TYPE.caption, { color: S.sec, textAlign: "center", marginTop: 4 }]} numberOfLines={2}>
+        <Text style={[TYPE.caption, { color: S.sec, textAlign: "center", marginTop: 4, paddingHorizontal: 14 }]} numberOfLines={2}>
           {subtitle}
         </Text>
       )}
@@ -39,7 +49,7 @@ export function EmptyState({
           label={action.label}
           icon={action.icon}
           onPress={action.onPress}
-          style={{ alignSelf: "stretch", marginTop: 18 }}
+          style={{ alignSelf: "stretch", marginTop: 18, marginHorizontal: 12 }}
         />
       )}
     </SoftCard>

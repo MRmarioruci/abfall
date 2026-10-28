@@ -3,6 +3,7 @@ import { View, Text, Pressable, ScrollView, Dimensions } from "react-native";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
 import { STREAM_ORDER, type WasteStreamId } from "../theme/colors";
 import { useTheme } from "../theme/ThemeContext";
+import { HAIRLINE, RADIUS } from "../theme/layout";
 import { StreamGlyph } from "./icons/StreamGlyph";
 import { CheckIcon } from "./icons/Icons";
 import { PillButton, SheetHeader } from "./ui/sheet";
@@ -116,8 +117,10 @@ export function DayEditSheet({ visible, onClose, date, currentEvents, zones, onS
                   marginTop: 2,
                   paddingVertical: 8,
                   paddingHorizontal: 14,
-                  borderRadius: 99,
+                  borderRadius: RADIUS.well,
                   backgroundColor: S.card,
+                  borderWidth: HAIRLINE,
+                  borderColor: S.line,
                   transform: [{ scale: pressed ? 0.95 : 1 }],
                 })}
               >
@@ -149,10 +152,10 @@ export function DayEditSheet({ visible, onClose, date, currentEvents, zones, onS
                     style={({ pressed }) => ({
                       width: TILE_W,
                       height: TILE_W,
-                      borderRadius: 22,
-                      backgroundColor: isActive ? s.c : s.soft,
-                      borderWidth: 2,
-                      borderColor: isActive ? S.ink : "transparent",
+                      borderRadius: RADIUS.control,
+                      backgroundColor: isActive ? s.c : S.card,
+                      borderWidth: isActive ? 1.5 : HAIRLINE,
+                      borderColor: isActive ? S.ink : S.line,
                       alignItems: "center",
                       justifyContent: "center",
                       gap: 4,
@@ -179,7 +182,7 @@ export function DayEditSheet({ visible, onClose, date, currentEvents, zones, onS
                     )}
                     <StreamGlyph stream={type} size={Math.min(44, TILE_W * 0.42)} color={isActive ? s.onC : s.ink} />
                     <Text
-                      style={{ fontSize: 13, fontFamily: FONT.w800, color: isActive ? s.onC : s.ink, textAlign: "center", lineHeight: 15 }}
+                      style={{ fontSize: 13, fontFamily: FONT.w800, color: isActive ? s.onC : S.ink, textAlign: "center", lineHeight: 15 }}
                       numberOfLines={2}
                     >
                       {wasteLabel(type)}
@@ -199,10 +202,12 @@ export function DayEditSheet({ visible, onClose, date, currentEvents, zones, onS
                   <View
                     key={type}
                     style={{
-                      borderRadius: 22,
+                      borderRadius: RADIUS.card,
                       padding: 12,
                       gap: 12,
-                      backgroundColor: isActive ? s.soft : S.card,
+                      backgroundColor: S.card,
+                      borderWidth: isActive ? 1.5 : HAIRLINE,
+                      borderColor: isActive ? S.ink : S.line,
                     }}
                   >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -210,7 +215,7 @@ export function DayEditSheet({ visible, onClose, date, currentEvents, zones, onS
                         style={{
                           width: 40,
                           height: 40,
-                          borderRadius: 13,
+                          borderRadius: RADIUS.well,
                           backgroundColor: isActive ? s.c : s.soft,
                           alignItems: "center",
                           justifyContent: "center",
@@ -240,8 +245,8 @@ export function DayEditSheet({ visible, onClose, date, currentEvents, zones, onS
                               gap: 6,
                               height: 36,
                               paddingHorizontal: 14,
-                              borderRadius: 99,
-                              backgroundColor: on ? s.c : isActive ? S.onTint : s.soft,
+                              borderRadius: RADIUS.well,
+                              backgroundColor: on ? s.c : S.chip,
                               transform: [{ scale: pressed ? 0.95 : 1 }],
                             })}
                           >

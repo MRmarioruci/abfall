@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import MapView, { Marker, UrlTile, type Region } from "react-native-maps";
 import * as Location from "expo-location";
 import { useTheme } from "../theme/ThemeContext";
+import { HAIRLINE, RADIUS } from "../theme/layout";
 import { PinIcon } from "../components/icons/Icons";
 import { CircBtn } from "../components/ui/CircBtn";
 import { EmptyState } from "../components/ui/EmptyState";
@@ -133,7 +134,7 @@ const CategoryChip = memo(function CategoryChip({
         gap: 7,
         paddingVertical: 8,
         paddingHorizontal: 13,
-        borderRadius: 99,
+        borderRadius: RADIUS.well,
         backgroundColor: active ? S.ink : S.float,
         borderWidth: 1.5,
         borderColor: active ? S.ink : S.line,
@@ -590,15 +591,9 @@ export function CollectionCentersScreen() {
         <View pointerEvents="none" style={{ flex: 1, marginRight: 12 }}>
           <Text
             accessibilityRole="header"
-            style={{
-              fontSize: 34,
-              fontFamily: FONT.w500,
-              color: S.ink,
-              letterSpacing: -0.8,
-            }}
+            style={[TYPE.title, { color: S.ink }]}
           >
-            {t("map.title_lead")}{" "}
-            <Text style={{ fontFamily: FONT.w800 }}>{t("map.title_bold")}</Text>
+            {t("map.title_lead")} {t("map.title_bold")}
           </Text>
           <Text style={[TYPE.caption, { color: S.sec, marginTop: 4 }]} numberOfLines={1}>
             {locationLabel}
@@ -687,7 +682,7 @@ export function CollectionCentersScreen() {
               left: 14,
               right: 14,
               bottom: cardBottom,
-              borderRadius: 28,
+              borderRadius: RADIUS.card,
             }}
           />
         )
@@ -727,7 +722,7 @@ export function CollectionCentersScreen() {
             paddingHorizontal: 14,
             paddingVertical: 8,
             backgroundColor: S.float,
-            borderRadius: 99,
+            borderRadius: RADIUS.well,
             shadowColor: S.shadow,
             ...SHADOW,
           }}
@@ -745,7 +740,6 @@ export function CollectionCentersScreen() {
           <EmptyState
             title={t("map.error_title")}
             subtitle={error ?? undefined}
-            bg={S.card}
             action={{ label: t("common.try_again"), onPress: retry }}
           />
         </View>
@@ -773,7 +767,9 @@ export function CollectionCentersScreen() {
             right: 14,
             padding: 18,
             backgroundColor: S.card,
-            borderRadius: 24,
+            borderWidth: HAIRLINE,
+            borderColor: S.line,
+            borderRadius: RADIUS.card,
             shadowColor: S.shadow,
             ...SHADOW,
           }}

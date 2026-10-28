@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { View, Text, Pressable, Animated, PanResponder, Dimensions, type LayoutRectangle } from "react-native";
 import Reanimated, { LinearTransition } from "react-native-reanimated";
-import { LIGHT, STREAM_ORDER, type WasteStreamId } from "../theme/colors";
+import { STREAM_ORDER, type WasteStreamId } from "../theme/colors";
 import { useTheme } from "../theme/ThemeContext";
 import { CircBtn } from "./ui/CircBtn";
 import { ChevRIcon } from "./icons/Icons";
 import { Recyclops, type SwapPlan } from "./Recyclops";
 import { useT } from "../context/LocaleContext";
-import { FONT, TYPE } from "../theme/type";
+import { FONT, NUMS, TYPE } from "../theme/type";
+import { HAIRLINE, RADIUS } from "../theme/layout";
 
 interface CollectionMark {
   day: number;
@@ -49,28 +50,18 @@ const RECYCLOPS_BOTTOM_OVERHANG = 6;
 export function CalendarMonth({ marks = EMPTY_MARKS, municipality = "", onDayPress }: Props) {
   const { S, ST } = useTheme();
   const { t, monthLong, weekdayMin, weekdayLong, wasteLabel } = useT();
-  // The calendar is always a dark card: inverted against the light home
-  // screen, and a lifted plum card on the dark one, so the coloured pickup
-  // stripes pop in both. Its text is white on top of `S.calendar`.
-  const W = S.white;
+  // A white card with a hairline edge. Pickup days are bold, with a short
+  // bar per bin under the number; today is filled in ink.
   const T = {
-    card: S.calendar,
-    primaryText: W,
-    secondaryText: W + "A6",
-    legendText: W + "BF",
-    legendBorder: W + "1F",
-    chevronBg: W + "1F",
-    chevronInk: W,
-    // Empty day cells: a touch lighter than the card so they read as buttons.
-    dayEmptyBg: W + "0F",
-    dayEmptyText: W + "8C",
-    // Today indicator: white pill with black text, contrasts cleanly on dark.
-    todayBg: W,
-    todayText: S.calendar,
+    card: S.card,
+    primaryText: S.ink,
+    secondaryText: S.sec,
+    legendText: S.sec,
+    legendBorder: S.line,
+    dayEmptyText: S.sec,
+    todayBg: S.ink,
+    todayText: S.onInk,
   };
-  // Pickup cells keep the light pastels in both modes: the card is dark
-  // either way, and the pastels are what make it read at a glance.
-  const CELL = LIGHT.ST;
 
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth());
@@ -275,15 +266,13 @@ export function CalendarMonth({ marks = EMPTY_MARKS, municipality = "", onDayPre
       }}
       style={{
         backgroundColor: T.card,
-        borderRadius: 28,
-        padding: 20,
-        paddingBottom: 18,
+        borderRadius: RADIUS.card,
+        borderWidth: HAIRLINE,
+        borderColor: S.line,
+        paddingHorizontal: 12,
+        paddingTop: 14,
+        paddingBottom: 14,
         overflow: "hidden",
-        shadowColor: S.inkShadow,
-        shadowOffset: { width: 0, height: 16 },
-        shadowOpacity: 0.3,
-        shadowRadius: 36,
-        elevation: 6,
       }}
     >
       {/* Header */}
@@ -292,18 +281,12 @@ export function CalendarMonth({ marks = EMPTY_MARKS, municipality = "", onDayPre
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
-          marginBottom: 14,
+          marginBottom: 12,
+          paddingHorizontal: 4,
         }}
       >
         <View>
-          <Text
-            style={{
-              fontSize: 23,
-              fontFamily: FONT.w800,
-              color: T.primaryText,
-              letterSpacing: -0.5,
-            }}
-          >
+          <Text style={[TYPE.heading, { color: T.primaryText }]}>
             {monthLong(month + 1)}
           </Text>
           <Text style={[TYPE.caption, { color: T.secondaryText, marginTop: 2 }]} numberOfLines={1}>
@@ -313,23 +296,19 @@ export function CalendarMonth({ marks = EMPTY_MARKS, municipality = "", onDayPre
         <View style={{ flexDirection: "row", gap: 8 }}>
           <CircBtn
             size={34}
-            bg={T.chevronBg}
-            shadow={false}
             onPress={prevMonth}
             accessibilityLabel={monthLong(month === 0 ? 12 : month)}
           >
             <View style={{ transform: [{ scaleX: -1 }] }}>
-              <ChevRIcon color={T.chevronInk} size={13} />
+              <ChevRIcon color={T.primaryText} size={13} />
             </View>
           </CircBtn>
           <CircBtn
             size={34}
-            bg={T.chevronBg}
-            shadow={false}
             onPress={nextMonth}
             accessibilityLabel={monthLong(month === 11 ? 1 : month + 2)}
           >
-            <ChevRIcon color={T.chevronInk} size={13} />
+            <ChevRIcon color={T.primaryText} size={13} />
           </CircBtn>
         </View>
       </View>
@@ -343,7 +322,7 @@ export function CalendarMonth({ marks = EMPTY_MARKS, municipality = "", onDayPre
         <View style={{ flexDirection: "row", marginBottom: 6 }}>
           {WEEKDAY_INDEX.map((dayIdx, i) => (
             <View key={i} style={{ flex: 1, alignItems: "center" }}>
-              <Text style={[TYPE.micro, { color: T.secondaryText }]}>
+              <Text style={[TYPE.cap, { color: T.secondaryText }]}>
                 {weekdayMin(dayIdx)}
               </Text>
             </View>
@@ -386,48 +365,39 @@ export function CalendarMonth({ marks = EMPTY_MARKS, municipality = "", onDayPre
               <View
                 style={{
                   flex: 1,
-                  borderRadius: 11,
-                  overflow: "hidden",
-                  flexDirection: "row",
-                  backgroundColor: isToday ? T.todayBg : T.dayEmptyBg,
+                  borderRadius: RADIUS.well,
+                  backgroundColor: isToday ? T.todayBg : "transparent",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 4,
                 }}
               >
-                {/* Split background: one segment per collection on this day */}
-                {!isToday && dayMarks.map((s) => (
-                  <View
-                    key={s}
-                    style={{
-                      flex: 1,
-                      backgroundColor: CELL[s].soft,
-                    }}
-                  />
-                ))}
-
-                {/* Day number, centered over the (split) background */}
-                <View
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
+                <Text
+                  style={[
+                    NUMS,
+                    {
+                      fontSize: 14,
+                      lineHeight: 17,
+                      fontFamily: isToday || primary ? FONT.w700 : FONT.w500,
+                      color: isToday ? T.todayText : primary ? T.primaryText : T.dayEmptyText,
+                    },
+                  ]}
                 >
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontFamily: isToday ? FONT.w800 : FONT.w600,
-                      color: isToday
-                        ? T.todayText
-                        : primary
-                        ? CELL[primary].ink
-                        : T.dayEmptyText,
-                    }}
-                  >
-                    {d}
-                  </Text>
+                  {d}
+                </Text>
+                {/* One short bar per bin collected that day */}
+                <View style={{ flexDirection: "row", gap: 2, height: 3 }}>
+                  {dayMarks.slice(0, 3).map((id) => (
+                    <View
+                      key={id}
+                      style={{
+                        width: dayMarks.length > 1 ? 6 : 12,
+                        height: 3,
+                        borderRadius: 2,
+                        backgroundColor: ST[id].c,
+                      }}
+                    />
+                  ))}
                 </View>
               </View>
             </Pressable>
@@ -445,9 +415,11 @@ export function CalendarMonth({ marks = EMPTY_MARKS, municipality = "", onDayPre
           flexDirection: "row",
           flexWrap: "wrap",
           gap: 12,
-          marginTop: 14,
-          paddingTop: 14,
-          borderTopWidth: 1,
+          rowGap: 8,
+          marginTop: 12,
+          marginHorizontal: 4,
+          paddingTop: 12,
+          borderTopWidth: HAIRLINE,
           borderTopColor: T.legendBorder,
         }}
       >
@@ -464,13 +436,13 @@ export function CalendarMonth({ marks = EMPTY_MARKS, municipality = "", onDayPre
           >
             <View
               style={{
-                width: 9,
-                height: 9,
-                borderRadius: 3,
+                width: 8,
+                height: 8,
+                borderRadius: 2.5,
                 backgroundColor: ST[id].c,
               }}
             />
-            <Text style={[TYPE.micro, { color: T.legendText }]}>
+            <Text style={[TYPE.cap, { color: T.legendText }]}>
               {wasteLabel(id)}
             </Text>
           </Reanimated.View>

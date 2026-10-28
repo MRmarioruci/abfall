@@ -3,6 +3,7 @@ import { View, Text, Pressable, TextInput, ScrollView } from "react-native";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
 import { STREAM_ORDER, type WasteStreamId } from "../theme/colors";
 import { useTheme } from "../theme/ThemeContext";
+import { HAIRLINE, RADIUS } from "../theme/layout";
 import { StreamGlyph } from "./icons/StreamGlyph";
 import { CheckIcon } from "./icons/Icons";
 import { PillButton, QuietButton, SheetHeader } from "./ui/sheet";
@@ -91,10 +92,10 @@ export function EventEditSheet({ visible, onClose, event, year, zones, onSave, o
                 style={({ pressed }) => ({
                   width: 84,
                   height: 88,
-                  borderRadius: 22,
-                  backgroundColor: active ? s.c : s.soft,
-                  borderWidth: 2,
-                  borderColor: active ? S.ink : "transparent",
+                  borderRadius: RADIUS.control,
+                  backgroundColor: active ? s.c : S.card,
+                  borderWidth: active ? 1.5 : HAIRLINE,
+                  borderColor: active ? S.ink : S.line,
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 4,
@@ -104,7 +105,7 @@ export function EventEditSheet({ visible, onClose, event, year, zones, onSave, o
               >
                 <StreamGlyph stream={id} size={34} color={active ? s.onC : s.ink} />
                 <Text
-                  style={{ fontSize: 12, fontFamily: FONT.w800, color: active ? s.onC : s.ink, textAlign: "center", lineHeight: 14 }}
+                  style={{ fontSize: 12, fontFamily: FONT.w800, color: active ? s.onC : S.ink, textAlign: "center", lineHeight: 14 }}
                   numberOfLines={2}
                 >
                   {wasteLabel(id)}
@@ -126,7 +127,7 @@ export function EventEditSheet({ visible, onClose, event, year, zones, onSave, o
             style={{
               width: 64,
               height: 52,
-              borderRadius: 18,
+              borderRadius: RADIUS.control,
               backgroundColor: tint.soft,
               textAlign: "center",
               fontSize: 22,
@@ -147,10 +148,12 @@ export function EventEditSheet({ visible, onClose, event, year, zones, onSave, o
                     height: 52,
                     minWidth: 52,
                     paddingHorizontal: 12,
-                    borderRadius: 18,
+                    borderRadius: RADIUS.control,
                     alignItems: "center",
                     justifyContent: "center",
                     backgroundColor: active ? S.ink : S.card,
+                    borderWidth: HAIRLINE,
+                    borderColor: active ? S.ink : S.line,
                     transform: [{ scale: pressed ? 0.95 : 1 }],
                   })}
                 >
@@ -178,8 +181,10 @@ export function EventEditSheet({ visible, onClose, event, year, zones, onSave, o
                     gap: 6,
                     height: 40,
                     paddingHorizontal: 16,
-                    borderRadius: 99,
+                    borderRadius: RADIUS.well,
                     backgroundColor: active ? S.ink : S.card,
+                    borderWidth: HAIRLINE,
+                    borderColor: active ? S.ink : S.line,
                     transform: [{ scale: pressed ? 0.95 : 1 }],
                   })}
                 >

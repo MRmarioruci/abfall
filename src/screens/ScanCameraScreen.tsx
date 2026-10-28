@@ -4,6 +4,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../theme/ThemeContext";
+import { HAIRLINE, RADIUS } from "../theme/layout";
 import { CameraIcon, CheckIcon, FlashIcon, ImageIcon, XIcon } from "../components/icons/Icons";
 import type { ImageInput } from "../services/parseCalendar";
 import { useT } from "../context/LocaleContext";
@@ -69,7 +70,7 @@ export function ScanCameraScreen({ onClose, onDone }: Props) {
           <XIcon color={S.ink} size={16} />
         </RoundButton>
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 14 }}>
-          <View style={{ width: 84, height: 84, borderRadius: 28, backgroundColor: ST.kehricht.soft, alignItems: "center", justifyContent: "center" }}>
+          <View style={{ width: 84, height: 84, borderRadius: RADIUS.card, backgroundColor: ST.kehricht.soft, alignItems: "center", justifyContent: "center" }}>
             <CameraIcon color={ST.kehricht.ink} size={38} />
           </View>
           <Text style={{ fontSize: 24, fontFamily: FONT.w800, color: S.ink, letterSpacing: -0.5 }}>
@@ -244,10 +245,12 @@ function PillButton({
       style={({ pressed }) => [
         {
           height: 54,
-          borderRadius: 99,
+          borderRadius: RADIUS.control,
           alignItems: "center",
           justifyContent: "center",
           backgroundColor: secondary ? S.card : S.ink,
+          borderWidth: secondary ? HAIRLINE : 0,
+          borderColor: S.line,
           transform: [{ scale: pressed ? 0.98 : 1 }],
         },
         style,

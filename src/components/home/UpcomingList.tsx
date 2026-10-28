@@ -1,9 +1,10 @@
-// The pickups after the hero: a quiet timeline, one row per collection,
-// date shown once per day.
+// The pickups after the hero: a plain list, one row per collection, the
+// date shown once per day, hairlines between days.
 
 import { View, Text } from "react-native";
 import { useTheme } from "../../theme/ThemeContext";
-import { TYPE } from "../../theme/type";
+import { FONT, NUMS, TYPE } from "../../theme/type";
+import { HAIRLINE, RADIUS } from "../../theme/layout";
 import { StreamGlyph } from "../icons/StreamGlyph";
 import { useT } from "../../context/LocaleContext";
 import { parseISODate } from "../../lib/dates";
@@ -16,17 +17,17 @@ export function UpcomingList({ events }: { events: CollectionEvent[] }) {
   if (events.length === 0) return null;
 
   return (
-    <View style={{ paddingHorizontal: 16 }}>
+    <View>
       {events.map((evt, i) => {
         const s = ST[evt.type];
         if (!s) return null;
         const d = parseISODate(evt.date);
-        const isFirst = i === 0;
-        const isLast = i === events.length - 1;
         const isFirstOfDay = i === 0 || events[i - 1]!.date !== evt.date;
+        const isLastOfDay = i === events.length - 1 || events[i + 1]!.date !== evt.date;
+        const isLast = i === events.length - 1;
+        const rel = relativeDayLabel(evt.date, { t, locale, weekdayLong, monthShort });
 
         const sub: string[] = [];
-        if (isFirstOfDay) sub.push(relativeDayLabel(evt.date, { t, locale, weekdayLong, monthShort }));
         if (evt.time) sub.push(evt.time);
         if (evt.zone && evt.zone !== "all") sub.push(t("day_edit.zone", { zone: evt.zone }));
 
@@ -34,49 +35,43 @@ export function UpcomingList({ events }: { events: CollectionEvent[] }) {
           <View
             key={`${evt.date}-${evt.type}-${i}`}
             accessible
-            accessibilityLabel={`${wasteLabel(evt.type)}, ${d.getDate()} ${monthShort(d.getMonth() + 1)}${sub.length ? `, ${sub.join(", ")}` : ""}`}
-            style={{ flexDirection: "row", alignItems: "center", minHeight: 68 }}
+            accessibilityLabel={`${wasteLabel(evt.type)}, ${weekdayLong(d.getDay())} ${d.getDate()} ${monthShort(d.getMonth() + 1)}, ${rel}${sub.length ? `, ${sub.join(", ")}` : ""}`}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 14,
+              paddingTop: isFirstOfDay ? 13 : 4,
+              paddingBottom: isLastOfDay ? 13 : 4,
+              borderBottomWidth: isLastOfDay && !isLast ? HAIRLINE : 0,
+              borderBottomColor: S.line,
+            }}
           >
             {/* Date, once per day */}
-            <View style={{ width: 52, alignItems: "center" }}>
+            <View style={{ width: 32, alignItems: "center" }}>
               {isFirstOfDay && (
                 <>
-                  <Text style={[TYPE.heading, { color: S.ink }]}>{d.getDate()}</Text>
-                  <Text style={[TYPE.micro, { color: S.sec }]}>
-                    {weekdayShort(d.getDay())} {monthShort(d.getMonth() + 1)}
+                  <Text style={[NUMS, { fontSize: 19, lineHeight: 21, fontFamily: FONT.w700, color: S.ink }]}>
+                    {d.getDate()}
                   </Text>
+                  <Text style={[TYPE.cap, { color: S.sec, marginTop: 1 }]}>{weekdayShort(d.getDay())}</Text>
                 </>
               )}
             </View>
 
-            {/* Timeline with the stream's glyph */}
-            <View style={{ width: 50, alignSelf: "stretch", alignItems: "center", justifyContent: "center" }}>
-              <View
-                style={{
-                  position: "absolute",
-                  width: 2,
-                  top: isFirst ? "50%" : 0,
-                  bottom: isLast ? "50%" : 0,
-                  backgroundColor: S.line,
-                }}
-              />
-              <View
-                style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: 99,
-                  backgroundColor: s.soft,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderWidth: 3,
-                  borderColor: S.bg,
-                }}
-              >
-                <StreamGlyph stream={evt.type} size={24} color={s.ink} />
-              </View>
+            <View
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: RADIUS.well,
+                backgroundColor: s.c,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <StreamGlyph stream={evt.type} size={22} color={s.onC} />
             </View>
 
-            <View style={{ flex: 1, paddingLeft: 10 }}>
+            <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={[TYPE.label, { color: S.ink }]} numberOfLines={1}>
                 {wasteLabel(evt.type)}
               </Text>
@@ -86,6 +81,8 @@ export function UpcomingList({ events }: { events: CollectionEvent[] }) {
                 </Text>
               )}
             </View>
+
+            {isFirstOfDay && <Text style={[TYPE.caption, { color: S.sec }]}>{rel}</Text>}
           </View>
         );
       })}

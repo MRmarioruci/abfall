@@ -6,8 +6,7 @@ import { useTheme } from "../theme/ThemeContext";
 import { BrandMark } from "../components/ui/BrandMark";
 import { CircBtn } from "../components/ui/CircBtn";
 import { CalendarMonth } from "../components/CalendarMonth";
-import { StreamGlyph } from "../components/icons/StreamGlyph";
-import { PinIcon, ChevRIcon, ShareIcon, PencilIcon, CheckIcon, BellIcon, XIcon, CalIcon } from "../components/icons/Icons";
+import { PinIcon, ChevRIcon, ShareIcon, PencilIcon, CheckIcon, BellIcon, XIcon } from "../components/icons/Icons";
 import { useCalendars } from "../context/CalendarContext";
 import { useT } from "../context/LocaleContext";
 import { ShareSheet } from "../components/ShareSheet";
@@ -22,7 +21,8 @@ import { getFunFactPool } from "../services/funFacts";
 import type { ReminderRule, CollectionEvent } from "../types/calendar";
 import { parseISODate } from "../lib/dates";
 import { TYPE } from "../theme/type";
-import { ArtTile, PillButton, SoftCard } from "../components/ui/sheet";
+import { ArtTile, PillButton, QuietButton, SoftCard, StreamMark } from "../components/ui/sheet";
+import { HAIRLINE, RADIUS } from "../theme/layout";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ScanArt, BrowseArt } from "../components/art/Art";
 import { haptics } from "../lib/haptics";
@@ -30,6 +30,7 @@ import { NextPickupHero } from "../components/home/NextPickupHero";
 import { UpcomingList } from "../components/home/UpcomingList";
 import { HomeSkeleton } from "../components/home/HomeSkeleton";
 import { HeaderMenu } from "../components/home/HeaderMenu";
+import { WeekStrip } from "../components/home/WeekStrip";
 
 interface Props {
   onCalendarPress?: () => void;
@@ -339,19 +340,13 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders }: Pro
         showsVerticalScrollIndicator={false}
       >
         {/* Top bar: logo · location (centred) · menu. The side slots have
-            the same width, so the location pill sits in the screen's centre. */}
-        <View
-          style={{
-            paddingHorizontal: 20,
-            flexDirection: "row",
-            alignItems: "center",
-          }}
-        >
+            the same width, so the location sits in the screen's centre. */}
+        <View style={{ paddingHorizontal: 20, flexDirection: "row", alignItems: "center" }}>
           <View style={{ width: 44, alignItems: "flex-start" }}>
-            <BrandMark size={40} />
+            <BrandMark size={30} />
           </View>
 
-          <View style={{ flex: 1, alignItems: "center", paddingHorizontal: 10 }}>
+          <View style={{ flex: 1, alignItems: "center", paddingHorizontal: 8 }}>
             <Pressable
               onPress={() => {
                 haptics.tap();
@@ -359,27 +354,27 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders }: Pro
               }}
               accessibilityRole="button"
               accessibilityLabel={locationLabel}
+              hitSlop={8}
               style={({ pressed }) => ({
                 maxWidth: "100%",
                 minHeight: 44,
                 flexDirection: "row",
                 alignItems: "center",
-                gap: 6,
-                paddingHorizontal: 14,
-                borderRadius: 99,
-                backgroundColor: S.card,
-                transform: [{ scale: pressed ? 0.97 : 1 }],
+                gap: 5,
+                opacity: pressed ? 0.6 : 1,
               })}
             >
-              <PinIcon color={S.ink} size={14} />
+              <PinIcon color={S.ink} size={15} />
               <Text
-                style={[TYPE.label, { flexShrink: 1, minWidth: 0, color: S.ink, fontSize: 14 }]}
+                style={[TYPE.label, { flexShrink: 1, minWidth: 0, color: S.ink, fontSize: 15 }]}
                 numberOfLines={1}
                 ellipsizeMode="tail"
               >
                 {locationLabel}
               </Text>
-              <ChevRIcon color={S.ter} size={11} />
+              <View style={{ transform: [{ rotate: "90deg" }] }}>
+                <ChevRIcon color={S.sec} size={11} />
+              </View>
             </Pressable>
           </View>
 
@@ -387,7 +382,7 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders }: Pro
             {active &&
               (editMode ? (
                 // While editing, the slot is the way out: one tap to finish.
-                <CircBtn size={44} bg={S.ink} shadow={false} accessibilityLabel={t("common.done")} onPress={() => setEditMode(false)}>
+                <CircBtn size={44} bg={S.ink} outline={false} accessibilityLabel={t("common.done")} onPress={() => setEditMode(false)}>
                   <CheckIcon color={S.onInk} size={17} />
                 </CircBtn>
               ) : (
@@ -412,39 +407,36 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders }: Pro
           </View>
         </View>
 
-        {/* Edit-mode banner: a soft pill saying taps now edit days */}
+        {/* Edit-mode banner: one hairline row saying taps now edit days */}
         {editMode && active && (
           <View
             style={{
-              alignSelf: "flex-start",
               marginHorizontal: 20,
               marginTop: 14,
-              paddingVertical: 8,
-              paddingLeft: 10,
-              paddingRight: 14,
-              borderRadius: 99,
-              backgroundColor: ST.karton.soft,
+              paddingVertical: 10,
+              paddingHorizontal: 12,
+              borderRadius: RADIUS.control,
+              backgroundColor: S.card,
+              borderWidth: HAIRLINE,
+              borderColor: S.line,
               flexDirection: "row",
               alignItems: "center",
-              gap: 8,
-              maxWidth: "90%",
+              gap: 10,
             }}
           >
             <View
               style={{
-                width: 24,
-                height: 24,
-                borderRadius: 99,
+                width: 26,
+                height: 26,
+                borderRadius: 8,
                 backgroundColor: ST.karton.c,
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <PencilIcon color={ST.karton.onC} size={12} />
+              <PencilIcon color={ST.karton.onC} size={13} />
             </View>
-            <Text style={[TYPE.caption, { flexShrink: 1, color: ST.karton.ink }]}>
-              {t("home.edit_banner")}
-            </Text>
+            <Text style={[TYPE.caption, { flex: 1, color: S.ink }]}>{t("home.edit_banner")}</Text>
           </View>
         )}
 
@@ -452,92 +444,80 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders }: Pro
           <HomeSkeleton />
         ) : !active ? (
           /* No calendar yet: Recyclops, one line, one button, two pictures */
-          <View style={{ paddingHorizontal: 16, paddingTop: 18, gap: 12 }}>
+          <View style={{ paddingHorizontal: 16, paddingTop: 22, gap: 10 }}>
             <EmptyState
               title={t("home.empty.title")}
               subtitle={t("add.subtitle")}
               action={{ label: t("tabs.add"), onPress: () => onAddPress?.() }}
             />
-            <View style={{ flexDirection: "row", gap: 12 }}>
-              <ArtTile label={t("add.tile.scan")} bg={ST.papier.soft} onPress={() => onAddPress?.()}>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <ArtTile label={t("add.tile.scan")} bg={ST.kehricht.soft} onPress={() => onAddPress?.()}>
                 <ScanArt />
               </ArtTile>
-              <ArtTile label={t("add.tile.browse")} bg={ST.gruengut.soft} onPress={() => onAddPress?.()}>
+              <ArtTile label={t("add.tile.browse")} bg={ST.papier.soft} onPress={() => onAddPress?.()}>
                 <BrowseArt />
               </ArtTile>
             </View>
           </View>
         ) : (
           <>
-            {/* Next pickup: the main fact on the screen */}
-            <View style={{ paddingHorizontal: 16, paddingTop: 18 }}>
+            {/* Next pickup: the one headline on the screen */}
+            <View style={{ paddingHorizontal: 20, paddingTop: 26 }}>
               {heroEvents.length > 0 ? (
                 <NextPickupHero events={heroEvents} onPress={openReminder} />
               ) : (
-                <SoftCard
-                  bg={S.card}
-                  style={{ flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 16 }}
-                >
-                  <View
-                    style={{
-                      width: 52,
-                      height: 52,
-                      borderRadius: 18,
-                      backgroundColor: ST.sonstiges.soft,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <CalIcon color={ST.sonstiges.ink} size={26} />
-                  </View>
-                  <Text style={[TYPE.label, { flex: 1, color: S.ink }]}>{t("reminders.no_upcoming")}</Text>
-                </SoftCard>
+                <>
+                  <Text style={[TYPE.cap, { color: S.sec }]}>{t("home.next_pickup")}</Text>
+                  <Text style={[TYPE.title, { color: S.ink, marginTop: 6 }]}>{t("reminders.no_upcoming")}</Text>
+                </>
               )}
+            </View>
+
+            {/* This week */}
+            <View style={{ paddingHorizontal: 14, paddingTop: 22 }}>
+              <WeekStrip events={active.events} onDayPress={handleDayPress} />
             </View>
 
             {/* Reminder nudge: one line and one small button */}
             {showReminderNudge && (
-              <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
-                <SoftCard
-                  bg={ST.papier.soft}
-                  style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, padding: 14 }}
-                >
+              <View style={{ paddingHorizontal: 16, paddingTop: 14 }}>
+                <SoftCard style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12 }}>
                   <View
                     style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 99,
+                      width: 38,
+                      height: 38,
+                      borderRadius: RADIUS.well,
                       backgroundColor: ST.papier.c,
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
                     <Animated.View style={{ transform: [{ rotate: bellRotation }] }}>
-                      <BellIcon color={ST.papier.onC} size={20} />
+                      <BellIcon color={ST.papier.onC} size={19} />
                     </Animated.View>
                   </View>
-                  <View style={{ flex: 1, alignItems: "flex-start" }}>
-                    <Text style={[TYPE.label, { color: ST.papier.ink }]} numberOfLines={2}>
-                      {t("home.nudge_title")}
-                    </Text>
-                    <PillButton
-                      label={t("home.nudge_cta")}
-                      onPress={handleNudgeCTA}
-                      style={{ height: 36, paddingHorizontal: 14, marginTop: 8 }}
-                    />
-                  </View>
-                  <CircBtn
-                    size={28}
-                    bg={S.glass}
-                    shadow={false}
-                    accessibilityLabel={t("reminder_edit.close")}
+                  <Text style={[TYPE.label, { flex: 1, color: S.ink, fontSize: 15 }]} numberOfLines={2}>
+                    {t("home.nudge_title")}
+                  </Text>
+                  <PillButton
+                    label={t("home.nudge_cta")}
+                    onPress={handleNudgeCTA}
+                    style={{ height: 36, paddingHorizontal: 14, borderRadius: RADIUS.well }}
+                  />
+                  <Pressable
                     onPress={handleDismissNudge}
+                    accessibilityRole="button"
+                    accessibilityLabel={t("reminder_edit.close")}
+                    hitSlop={10}
+                    style={({ pressed }) => ({ padding: 4, opacity: pressed ? 0.5 : 1 })}
                   >
-                    <XIcon color={ST.papier.ink} size={11} />
-                  </CircBtn>
+                    <XIcon color={S.sec} size={12} />
+                  </Pressable>
                 </SoftCard>
               </View>
             )}
+
+            <View style={{ height: HAIRLINE, backgroundColor: S.line, marginHorizontal: 20, marginTop: 20 }} />
 
             {/* Calendar title row: tap to switch calendars */}
             <Pressable
@@ -546,82 +526,65 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders }: Pro
               accessibilityLabel={`${active.title}, ${t("home.switch")}`}
               style={({ pressed }) => ({
                 marginHorizontal: 20,
-                marginTop: 24,
+                marginTop: 8,
                 minHeight: 44,
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "space-between",
-                opacity: pressed ? 0.7 : 1,
+                gap: 12,
+                opacity: pressed ? 0.6 : 1,
               })}
             >
-              <Text style={[TYPE.heading, { flex: 1, color: S.ink, paddingRight: 12 }]} numberOfLines={1}>
+              <Text style={[TYPE.cap, { flex: 1, color: S.sec }]} numberOfLines={1}>
                 {active.title}
               </Text>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 4,
-                  paddingVertical: 7,
-                  paddingHorizontal: 12,
-                  borderRadius: 99,
-                  backgroundColor: S.card,
-                }}
-              >
-                <Text style={[TYPE.caption, { color: S.ink }]}>{t("home.switch")}</Text>
-                <ChevRIcon color={S.sec} size={11} />
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <Text style={[TYPE.cap, { color: S.ink }]}>{t("home.switch")}</Text>
+                <ChevRIcon color={S.sec} size={10} />
               </View>
             </Pressable>
 
             {/* Monthly calendar */}
-            <View style={{ paddingHorizontal: 16, paddingTop: 10 }}>
+            <View style={{ paddingHorizontal: 14 }}>
               <CalendarMonth marks={marks} municipality={municipality} onDayPress={handleDayPress} />
             </View>
 
             {/* The rest of the upcoming pickups */}
             {listEvents.length > 0 && (
-              <View style={{ paddingTop: 20 }}>
+              <View style={{ paddingHorizontal: 20, paddingTop: 28 }}>
+                <Text style={[TYPE.cap, { color: S.sec }]}>{t("home.coming_up")}</Text>
                 <UpcomingList events={listEvents} />
               </View>
             )}
 
             {/* Show more: expands the window by 5 days at a time */}
             {hasMoreDays && (
-              <View style={{ alignItems: "center", paddingTop: 12 }}>
-                <PillButton
-                  variant="secondary"
+              <View style={{ alignItems: "center", paddingTop: 6 }}>
+                <QuietButton
                   label={t("home.show_more", { n: Math.min(5, remainingDays) })}
                   onPress={() => setDayLimit((n) => n + 5)}
-                  style={{ height: 46 }}
                 />
               </View>
             )}
 
-            {/* Fun fact: a compact tinted card that rotates every 10 s */}
+            {/* Fun fact: one quiet line under a hairline, rotating every 10 s */}
             {!!funFact && (
-              <View style={{ paddingHorizontal: 16, paddingTop: 24 }}>
-                <SoftCard
-                  bg={ST[factStream].soft}
-                  style={{ flexDirection: "row", alignItems: "center", gap: 14, padding: 14 }}
-                >
-                  <View
-                    style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: 16,
-                      backgroundColor: ST[factStream].c,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <StreamGlyph stream={factStream} size={32} color={ST[factStream].onC} />
-                  </View>
-                  <Animated.Text
-                    style={[TYPE.caption, { flex: 1, color: ST[factStream].ink, opacity: factOpacity }]}
-                  >
-                    {funFact}
-                  </Animated.Text>
-                </SoftCard>
+              <View
+                style={{
+                  marginHorizontal: 20,
+                  marginTop: 14,
+                  paddingTop: 16,
+                  borderTopWidth: HAIRLINE,
+                  borderTopColor: S.line,
+                  flexDirection: "row",
+                  alignItems: "flex-start",
+                  gap: 12,
+                }}
+              >
+                <StreamMark color={ST[factStream].c} size={10} />
+                <Animated.Text style={[TYPE.caption, { flex: 1, color: S.sec, marginTop: -3, opacity: factOpacity }]}>
+                  {funFact}
+                </Animated.Text>
               </View>
             )}
           </>

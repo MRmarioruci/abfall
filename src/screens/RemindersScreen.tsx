@@ -6,7 +6,8 @@ import { useTheme } from "../theme/ThemeContext";
 import { StreamGlyph } from "../components/icons/StreamGlyph";
 import { SoftSwitch } from "../components/ui/SoftSwitch";
 import { SunIcon, MoonIcon, BellIcon, PlusIcon, XIcon, ChevRIcon, CalIcon, GoogleIcon } from "../components/icons/Icons";
-import { ArtTile, PillButton } from "../components/ui/sheet";
+import { ArtTile, PillButton, StreamMark } from "../components/ui/sheet";
+import { HAIRLINE, RADIUS } from "../theme/layout";
 import { EmptyState } from "../components/ui/EmptyState";
 import { BellArt, WhenArt } from "../components/reminders/ReminderArt";
 import { haptics } from "../lib/haptics";
@@ -430,8 +431,10 @@ export function RemindersScreen({
                 paddingVertical: 5,
                 paddingLeft: 6,
                 paddingRight: 10,
-                borderRadius: 99,
+                borderRadius: RADIUS.well,
                 backgroundColor: S.card,
+                borderWidth: HAIRLINE,
+                borderColor: S.line,
                 transform: [{ scale: pressed ? 0.96 : 1 }],
               })}
             >
@@ -486,8 +489,10 @@ export function RemindersScreen({
                   gap: 8,
                   minHeight: 44,
                   paddingHorizontal: 16,
-                  borderRadius: 99,
+                  borderRadius: RADIUS.control,
                   backgroundColor: on ? S.ink : S.card,
+                  borderWidth: HAIRLINE,
+                  borderColor: on ? S.ink : S.line,
                   transform: [{ scale: pressed ? 0.96 : 1 }],
                 })}
               >
@@ -499,7 +504,7 @@ export function RemindersScreen({
                       height: 20,
                       paddingHorizontal: 5,
                       borderRadius: 99,
-                      backgroundColor: on ? S.onInk + "2E" : S.bg,
+                      backgroundColor: on ? S.onInk + "2E" : S.chip,
                       alignItems: "center",
                       justifyContent: "center",
                     }}
@@ -533,8 +538,10 @@ export function RemindersScreen({
                   minHeight: 44,
                   paddingRight: 14,
                   paddingLeft: 7,
-                  borderRadius: 99,
-                  backgroundColor: on ? cc.c : S.card,
+                  borderRadius: RADIUS.control,
+                  backgroundColor: on ? S.ink : S.card,
+                  borderWidth: HAIRLINE,
+                  borderColor: on ? S.ink : S.line,
                   transform: [{ scale: pressed ? 0.96 : 1 }],
                 })}
               >
@@ -542,15 +549,15 @@ export function RemindersScreen({
                   style={{
                     width: 30,
                     height: 30,
-                    borderRadius: 99,
-                    backgroundColor: on ? S.white + "8C" : cc.soft,
+                    borderRadius: 9,
+                    backgroundColor: cc.c,
                     alignItems: "center",
                     justifyContent: "center",
                   }}
                 >
-                  <StreamGlyph stream={id} size={18} color={on ? cc.onC : cc.ink} />
+                  <StreamGlyph stream={id} size={18} color={cc.onC} />
                 </View>
-                <Text style={[TYPE.label, { color: on ? cc.onC : S.ink }]}>{wasteLabel(id)}</Text>
+                <Text style={[TYPE.label, { color: on ? S.onInk : S.ink }]}>{wasteLabel(id)}</Text>
                 {n > 0 && (
                   <View
                     style={{
@@ -558,12 +565,12 @@ export function RemindersScreen({
                       height: 20,
                       paddingHorizontal: 5,
                       borderRadius: 99,
-                      backgroundColor: on ? cc.onC : cc.soft,
+                      backgroundColor: on ? S.onInk + "2E" : S.chip,
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
-                    <Text style={[TYPE.micro, { color: on ? S.white : cc.ink }]}>{n}</Text>
+                    <Text style={[TYPE.micro, { color: on ? S.onInk : S.ink }]}>{n}</Text>
                   </View>
                 )}
               </Pressable>
@@ -614,7 +621,9 @@ export function RemindersScreen({
                   alignItems: "center",
                   gap: 12,
                   backgroundColor: S.card,
-                  borderRadius: 24,
+                  borderWidth: HAIRLINE,
+                  borderColor: S.line,
+                  borderRadius: RADIUS.card,
                   paddingVertical: 12,
                   paddingLeft: 12,
                   paddingRight: 14,
@@ -623,30 +632,21 @@ export function RemindersScreen({
               >
                 <View
                   style={{
-                    width: 46,
-                    height: 46,
-                    borderRadius: 15,
-                    backgroundColor: cc.soft,
+                    width: 40,
+                    height: 40,
+                    borderRadius: RADIUS.well,
+                    backgroundColor: r.on ? cc.c : S.chip,
                     alignItems: "center",
                     justifyContent: "center",
-                    opacity: r.on ? 1 : 0.6,
                   }}
                 >
-                  {getWhenIcon(r.when, cc.ink)}
+                  {getWhenIcon(r.when, r.on ? cc.onC : S.sec)}
                 </View>
                 <View style={{ flex: 1 }}>
                   {sel === "all" && (
-                    <View
-                      style={{
-                        alignSelf: "flex-start",
-                        paddingHorizontal: 8,
-                        paddingVertical: 2,
-                        borderRadius: 99,
-                        backgroundColor: r.on ? cc.c : cc.soft,
-                        marginBottom: 3,
-                      }}
-                    >
-                      <Text style={[TYPE.micro, { color: r.on ? cc.onC : cc.ink }]}>{wasteLabel(stream)}</Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                      <StreamMark color={cc.c} size={8} />
+                      <Text style={[TYPE.cap, { color: S.sec }]}>{wasteLabel(stream)}</Text>
                     </View>
                   )}
                   <Text style={[TYPE.label, { color: r.on ? S.ink : S.sec }]} numberOfLines={1}>
@@ -693,7 +693,7 @@ export function RemindersScreen({
                       width: 28,
                       height: 28,
                       borderRadius: 99,
-                      backgroundColor: S.bg,
+                      backgroundColor: S.chip,
                       alignItems: "center",
                       justifyContent: "center",
                     }}

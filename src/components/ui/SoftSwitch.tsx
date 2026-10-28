@@ -37,11 +37,6 @@ export function SoftSwitch({ on, onChange, accessibilityLabel }: Props) {
           height: 26,
           borderRadius: 99,
           backgroundColor: on ? S.onInk : S.white,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.2,
-          shadowRadius: 3,
-          elevation: 2,
         }}
       />
     </Pressable>

@@ -3,6 +3,7 @@ import { View, Text, Pressable, ScrollView, ActivityIndicator } from "react-nati
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { STREAM_ORDER, type WasteStreamId } from "../theme/colors";
 import { useTheme } from "../theme/ThemeContext";
+import { HAIRLINE, RADIUS } from "../theme/layout";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
 import { StreamGlyph } from "./icons/StreamGlyph";
 import { XIcon, CheckIcon, SunIcon, MoonIcon, BellIcon, CalIcon } from "./icons/Icons";
@@ -152,7 +153,6 @@ export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate,
   };
 
 
-  const tint = ST[selectedStream];
 
   return (
     <SlideUpSheet visible={visible} onClose={onClose}>
@@ -169,6 +169,8 @@ export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate,
                 height: 36,
                 borderRadius: 99,
                 backgroundColor: S.card,
+                borderWidth: HAIRLINE,
+                borderColor: S.line,
                 alignItems: "center",
                 justifyContent: "center",
                 transform: [{ scale: pressed ? 0.92 : 1 }],
@@ -182,7 +184,7 @@ export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate,
         {/* Recurring vs one-off: a two-way segmented switch. */}
         <View
           accessibilityRole="tablist"
-          style={{ flexDirection: "row", backgroundColor: S.card, borderRadius: 99, padding: 4, marginBottom: 18 }}
+          style={{ flexDirection: "row", backgroundColor: S.card, borderWidth: HAIRLINE, borderColor: S.line, borderRadius: RADIUS.control, padding: 4, marginBottom: 18 }}
         >
           <Segment
             active={mode === "recurring"}
@@ -218,10 +220,10 @@ export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate,
                 style={({ pressed }) => ({
                   width: 84,
                   height: 88,
-                  borderRadius: 22,
-                  backgroundColor: on ? cc.c : cc.soft,
-                  borderWidth: 2,
-                  borderColor: on ? S.ink : "transparent",
+                  borderRadius: RADIUS.control,
+                  backgroundColor: on ? cc.c : S.card,
+                  borderWidth: on ? 1.5 : HAIRLINE,
+                  borderColor: on ? S.ink : S.line,
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 4,
@@ -231,7 +233,7 @@ export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate,
               >
                 <StreamGlyph stream={id} size={34} color={on ? cc.onC : cc.ink} />
                 <Text
-                  style={{ fontSize: 12, fontFamily: FONT.w800, color: on ? cc.onC : cc.ink, textAlign: "center", lineHeight: 14 }}
+                  style={{ fontSize: 12, fontFamily: FONT.w800, color: on ? cc.onC : S.ink, textAlign: "center", lineHeight: 14 }}
                   numberOfLines={2}
                 >
                   {wasteLabel(id)}
@@ -258,8 +260,10 @@ export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate,
                     gap: 6,
                     height: 40,
                     paddingHorizontal: 14,
-                    borderRadius: 99,
+                    borderRadius: RADIUS.well,
                     backgroundColor: on ? S.ink : S.card,
+                    borderWidth: HAIRLINE,
+                    borderColor: on ? S.ink : S.line,
                     transform: [{ scale: pressed ? 0.96 : 1 }],
                   })}
                 >
@@ -274,27 +278,27 @@ export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate,
         )}
 
         {/* Date (one-off only) and time, together in the collection's colour. */}
-        <SoftCard bg={tint.soft} style={{ paddingVertical: 14, marginBottom: 18, gap: 10 }}>
+        <SoftCard style={{ paddingVertical: 14, marginBottom: 18, gap: 10 }}>
           {mode === "specific" && (
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}>
               <Spinner
                 label={t("reminder_edit.day")}
                 value={customDay}
-                ink={tint.ink}
+                ink={S.ink}
                 onStep={(d) => setCustomDay((v) => adjust(v, d, 1, 31))}
               />
-              <Sep ink={tint.ink} char="." />
+              <Sep ink={S.ink} char="." />
               <Spinner
                 label={t("reminder_edit.month")}
                 value={customMonth}
-                ink={tint.ink}
+                ink={S.ink}
                 onStep={(d) => setCustomMonth((v) => adjust(v, d, 1, 12))}
               />
-              <Sep ink={tint.ink} char="." />
+              <Sep ink={S.ink} char="." />
               <Spinner
                 label={t("reminder_edit.year")}
                 value={customYear}
-                ink={tint.ink}
+                ink={S.ink}
                 wide
                 onStep={(d) => setCustomYear((v) => adjust(v, d, today.getFullYear(), today.getFullYear() + 5))}
               />
@@ -305,14 +309,14 @@ export function ReminderEditSheet({ visible, onClose, stream, rule, initialDate,
             <Spinner
               label={t("reminder_edit.hour")}
               value={hour}
-              ink={tint.ink}
+              ink={S.ink}
               onStep={(d) => setHour((h) => adjust(h, d, 0, 23))}
             />
-            <Sep ink={tint.ink} char=":" />
+            <Sep ink={S.ink} char=":" />
             <Spinner
               label={t("reminder_edit.minute")}
               value={minute}
-              ink={tint.ink}
+              ink={S.ink}
               onStep={(d) => setMinute((m) => adjust(m, d, 0, 59))}
             />
           </View>
@@ -367,7 +371,7 @@ function Segment({
       style={({ pressed }) => ({
         flex: 1,
         height: 44,
-        borderRadius: 99,
+        borderRadius: RADIUS.well,
         backgroundColor: active ? S.ink : "transparent",
         flexDirection: "row",
         alignItems: "center",
@@ -395,7 +399,7 @@ function StepButton({ label, onPress, ink }: { label: string; onPress: () => voi
         width: 34,
         height: 34,
         borderRadius: 99,
-        backgroundColor: S.glass,
+        backgroundColor: S.chip,
         alignItems: "center",
         justifyContent: "center",
         transform: [{ scale: pressed ? 0.9 : 1 }],

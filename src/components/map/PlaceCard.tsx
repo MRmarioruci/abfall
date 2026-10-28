@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Pressable, Text, View } from "react-native";
 import { type WasteStreamId } from "../../theme/colors";
 import { useTheme } from "../../theme/ThemeContext";
+import { HAIRLINE, RADIUS } from "../../theme/layout";
 import { TYPE } from "../../theme/type";
 import { StreamGlyph } from "../icons/StreamGlyph";
 import { ArrowURIcon, ChevRIcon, XIcon } from "../icons/Icons";
@@ -60,7 +61,7 @@ function MaterialChip({ chip }: { chip: Chip }) {
         paddingLeft: s ? 6 : 11,
         paddingRight: 11,
         paddingVertical: 5,
-        borderRadius: 99,
+        borderRadius: RADIUS.well,
         backgroundColor: s ? s.soft : S.chip,
       }}
     >
@@ -130,7 +131,9 @@ export function PlaceCard({
         padding: 20,
         paddingTop: 18,
         backgroundColor: S.card,
-        borderRadius: 28,
+        borderWidth: HAIRLINE,
+        borderColor: S.line,
+        borderRadius: RADIUS.card,
         shadowColor: S.shadow,
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.16,
@@ -143,7 +146,7 @@ export function PlaceCard({
         title={shown.name || t("map.default_name")}
         subtitle={lastSubtitle}
         right={
-          <CircBtn size={36} bg={S.chip} shadow={false} onPress={onClose} accessibilityLabel={closeLabel}>
+          <CircBtn size={36} bg={S.chip} outline={false} onPress={onClose} accessibilityLabel={closeLabel}>
             <XIcon color={S.ink} size={15} />
           </CircBtn>
         }

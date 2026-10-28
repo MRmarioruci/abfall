@@ -19,8 +19,9 @@ import type { ParsedCalendarResult, SavedCalendar, CollectionEvent } from "../ty
 import { parseISODate } from "../lib/dates";
 import { placeFromLocation } from "../lib/location";
 import { useT } from "../context/LocaleContext";
-import { FONT, TYPE } from "../theme/type";
-import { SoftCard } from "../components/ui/sheet";
+import { FONT, NUMS, TYPE } from "../theme/type";
+import { HAIRLINE, RADIUS } from "../theme/layout";
+import { SoftCard, StreamMark } from "../components/ui/sheet";
 import { findSuspicious } from "../lib/scanChecks";
 
 type Phase = "parsing" | "review" | "error";
@@ -228,7 +229,7 @@ export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
         </Text>
         <Pressable
           onPress={onBack}
-          style={{ marginTop: 24, height: 50, paddingHorizontal: 32, borderRadius: 99, backgroundColor: S.ink, alignItems: "center", justifyContent: "center" }}
+          style={{ marginTop: 24, height: 50, paddingHorizontal: 32, borderRadius: RADIUS.control, backgroundColor: S.ink, alignItems: "center", justifyContent: "center" }}
         >
           <Text style={{ fontSize: 16, fontFamily: FONT.w700, color: S.onInk }}>{t("scan.review.try_again")}</Text>
         </Pressable>
@@ -248,7 +249,7 @@ export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
           <CircBtn size={44} onPress={onBack}>
             <BackIcon color={S.ink} size={20} />
           </CircBtn>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: S.card, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 99, shadowColor: S.shadow, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 18, elevation: 3 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: S.card, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 99, borderWidth: HAIRLINE, borderColor: S.line }}>
             <View style={{ width: 7, height: 7, borderRadius: 99, backgroundColor: S.success }} />
             <Text style={{ fontSize: 12, fontFamily: FONT.w800, color: S.ink, letterSpacing: 0.3 }}>
               {events.length === 1 ? t("scan.review.dates_one") : t("scan.review.dates_other", { n: events.length })}
@@ -301,14 +302,15 @@ export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
                     paddingVertical: 7,
                     paddingLeft: 10,
                     paddingRight: 12,
-                    borderRadius: 99,
-                    backgroundColor: ST[id].soft,
+                    borderRadius: RADIUS.well,
+                    backgroundColor: S.card,
+                    borderWidth: HAIRLINE,
+                    borderColor: S.line,
                   }}
                 >
-                  <View style={{ width: 9, height: 9, borderRadius: 99, backgroundColor: ST[id].c }} />
-                  <Text style={{ fontSize: 13, fontFamily: FONT.w800, color: ST[id].ink }}>
-                    {wasteLabel(id)} {n}
-                  </Text>
+                  <StreamMark color={ST[id].c} size={9} />
+                  <Text style={[TYPE.caption, { color: S.ink, fontFamily: FONT.w700 }]}>{wasteLabel(id)}</Text>
+                  <Text style={[TYPE.caption, NUMS, { color: S.sec }]}>{n}</Text>
                 </View>
               ))}
             </View>
@@ -321,7 +323,7 @@ export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
 
         {suspiciousTypes.length > 0 && (
           <View style={{ paddingHorizontal: 16, paddingTop: 12 }} accessibilityRole="alert">
-            <SoftCard bg={ST.karton.soft} style={{ paddingVertical: 14, paddingHorizontal: 16, gap: 10 }}>
+            <SoftCard style={{ paddingVertical: 14, paddingHorizontal: 16, gap: 10 }}>
               <Text style={[TYPE.caption, { color: ST.karton.ink }]}>{t("scan.review.check_title")}</Text>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
                 {suspiciousTypes.map((id) => (
@@ -334,8 +336,8 @@ export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
                       paddingVertical: 5,
                       paddingLeft: 8,
                       paddingRight: 10,
-                      borderRadius: 99,
-                      backgroundColor: S.onTint,
+                      borderRadius: RADIUS.well,
+                      backgroundColor: S.chip,
                     }}
                   >
                     <View style={{ width: 8, height: 8, borderRadius: 99, backgroundColor: ST[id].c }} />
@@ -374,17 +376,12 @@ export function ScanReviewScreen({ images, onComplete, onBack }: Props) {
           disabled={saving}
           style={{
             height: 58,
-            borderRadius: 99,
+            borderRadius: RADIUS.control,
             backgroundColor: S.ink,
             alignItems: "center",
             justifyContent: "center",
             flexDirection: "row",
             gap: 9,
-            shadowColor: S.inkShadow,
-            shadowOffset: { width: 0, height: 12 },
-            shadowOpacity: 0.28,
-            shadowRadius: 26,
-            elevation: 8,
             opacity: saving ? 0.6 : 1,
           }}
         >

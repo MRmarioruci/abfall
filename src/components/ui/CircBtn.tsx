@@ -1,11 +1,13 @@
 import { Pressable, type ViewStyle } from "react-native";
 import { haptics } from "../../lib/haptics";
 import { useTheme } from "../../theme/ThemeContext";
+import { HAIRLINE } from "../../theme/layout";
 
 interface Props {
   size?: number;
   bg?: string;
-  shadow?: boolean;
+  /** Hairline edge; off for buttons on a filled or tinted background. */
+  outline?: boolean;
   onPress?: () => void;
   /** Read out by screen readers; icon-only buttons need one. */
   accessibilityLabel?: string;
@@ -16,7 +18,7 @@ interface Props {
 export function CircBtn({
   size = 48,
   bg,
-  shadow = true,
+  outline = true,
   onPress,
   accessibilityLabel,
   style,
@@ -41,15 +43,8 @@ export function CircBtn({
         height: size,
         borderRadius: 99,
         backgroundColor: bg ?? S.card,
-        ...(shadow
-          ? {
-              shadowColor: S.shadow,
-              shadowOffset: { width: 0, height: 6 },
-              shadowOpacity: 0.12,
-              shadowRadius: 18,
-              elevation: 4,
-            }
-          : {}),
+        borderWidth: outline ? HAIRLINE : 0,
+        borderColor: S.line,
         alignItems: "center",
         justifyContent: "center",
         transform: [{ scale: pressed ? 0.94 : 1 }],

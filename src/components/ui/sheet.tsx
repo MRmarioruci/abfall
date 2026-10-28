@@ -8,14 +8,16 @@
 //     needs a picture or a better title instead.
 //   • One primary PillButton. Secondary actions are a `secondary` pill or
 //     a QuietButton; never three equal buttons.
-//   • Choices are ArtTiles (2–3 big ones) or OptionRows (lists), with the
-//     waste palette's soft colours instead of grey boxes.
+//   • Choices are ArtTiles (2–3 big ones) or OptionRows (lists).
+//   • Surfaces are white cards with a hairline edge, never shadows; the
+//     waste colours appear as markers (icon wells, squares, bars).
 
 import { View, Text, Pressable, ActivityIndicator, type ViewStyle } from "react-native";
 import { useTheme } from "../../theme/ThemeContext";
 import { CheckIcon } from "../icons/Icons";
 import { haptics } from "../../lib/haptics";
 import { FONT, TYPE } from "../../theme/type";
+import { HAIRLINE, RADIUS } from "../../theme/layout";
 
 export function SheetHeader({
   title,
@@ -46,7 +48,7 @@ export function SheetHeader({
   );
 }
 
-/** A big tappable tile with a picture and a one- or two-word label. */
+/** A big tappable tile: a picture in a tinted well, and a short label. */
 export function ArtTile({
   label,
   bg,
@@ -55,6 +57,7 @@ export function ArtTile({
   style,
 }: {
   label: string;
+  /** Tint of the picture's well; a soft palette colour. */
   bg: string;
   onPress: () => void;
   children: React.ReactNode;
@@ -73,17 +76,22 @@ export function ArtTile({
         {
           flex: 1,
           aspectRatio: 0.86,
-          borderRadius: 28,
-          backgroundColor: bg,
-          padding: 16,
-          justifyContent: "space-between",
+          borderRadius: RADIUS.card,
+          backgroundColor: S.card,
+          borderWidth: HAIRLINE,
+          borderColor: S.line,
+          padding: 8,
+          paddingBottom: 14,
+          gap: 12,
           transform: [{ scale: pressed ? 0.97 : 1 }],
         },
         style,
       ]}
     >
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>{children}</View>
-      <Text style={{ fontSize: 17, fontFamily: FONT.w800, color: S.ink, letterSpacing: -0.3 }}>{label}</Text>
+      <View style={{ flex: 1, borderRadius: RADIUS.control, backgroundColor: bg, alignItems: "center", justifyContent: "center" }}>
+        {children}
+      </View>
+      <Text style={[TYPE.label, { color: S.ink, paddingHorizontal: 8 }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -119,10 +127,10 @@ export function PillButton({
       accessibilityLabel={label}
       style={({ pressed }) => [
         {
-          height: 54,
-          borderRadius: 99,
+          height: 52,
+          borderRadius: RADIUS.control,
           backgroundColor: bg,
-          borderWidth: variant === "secondary" ? 1.5 : 0,
+          borderWidth: variant === "secondary" ? HAIRLINE : 0,
           borderColor: S.line,
           flexDirection: "row",
           alignItems: "center",
@@ -204,22 +212,22 @@ export function OptionRow({
         alignItems: "center",
         gap: 14,
         minHeight: 60,
-        paddingHorizontal: 14,
+        paddingHorizontal: 12,
         paddingVertical: 10,
-        borderRadius: 20,
+        borderRadius: RADIUS.control,
         backgroundColor: S.card,
-        borderWidth: 2,
-        borderColor: selected ? S.ink : "transparent",
+        borderWidth: selected ? 1.5 : HAIRLINE,
+        borderColor: selected ? S.ink : S.line,
         transform: [{ scale: pressed ? 0.98 : 1 }],
       })}
     >
       {icon && (
-        <View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: iconBg ?? S.chip, alignItems: "center", justifyContent: "center" }}>
+        <View style={{ width: 38, height: 38, borderRadius: RADIUS.well, backgroundColor: iconBg ?? S.chip, alignItems: "center", justifyContent: "center" }}>
           {icon}
         </View>
       )}
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 16, fontFamily: FONT.w800, color: S.ink, letterSpacing: -0.2 }} numberOfLines={1}>
+        <Text style={[TYPE.label, { color: S.ink }]} numberOfLines={1}>
           {label}
         </Text>
         {!!subtitle && (
@@ -238,7 +246,37 @@ export function OptionRow({
   );
 }
 
-/** A soft, borderless panel in one of the palette's light tints. */
-export function SoftCard({ bg, children, style }: { bg: string; children: React.ReactNode; style?: ViewStyle }) {
-  return <View style={[{ borderRadius: 24, backgroundColor: bg, padding: 18 }, style]}>{children}</View>;
+/** A white card edged with a hairline: the one container on every screen. */
+export function SoftCard({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
+  const { S } = useTheme();
+  return (
+    <View
+      style={[
+        { borderRadius: RADIUS.card, backgroundColor: S.card, borderWidth: HAIRLINE, borderColor: S.line, padding: 18 },
+        style,
+      ]}
+    >
+      {children}
+    </View>
+  );
+}
+
+/** A tinted well for an illustration inside a card (the art is drawn on a
+ *  soft palette tint, not on the white card). */
+export function ArtWell({ tint, children, style }: { tint: string; children: React.ReactNode; style?: ViewStyle }) {
+  return (
+    <View
+      style={[
+        { alignSelf: "stretch", borderRadius: RADIUS.control, backgroundColor: tint, alignItems: "center", justifyContent: "center", paddingVertical: 14 },
+        style,
+      ]}
+    >
+      {children}
+    </View>
+  );
+}
+
+/** A small rounded square in a stream's colour: the marker for a bin. */
+export function StreamMark({ color, size = 9 }: { color: string; size?: number }) {
+  return <View style={{ width: size, height: size, borderRadius: size * 0.3, backgroundColor: color }} />;
 }

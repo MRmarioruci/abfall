@@ -1,12 +1,14 @@
-// The main fact on Home: what goes out next, and when. One soft card in the
-// stream's tint, a big glyph, the waste type, and a countdown.
+// The main fact on Home: what goes out next, and when. Type does the work:
+// a small label, the countdown as the screen's one headline, then the bins
+// as colour squares and the date on a quiet line.
 
 import { View, Text, Pressable } from "react-native";
 import { type WasteStreamId } from "../../theme/colors";
 import { useTheme } from "../../theme/ThemeContext";
 import { TYPE } from "../../theme/type";
-import { StreamGlyph } from "../icons/StreamGlyph";
 import { BellIcon } from "../icons/Icons";
+import { CircBtn } from "../ui/CircBtn";
+import { StreamMark } from "../ui/sheet";
 import { useT } from "../../context/LocaleContext";
 import { parseISODate } from "../../lib/dates";
 import { haptics } from "../../lib/haptics";
@@ -25,7 +27,6 @@ export function NextPickupHero({
   const { S, ST } = useTheme();
   const { t, locale, wasteLabel, weekdayLong, weekdayShort, monthShort } = useT();
   const first = events[0]!;
-  const s = ST[first.type] ?? ST.sonstiges;
   const d = parseISODate(first.date);
   const countdown = relativeDayLabel(first.date, { t, locale, weekdayLong, monthShort });
 
@@ -38,104 +39,54 @@ export function NextPickupHero({
   if (first.zone && first.zone !== "all") meta.push(t("day_edit.zone", { zone: first.zone }));
 
   const label = streams.map((id) => wasteLabel(id)).join(", ");
+  const open = (id: WasteStreamId) => {
+    haptics.tap();
+    onPress(id, first.date);
+  };
 
   return (
-    <Pressable
-      onPress={() => {
-        haptics.tap();
-        onPress(first.type, first.date);
-      }}
-      accessibilityRole="button"
-      accessibilityLabel={`${label}, ${countdown}, ${meta.join(", ")}`}
-      style={({ pressed }) => ({
-        borderRadius: 28,
-        backgroundColor: s.soft,
-        padding: 20,
-        transform: [{ scale: pressed ? 0.98 : 1 }],
-      })}
-    >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={[TYPE.display, { color: s.ink }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+    <View accessible={false}>
+      <Text style={[TYPE.cap, { color: S.sec }]}>{t("home.next_pickup")}</Text>
+      <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 12 }}>
+        <Pressable
+          onPress={() => open(first.type)}
+          accessibilityRole="button"
+          accessibilityLabel={`${label}, ${countdown}, ${meta.join(", ")}`}
+          style={({ pressed }) => ({ flex: 1, minWidth: 0, opacity: pressed ? 0.6 : 1 })}
+        >
+          <Text
+            style={[TYPE.display, { color: S.ink, marginTop: 4 }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}
+          >
             {countdown}
           </Text>
-          <Text style={[TYPE.title, { color: S.ink, marginTop: 4 }]} numberOfLines={2}>
-            {wasteLabel(first.type)}
-          </Text>
-          <Text style={[TYPE.caption, { color: s.ink, opacity: 0.7, marginTop: 6 }]} numberOfLines={1}>
-            {meta.join(" · ")}
-          </Text>
-        </View>
-        <View
-          style={{
-            width: 104,
-            height: 104,
-            borderRadius: 99,
-            backgroundColor: s.c,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <StreamGlyph stream={first.type} size={80} color={s.onC} />
-          <View
-            style={{
-              position: "absolute",
-              right: -2,
-              top: -2,
-              width: 32,
-              height: 32,
-              borderRadius: 99,
-              backgroundColor: S.card,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <BellIcon color={s.ink} size={15} />
-          </View>
-        </View>
+        </Pressable>
+        <CircBtn size={42} onPress={() => open(first.type)} accessibilityLabel={t("home.reminder")} style={{ marginBottom: 4 }}>
+          <BellIcon color={S.ink} size={18} />
+        </CircBtn>
       </View>
 
-      {streams.length > 1 && (
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
-          {streams.map((id) => (
-            <Pressable
-              key={id}
-              onPress={() => {
-                haptics.tap();
-                onPress(id, first.date);
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={wasteLabel(id)}
-              hitSlop={6}
-              style={({ pressed }) => ({
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 6,
-                paddingVertical: 5,
-                paddingLeft: 5,
-                paddingRight: 12,
-                borderRadius: 99,
-                backgroundColor: S.glass,
-                transform: [{ scale: pressed ? 0.96 : 1 }],
-              })}
-            >
-              <View
-                style={{
-                  width: 26,
-                  height: 26,
-                  borderRadius: 99,
-                  backgroundColor: ST[id].c,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <StreamGlyph stream={id} size={18} color={ST[id].onC} />
-              </View>
-              <Text style={[TYPE.micro, { color: S.ink }]}>{wasteLabel(id)}</Text>
-            </Pressable>
-          ))}
-        </View>
-      )}
-    </Pressable>
+      {/* The bins, as colour squares; each opens its own reminder. */}
+      <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: 16, rowGap: 6, marginTop: 10 }}>
+        {streams.map((id) => (
+          <Pressable
+            key={id}
+            onPress={() => open(id)}
+            accessibilityRole="button"
+            accessibilityLabel={wasteLabel(id)}
+            hitSlop={8}
+            style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 8, opacity: pressed ? 0.6 : 1 })}
+          >
+            <StreamMark color={ST[id].c} size={10} />
+            <Text style={[TYPE.label, { color: S.ink }]}>{wasteLabel(id)}</Text>
+          </Pressable>
+        ))}
+      </View>
+      <Text style={[TYPE.caption, { color: S.sec, marginTop: 6 }]} numberOfLines={1}>
+        {meta.join(" · ")}
+      </Text>
+    </View>
   );
 }

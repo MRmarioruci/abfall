@@ -93,6 +93,10 @@ export const en = {
   // ─── home ───────────────────────────────────────────────────────────────
   "home.calendar": "CALENDAR",
   "home.switch": "Switch",
+  "home.next_pickup": "Next pickup",
+  "home.coming_up": "Coming up",
+  "home.this_week": "This week",
+  "home.reminder": "Reminder",
   "home.edit_banner": "Editing pickups — tap any day to add or remove.",
   "home.nudge_title": "Get a heads-up before pickup",
   "home.nudge_body": "Set up reminders so you never wheel the bin out late.",

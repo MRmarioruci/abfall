@@ -14,9 +14,10 @@ import { View, Text, TextInput, Pressable } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
-import { PillButton, QuietButton, SheetHeader, SoftCard } from "./ui/sheet";
+import { PillButton, QuietButton, SheetHeader, ArtWell, SoftCard } from "./ui/sheet";
 import { NeighboursArt } from "./art/Art";
 import { useTheme } from "../theme/ThemeContext";
+import { HAIRLINE, RADIUS } from "../theme/layout";
 import { GlobeIcon, UserIcon, XIcon } from "./icons/Icons";
 import type { SavedCalendar } from "../types/calendar";
 import { ApiError, shareCalendar } from "../services/api";
@@ -148,6 +149,8 @@ export function PublishDialog({ visible, onClose, calendar }: Props) {
                 height: 34,
                 borderRadius: 99,
                 backgroundColor: S.card,
+                borderWidth: HAIRLINE,
+                borderColor: S.line,
                 alignItems: "center",
                 justifyContent: "center",
                 transform: [{ scale: pressed ? 0.92 : 1 }],
@@ -159,8 +162,8 @@ export function PublishDialog({ visible, onClose, calendar }: Props) {
         />
 
         {/* The calendar as neighbours will see it: picture + editable name. */}
-        <SoftCard bg={ST.papier.soft} style={{ alignItems: "center", paddingTop: 16, paddingBottom: 14 }}>
-          <NeighboursArt size={104} />
+        <SoftCard style={{ alignItems: "center", padding: 8, paddingBottom: 18 }}>
+          <ArtWell tint={ST.papier.soft}><NeighboursArt size={104} /></ArtWell>
           <TextInput
             value={publishTitle}
             onChangeText={setPublishTitle}
@@ -175,8 +178,10 @@ export function PublishDialog({ visible, onClose, calendar }: Props) {
               marginTop: 10,
               paddingVertical: 12,
               paddingHorizontal: 14,
-              borderRadius: 18,
+              borderRadius: RADIUS.control,
               backgroundColor: S.card,
+              borderWidth: HAIRLINE,
+              borderColor: S.line,
               fontSize: 18,
               color: S.ink,
               fontFamily: FONT.w800,
@@ -195,8 +200,10 @@ export function PublishDialog({ visible, onClose, calendar }: Props) {
             paddingLeft: 10,
             paddingRight: 14,
             minHeight: 60,
-            borderRadius: 20,
+            borderRadius: RADIUS.control,
             backgroundColor: S.card,
+            borderWidth: HAIRLINE,
+            borderColor: S.line,
           }}
         >
           <View

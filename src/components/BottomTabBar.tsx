@@ -6,6 +6,7 @@ import { useT } from "../context/LocaleContext";
 import type { StringKey } from "../i18n";
 import { FONT } from "../theme/type";
 import { haptics } from "../lib/haptics";
+import { HAIRLINE } from "../theme/layout";
 
 interface Props {
   activeTab: string;
@@ -37,17 +38,14 @@ export function BottomTabBar({ activeTab, onTabPress, onAddPress, badges }: Prop
     <View
       style={{
         position: "absolute",
-        bottom: Math.max(insets.bottom, 18),
-        left: 18,
-        right: 18,
-        height: 66,
-        borderRadius: 99,
-        backgroundColor: S.card,
-        shadowColor: S.shadow,
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.2,
-        shadowRadius: 30,
-        elevation: 10,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        paddingBottom: Math.max(insets.bottom, 10),
+        paddingHorizontal: 8,
+        backgroundColor: S.sheetFloat,
+        borderTopWidth: HAIRLINE,
+        borderTopColor: S.line,
         flexDirection: "row",
         alignItems: "center",
       }}
@@ -65,23 +63,15 @@ export function BottomTabBar({ activeTab, onTabPress, onAddPress, badges }: Prop
                 accessibilityLabel={t(tab.label)}
                 style={({ pressed }) => ({
                   transform: [{ scale: pressed ? 0.92 : 1 }],
-                  width: 60,
-                  height: 60,
-                  borderRadius: 21,
+                  width: 48,
+                  height: 48,
+                  borderRadius: 16,
                   backgroundColor: S.ink,
                   alignItems: "center",
                   justifyContent: "center",
-                  marginTop: -24,
-                  shadowColor: S.inkShadow,
-                  shadowOffset: { width: 0, height: 12 },
-                  shadowOpacity: 0.32,
-                  shadowRadius: 24,
-                  elevation: 12,
-                  borderWidth: 4,
-                  borderColor: S.card,
                 })}
               >
-                <PlusIcon color={S.onInk} size={26} />
+                <PlusIcon color={S.onInk} size={22} />
               </Pressable>
             </View>
           );
@@ -103,13 +93,13 @@ export function BottomTabBar({ activeTab, onTabPress, onAddPress, badges }: Prop
             accessibilityLabel={t(tab.label)}
             style={{
               flex: 1,
-              height: 66,
+              height: 62,
               alignItems: "center",
               justifyContent: "center",
             }}
           >
             <View>
-              <Icon color={focused ? S.ink : S.ter} size={25} />
+              <Icon color={focused ? S.ink : S.ter} size={24} />
               {badge > 0 && (
                 <View
                   style={{
@@ -125,7 +115,7 @@ export function BottomTabBar({ activeTab, onTabPress, onAddPress, badges }: Prop
                     borderRadius: 99,
                     backgroundColor: S.ink,
                     borderWidth: 1.5,
-                    borderColor: S.card,
+                    borderColor: S.bg,
                     alignItems: "center",
                     justifyContent: "center",
                   }}

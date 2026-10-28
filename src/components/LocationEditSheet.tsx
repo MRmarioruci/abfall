@@ -4,6 +4,7 @@ import * as Location from "expo-location";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
 import { PillButton, SheetHeader } from "./ui/sheet";
 import { useTheme } from "../theme/ThemeContext";
+import { HAIRLINE, RADIUS } from "../theme/layout";
 import { PinIcon, XIcon } from "./icons/Icons";
 import { searchPlaces, type PlaceSuggestion } from "../services/geocoding";
 import { useT } from "../context/LocaleContext";
@@ -252,8 +253,10 @@ export function LocationEditSheet({ visible, onClose, current, onSave }: Props) 
             paddingLeft: 8,
             paddingRight: 14,
             minHeight: 60,
-            borderRadius: 20,
+            borderRadius: RADIUS.control,
             backgroundColor: S.card,
+            borderWidth: HAIRLINE,
+            borderColor: S.line,
           }}
         >
           <View
@@ -315,8 +318,10 @@ export function LocationEditSheet({ visible, onClose, current, onSave }: Props) 
           <View
             style={{
               marginTop: 8,
-              borderRadius: 20,
+              borderRadius: RADIUS.control,
               backgroundColor: S.card,
+              borderWidth: HAIRLINE,
+              borderColor: S.line,
               padding: 6,
               maxHeight: dropdownMaxHeight,
               overflow: "hidden",
@@ -395,7 +400,7 @@ export function LocationEditSheet({ visible, onClose, current, onSave }: Props) 
               gap: 10,
               paddingLeft: 20,
               paddingRight: 10,
-              borderRadius: 99,
+              borderRadius: RADIUS.control,
               backgroundColor: ST.papier.soft,
             }}
           >

@@ -83,6 +83,10 @@ export const it: Record<StringKey, string> = {
 
   "home.calendar": "CALENDARIO",
   "home.switch": "Cambia",
+  "home.next_pickup": "Prossima raccolta",
+  "home.coming_up": "In arrivo",
+  "home.this_week": "Questa settimana",
+  "home.reminder": "Promemoria",
   "home.edit_banner": "Modifica raccolte — tocca un giorno per aggiungere o rimuovere.",
   "home.nudge_title": "Ricevi un avviso prima della raccolta",
   "home.nudge_body": "Imposta i promemoria così non porti mai il bidone fuori in ritardo.",

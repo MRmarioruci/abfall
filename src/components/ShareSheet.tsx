@@ -5,7 +5,7 @@ import * as Clipboard from "expo-clipboard";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
 import { ConfirmSheet } from "./ConfirmSheet";
 import { PublishDialog } from "./PublishDialog";
-import { PillButton, QuietButton, SheetHeader, SoftCard } from "./ui/sheet";
+import { PillButton, QuietButton, SheetHeader, ArtWell, SoftCard } from "./ui/sheet";
 import { NeighboursArt } from "./art/Art";
 import { LIGHT } from "../theme/colors";
 import { useTheme } from "../theme/ThemeContext";
@@ -114,22 +114,22 @@ export function ShareSheet({ visible, onClose, calendar }: Props) {
 
         {!isPublished || !shareUrl ? (
           // Not public yet: one picture, one line, one button.
-          <SoftCard bg={ST.papier.soft} style={{ alignItems: "center", paddingVertical: 22 }}>
-            <NeighboursArt size={132} />
-            <Text style={{ fontSize: 19, fontFamily: FONT.w800, color: ST.papier.ink, letterSpacing: -0.4, marginTop: 10 }}>
+          <SoftCard style={{ alignItems: "center", padding: 8, paddingBottom: 18 }}>
+            <ArtWell tint={ST.papier.soft}><NeighboursArt size={132} /></ArtWell>
+            <Text style={{ fontSize: 19, fontFamily: FONT.w800, color: S.ink, letterSpacing: -0.4, marginTop: 14 }}>
               {t("share.help_title")}
             </Text>
             <PillButton
               label={t("share.publish_now")}
               icon={<GlobeIcon color={S.onInk} size={17} />}
               onPress={togglePublish}
-              style={{ alignSelf: "stretch", marginTop: 18 }}
+              style={{ alignSelf: "stretch", marginTop: 18, marginHorizontal: 10 }}
             />
           </SoftCard>
         ) : (
           <>
             {/* Live: the QR code is the hero; scanning it is the quickest share. */}
-            <SoftCard bg={ST.gruengut.soft} style={{ alignItems: "center", paddingVertical: 22 }}>
+            <SoftCard style={{ alignItems: "center", paddingVertical: 22 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 16 }}>
                 <View style={{ width: 8, height: 8, borderRadius: 99, backgroundColor: S.success }} />
                 <Text style={{ fontSize: 13, fontFamily: FONT.w800, color: ST.gruengut.ink }}>{t("share.live_title")}</Text>

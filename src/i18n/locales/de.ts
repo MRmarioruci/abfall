@@ -83,6 +83,10 @@ export const de: Record<StringKey, string> = {
 
   "home.calendar": "KALENDER",
   "home.switch": "Wechseln",
+  "home.next_pickup": "Nächste Abfuhr",
+  "home.coming_up": "Demnächst",
+  "home.this_week": "Diese Woche",
+  "home.reminder": "Erinnerung",
   "home.edit_banner": "Termine bearbeiten — tippe auf einen Tag, um hinzuzufügen oder zu entfernen.",
   "home.nudge_title": "Erinnerung vor der Abfuhr",
   "home.nudge_body": "Stelle Erinnerungen ein, damit du den Container nie zu spät rausstellst.",

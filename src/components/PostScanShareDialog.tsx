@@ -1,6 +1,6 @@
 import { View, Text } from "react-native";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
-import { PillButton, QuietButton, SheetHeader, SoftCard } from "./ui/sheet";
+import { PillButton, QuietButton, SheetHeader, ArtWell, SoftCard } from "./ui/sheet";
 import { NeighboursArt } from "./art/Art";
 import { useTheme } from "../theme/ThemeContext";
 import { CheckIcon, GlobeIcon } from "./icons/Icons";
@@ -59,15 +59,15 @@ export function PostScanShareDialog({ visible, calendar, onShare, onSkip }: Prop
         />
 
         {/* The pitch is a picture: neighbours finding this calendar. */}
-        <SoftCard bg={ST.papier.soft} style={{ alignItems: "center", paddingVertical: 22 }}>
-          <NeighboursArt size={132} />
+        <SoftCard style={{ alignItems: "center", padding: 8, paddingBottom: 18 }}>
+          <ArtWell tint={ST.papier.soft}><NeighboursArt size={132} /></ArtWell>
           <Text
             style={{
               fontSize: 19,
               fontFamily: FONT.w800,
-              color: ST.papier.ink,
+              color: S.ink,
               letterSpacing: -0.4,
-              marginTop: 10,
+              marginTop: 14,
               textAlign: "center",
             }}
           >
@@ -77,7 +77,7 @@ export function PostScanShareDialog({ visible, calendar, onShare, onSkip }: Prop
             label={t("share.post_scan.confirm")}
             icon={<GlobeIcon color={S.onInk} size={17} />}
             onPress={onShare}
-            style={{ alignSelf: "stretch", marginTop: 18 }}
+            style={{ alignSelf: "stretch", marginTop: 18, marginHorizontal: 10 }}
           />
         </SoftCard>
 

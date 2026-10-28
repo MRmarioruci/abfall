@@ -146,7 +146,7 @@ const LEAF = "#7FB069";
 const CHEEK = "rgba(232,128,120,0.45)";
 const TAU = Math.PI * 2;
 
-// Speech bubble: light-on-dark card so it pops against the dark calendar.
+// Speech bubble: an ink bubble, so it reads against the white calendar card.
 // The tail slides along the bottom edge to stay over his head as he walks.
 function SpeechBubble({ text, tailStyle }: { text: string; tailStyle: object }) {
   const { S } = useTheme();
@@ -155,20 +155,15 @@ function SpeechBubble({ text, tailStyle }: { text: string; tailStyle: object }) 
       <View
         style={{
           alignSelf: "stretch",
-          backgroundColor: S.white,
+          backgroundColor: S.ink,
           paddingHorizontal: 13,
           paddingVertical: 10,
           borderRadius: 14,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.22,
-          shadowRadius: 12,
-          elevation: 6,
         }}
       >
         <Text
           style={{
-            color: S.calendar,
+            color: S.onInk,
             fontSize: 10.5,
             fontFamily: FONT.w700,
             lineHeight: 14,
@@ -192,7 +187,7 @@ function SpeechBubble({ text, tailStyle }: { text: string; tailStyle: object }) 
             borderTopWidth: 8,
             borderLeftColor: "transparent",
             borderRightColor: "transparent",
-            borderTopColor: S.white,
+            borderTopColor: S.ink,
           },
           tailStyle,
         ]}

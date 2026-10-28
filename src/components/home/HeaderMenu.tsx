@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Modal, Pressable, Text, View, type HostInstance } from "react-native";
 import { useTheme } from "../../theme/ThemeContext";
+import { HAIRLINE, RADIUS } from "../../theme/layout";
 import { TYPE } from "../../theme/type";
 import { CircBtn } from "../ui/CircBtn";
 import { MoreIcon } from "../icons/Icons";
@@ -55,7 +56,7 @@ export function HeaderMenu({ items, accessibilityLabel }: { items: HeaderMenuIte
 
   return (
     <View ref={anchor} collapsable={false}>
-      <CircBtn size={44} shadow={false} accessibilityLabel={accessibilityLabel} onPress={show}>
+      <CircBtn size={44} accessibilityLabel={accessibilityLabel} onPress={show}>
         <MoreIcon color={S.ink} size={20} />
       </CircBtn>
       <Modal visible={open} transparent animationType="none" onRequestClose={() => setOpen(false)} statusBarTranslucent>
@@ -67,13 +68,16 @@ export function HeaderMenu({ items, accessibilityLabel }: { items: HeaderMenuIte
               right: 16,
               minWidth: 210,
               padding: 6,
-              borderRadius: 22,
+              borderRadius: RADIUS.card,
               backgroundColor: S.card,
+              borderWidth: HAIRLINE,
+              borderColor: S.line,
+              // It floats over the page, so it keeps a soft shadow.
               shadowColor: S.shadow,
-              shadowOffset: { width: 0, height: 12 },
-              shadowOpacity: 0.18,
-              shadowRadius: 28,
-              elevation: 12,
+              shadowOffset: { width: 0, height: 10 },
+              shadowOpacity: 0.12,
+              shadowRadius: 24,
+              elevation: 10,
               opacity: appear,
               transform: [
                 { translateY: appear.interpolate({ inputRange: [0, 1], outputRange: [-6, 0] }) },
@@ -96,7 +100,7 @@ export function HeaderMenu({ items, accessibilityLabel }: { items: HeaderMenuIte
                   gap: 12,
                   minHeight: 50,
                   paddingHorizontal: 10,
-                  borderRadius: 16,
+                  borderRadius: RADIUS.well,
                   backgroundColor: pressed ? S.bg : "transparent",
                 })}
               >

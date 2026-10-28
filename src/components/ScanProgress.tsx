@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { View, Text, Animated, Easing, Image, Pressable, StyleSheet } from "react-native";
 import { LIGHT, type WasteStreamId } from "../theme/colors";
 import { useTheme } from "../theme/ThemeContext";
+import { RADIUS } from "../theme/layout";
 import type { ParseStage } from "../services/parseCalendar";
 import { useT } from "../context/LocaleContext";
 import type { StringKey } from "../i18n";
@@ -56,7 +57,7 @@ export function ScanProgress({ stage, detail, imageUri, pageCount = 1, onCancel 
   return (
     <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 28, paddingBottom: 28 }}>
       {/* Photo with scan line */}
-      <View style={{ flex: 1, borderRadius: 28, overflow: "hidden", backgroundColor: S.skeleton }}>
+      <View style={{ flex: 1, borderRadius: RADIUS.card, overflow: "hidden", backgroundColor: S.skeleton }}>
         {imageUri && <Image source={{ uri: imageUri }} style={{ flex: 1 }} resizeMode="cover" />}
         <View style={[StyleSheet.absoluteFill, { backgroundColor: S.sheet + "2E" }]} />
         <Animated.View

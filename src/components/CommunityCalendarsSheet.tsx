@@ -19,11 +19,12 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SlideUpSheet } from "./ui/SlideUpSheet";
-import { PillButton, QuietButton, SheetHeader, SoftCard } from "./ui/sheet";
+import { PillButton, QuietButton, SheetHeader, ArtWell, SoftCard } from "./ui/sheet";
 import { BrowseArt } from "./art/Art";
 import { StreamGlyph } from "./icons/StreamGlyph";
 import { STREAM_ORDER, type WasteStreamId, type Palette } from "../theme/colors";
 import { useTheme } from "../theme/ThemeContext";
+import { HAIRLINE, RADIUS } from "../theme/layout";
 import {
   BackIcon,
   SearchIcon,
@@ -370,16 +371,16 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
 
           {/* Empty / error: one picture, one line, one button. */}
           {searchError && !searching && (
-            <SoftCard bg={ST.papier.soft} style={{ alignItems: "center", paddingVertical: 22 }}>
-              <BrowseArt />
+            <SoftCard style={{ alignItems: "center", padding: 8, paddingBottom: 18 }}>
+              <ArtWell tint={ST.papier.soft}><BrowseArt /></ArtWell>
               <Text
                 style={{
                   fontSize: 15,
-                  color: ST.papier.ink,
+                  color: S.ink,
                   fontFamily: FONT.w700,
                   lineHeight: 21,
                   textAlign: "center",
-                  marginTop: 8,
+                  marginTop: 14,
                   paddingHorizontal: 6,
                 }}
               >
@@ -390,7 +391,7 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
                   label={t("community.scan_instead")}
                   icon={<ScanIcon color={S.onInk} size={17} />}
                   onPress={scanInstead}
-                  style={{ alignSelf: "stretch", marginTop: 18 }}
+                  style={{ alignSelf: "stretch", marginTop: 18, marginHorizontal: 10 }}
                 />
               )}
             </SoftCard>
@@ -406,7 +407,7 @@ export function CommunityCalendarsSheet({ visible, onClose, onScanCalendar }: Pr
                     gap: 9,
                     paddingVertical: 11,
                     paddingHorizontal: 14,
-                    borderRadius: 18,
+                    borderRadius: RADIUS.control,
                     backgroundColor: ST.karton.soft,
                     marginBottom: 12,
                   }}
@@ -502,7 +503,9 @@ function ResultRow({
         gap: 14,
         minHeight: 68,
         backgroundColor: S.card,
-        borderRadius: 22,
+        borderWidth: HAIRLINE,
+        borderColor: S.line,
+        borderRadius: RADIUS.control,
         paddingVertical: 12,
         paddingHorizontal: 14,
         transform: [{ scale: pressed ? 0.98 : 1 }],
@@ -512,7 +515,7 @@ function ResultRow({
         style={{
           width: 44,
           height: 44,
-          borderRadius: 15,
+          borderRadius: RADIUS.well,
           backgroundColor: dots ? S.bg : tint.soft,
           alignItems: "center",
           justifyContent: "center",
@@ -552,7 +555,7 @@ function ResultRow({
             gap: 5,
             paddingHorizontal: 10,
             paddingVertical: 5,
-            borderRadius: 99,
+            borderRadius: RADIUS.well,
             backgroundColor: ST.gruengut.soft,
           }}
         >
@@ -641,6 +644,8 @@ function PreviewBody({
             height: 38,
             borderRadius: 99,
             backgroundColor: S.card,
+            borderWidth: HAIRLINE,
+            borderColor: S.line,
             alignItems: "center",
             justifyContent: "center",
             transform: [{ scale: pressed ? 0.92 : 1 }],
@@ -654,7 +659,7 @@ function PreviewBody({
       </View>
 
       {/* What it collects, as colour: one chip per waste type. */}
-      <SoftCard bg={tint.soft} style={{ marginBottom: 16, minHeight: 112, justifyContent: "center" }}>
+      <SoftCard style={{ marginBottom: 16, minHeight: 112, justifyContent: "center" }}>
         {types === null ? (
           <ActivityIndicator size="small" color={tint.ink} />
         ) : types.length > 0 ? (
@@ -669,8 +674,8 @@ function PreviewBody({
                   paddingLeft: 5,
                   paddingRight: 12,
                   paddingVertical: 5,
-                  borderRadius: 99,
-                  backgroundColor: S.onTint,
+                  borderRadius: RADIUS.well,
+                  backgroundColor: S.chip,
                 }}
               >
                 <View
@@ -702,8 +707,8 @@ function PreviewBody({
                   gap: 5,
                   paddingHorizontal: 10,
                   paddingVertical: 5,
-                  borderRadius: 99,
-                  backgroundColor: S.glass,
+                  borderRadius: RADIUS.well,
+                  backgroundColor: S.chip,
                   maxWidth: "100%",
                 }}
               >
@@ -754,7 +759,9 @@ function SearchField({
         gap: 10,
         height: 52,
         backgroundColor: S.card,
-        borderRadius: 99,
+        borderWidth: HAIRLINE,
+        borderColor: S.line,
+        borderRadius: RADIUS.control,
         paddingLeft: 18,
         paddingRight: 18,
       }}
