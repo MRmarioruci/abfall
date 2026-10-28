@@ -31,6 +31,11 @@ import { UpcomingList } from "../components/home/UpcomingList";
 import { HomeSkeleton } from "../components/home/HomeSkeleton";
 import { HeaderMenu } from "../components/home/HeaderMenu";
 import { WeekStrip } from "../components/home/WeekStrip";
+import { Segmented } from "../components/ui/Segmented";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+type CalendarView = "week" | "month";
+const CALENDAR_VIEW_KEY = "abfall_home_calendar_view";
 
 interface Props {
   onCalendarPress?: () => void;
@@ -57,6 +62,20 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders }: Pro
     date?: string;
     when?: string;
   }>({ visible: false, stream: "papier" });
+  // Week strip or month grid; remembered between launches.
+  const [calendarView, setCalendarViewState] = useState<CalendarView>("week");
+  useEffect(() => {
+    AsyncStorage.getItem(CALENDAR_VIEW_KEY)
+      .then((v) => {
+        if (v === "week" || v === "month") setCalendarViewState(v);
+      })
+      .catch(() => {});
+  }, []);
+  const setCalendarView = (v: CalendarView) => {
+    setCalendarViewState(v);
+    AsyncStorage.setItem(CALENDAR_VIEW_KEY, v).catch(() => {});
+  };
+
   // Edit mode toggle — when on, tapping a calendar day opens the day-events
   // editor instead of the reminder editor. Pencil icon top-right of the home
   // header flips this.
@@ -473,11 +492,6 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders }: Pro
               )}
             </View>
 
-            {/* This week */}
-            <View style={{ paddingHorizontal: 14, paddingTop: 22 }}>
-              <WeekStrip events={active.events} onDayPress={handleDayPress} />
-            </View>
-
             {/* Reminder nudge: one line and one small button */}
             {showReminderNudge && (
               <View style={{ paddingHorizontal: 16, paddingTop: 14 }}>
@@ -517,36 +531,56 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders }: Pro
               </View>
             )}
 
-            <View style={{ height: HAIRLINE, backgroundColor: S.line, marginHorizontal: 20, marginTop: 20 }} />
-
-            {/* Calendar title row: tap to switch calendars */}
-            <Pressable
-              onPress={onCalendarPress}
-              accessibilityRole="button"
-              accessibilityLabel={`${active.title}, ${t("home.switch")}`}
-              style={({ pressed }) => ({
+            {/* Calendar: which one (tap to switch), and week or month */}
+            <View
+              style={{
                 marginHorizontal: 20,
-                marginTop: 8,
-                minHeight: 44,
+                marginTop: 24,
+                marginBottom: 10,
                 flexDirection: "row",
                 alignItems: "center",
-                justifyContent: "space-between",
                 gap: 12,
-                opacity: pressed ? 0.6 : 1,
-              })}
+              }}
             >
-              <Text style={[TYPE.cap, { flex: 1, color: S.sec }]} numberOfLines={1}>
-                {active.title}
-              </Text>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Text style={[TYPE.cap, { color: S.ink }]}>{t("home.switch")}</Text>
-                <ChevRIcon color={S.sec} size={10} />
-              </View>
-            </Pressable>
+              <Pressable
+                onPress={onCalendarPress}
+                accessibilityRole="button"
+                accessibilityLabel={`${active.title}, ${t("home.switch")}`}
+                hitSlop={8}
+                style={({ pressed }) => ({
+                  flex: 1,
+                  minHeight: 36,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 5,
+                  opacity: pressed ? 0.6 : 1,
+                })}
+              >
+                <Text style={[TYPE.cap, { flexShrink: 1, color: S.ink }]} numberOfLines={1}>
+                  {active.title}
+                </Text>
+                <View style={{ transform: [{ rotate: "90deg" }] }}>
+                  <ChevRIcon color={S.sec} size={9} />
+                </View>
+              </Pressable>
+              <Segmented
+                options={[
+                  { value: "week", label: t("home.view_week") },
+                  { value: "month", label: t("home.view_month") },
+                ]}
+                value={calendarView}
+                onChange={setCalendarView}
+              />
+            </View>
 
-            {/* Monthly calendar */}
             <View style={{ paddingHorizontal: 14 }}>
-              <CalendarMonth marks={marks} municipality={municipality} onDayPress={handleDayPress} mascot={false} />
+              {calendarView === "week" ? (
+                <SoftCard style={{ padding: 6 }}>
+                  <WeekStrip events={active.events} onDayPress={handleDayPress} />
+                </SoftCard>
+              ) : (
+                <CalendarMonth marks={marks} municipality={municipality} onDayPress={handleDayPress} mascot={false} />
+              )}
             </View>
 
             {/* The rest of the upcoming pickups */}

@@ -1,8 +1,13 @@
 // The main fact on Home: what goes out next, and when. Type does the work:
 // a small label, the countdown as the screen's one headline, then the bins
-// as colour squares and the date on a quiet line. Recyclops stands on the
-// right, so he's on screen as soon as Home opens.
+// as colour squares and the date on a quiet line. Recyclops lives on the
+// right, so he's on screen as soon as Home opens, and the whole block is
+// his stage: he strolls across it, moonwalks, trips, and leaves on the
+// right to come back in from the left.
 
+const MASCOT = 78;
+
+import { useState } from "react";
 import { View, Text, Pressable } from "react-native";
 import { type WasteStreamId } from "../../theme/colors";
 import { useTheme } from "../../theme/ThemeContext";
@@ -40,13 +45,17 @@ export function NextPickupHero({
   if (first.zone && first.zone !== "all") meta.push(t("day_edit.zone", { zone: first.zone }));
 
   const label = streams.map((id) => wasteLabel(id)).join(", ");
+  const [width, setWidth] = useState(0);
   const open = (id: WasteStreamId) => {
     haptics.tap();
     onPress(id, first.date);
   };
 
   return (
-    <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
+    <View
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+      style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}
+    >
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={[TYPE.cap, { color: S.sec }]}>{t("home.next_pickup")}</Text>
         <Pressable
@@ -99,8 +108,9 @@ export function NextPickupHero({
         </View>
       </View>
 
-      <View style={{ marginBottom: -4 }}>
-        <Recyclops size={78} walkRange={0} />
+      {/* Drawn after the text so he walks in front of it. */}
+      <View style={{ marginBottom: -4, zIndex: 2 }}>
+        <Recyclops size={MASCOT} walkRange={Math.max(0, width - MASCOT)} antics />
       </View>
     </View>
   );

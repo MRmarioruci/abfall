@@ -17,6 +17,9 @@
 //     reach, and the swap to run when his hands touch (CalendarMonth swaps
 //     two legend labels there)
 //   • `walkRange` — how far left he can roam, in px (0 keeps him at home)
+//   • `antics` — lets him use that room for bigger bits: strolls, a
+//     moonwalk, tripping over nothing, and leaving the screen on the right
+//     to come back in from the left (Home turns this on)
 //   • `onPress` — tap handler; he also does a happy hop
 
 import { useEffect, useRef, useState } from "react";
@@ -215,6 +218,9 @@ interface Props {
   planSwap?: () => SwapPlan | null;
   /** How far left (px) he may wander from home. 0 keeps him stationary. */
   walkRange?: number;
+  /** Bigger bits that use `walkRange`: strolls, moonwalk, tripping, and
+   *  walking off-screen and back. Needs room to his left and right. */
+  antics?: boolean;
 }
 
 // Rig geometry (viewBox units; see recyclops/rig.ts): shoulders sit at
@@ -247,7 +253,7 @@ function usePointProps(R: SharedValue<Rig>, part: PointPart) {
   return useAnimatedProps(() => ({ cx: R.value[part].cx, cy: R.value[part].cy }));
 }
 
-export function Recyclops({ size = 76, onPress, planSwap, walkRange = 60 }: Props) {
+export function Recyclops({ size = 76, onPress, planSwap, walkRange = 60, antics = false }: Props) {
   const { t } = useT();
   const { isDark } = useTheme();
   const limb = isDark ? LIMB_ON_DARK : INK;
@@ -490,7 +496,7 @@ export function Recyclops({ size = 76, onPress, planSwap, walkRange = 60 }: Prop
       }
     };
 
-    const tricks = [happyHop, wiggle, yawn, wave, doubleBlink];
+    const tricks: (() => Promise<void>)[] = [happyHop, wiggle, yawn, wave, doubleBlink];
     let lastTrick = -1;
     const trick = async () => {
       let i = Math.floor(Math.random() * tricks.length);
@@ -510,25 +516,92 @@ export function Recyclops({ size = 76, onPress, planSwap, walkRange = 60 }: Prop
       return RECYCLOPS_LINES[idx]!;
     };
 
-    // Only called at home, facing front: he looks up at the bubble and
-    // his mouth moves while the line is up.
-    const talk = async () => {
-      const line = pickLine();
+    /** Show a line in the bubble; `mouth` moves his mouth while it's up. */
+    const say = async (line: StringKey, ms?: number, mouth = true) => {
       setBubbleMsg(line);
       bubbleScale.value = 0.7;
       bubbleOpacity.value = withTiming(1, { duration: 200, easing: Easing.out(Easing.quad) });
       bubbleScale.value = withSpring(1, { damping: 8, stiffness: 170 });
-      await all(to(P.browUp, 0.5, 220), to(P.lookY, -0.6, 220), to(P.lookX, -0.4, 220));
-      if (cancelled) return;
-      talking.value = 1;
-      await wait(Math.min(4200, 1700 + translate(line).length * 55));
+      if (mouth) talking.value = 1;
+      await wait(ms ?? Math.min(4200, 1700 + translate(line).length * 55));
       talking.value = 0;
-      if (cancelled) return;
       bubbleOpacity.value = withTiming(0, { duration: 240, easing: Easing.in(Easing.quad) });
       bubbleScale.value = withTiming(0.75, { duration: 240 });
-      await all(to(P.mouthOpen, 0, 150), to(P.browUp, 0, 300), lookCenter());
+      await to(P.mouthOpen, 0, 150);
       if (!cancelled) setBubbleMsg(null);
     };
+
+    // Only called at home, facing front: he looks up at the bubble while
+    // he talks.
+    const talk = async () => {
+      await all(to(P.browUp, 0.5, 220), to(P.lookY, -0.6, 220), to(P.lookX, -0.4, 220));
+      if (cancelled) return;
+      await say(pickLine());
+      await all(to(P.browUp, 0, 300), lookCenter());
+    };
+
+    // ── More tricks ───────────────────────────────────────────────────
+    /** Two quick spins on the spot (front, back, front, back, front). */
+    const pirouette = async () => {
+      await all(to(P.happy, 0.8, 160), to(P.armL, 70, 200), to(P.armR, 70, 200));
+      for (let i = 0; i < 2 && !cancelled; i++) {
+        await turn(true);
+        await turn(false);
+      }
+      await all(to(P.happy, 0, 260), to(P.armL, 18, 260), to(P.armR, 18, 260));
+    };
+
+    /** Arms up in turns, a bounce on every beat. */
+    const dance = async () => {
+      armsBusy.value = 1;
+      await all(to(P.happy, 1, 160), to(P.smile, 1, 160));
+      for (let i = 0; i < 6 && !cancelled; i++) {
+        const left = i % 2 === 0;
+        await all(
+          to(P.armL, left ? 150 : 30, 180),
+          to(P.armR, left ? 30 : 150, 180),
+          to(lean, left ? -7 : 7, 180),
+          to(y, -size * 0.08, 90, Easing.out(Easing.quad)).then(() => to(y, 0, 90, Easing.in(Easing.quad))),
+        );
+      }
+      await all(to(P.armL, 18, 260), to(P.armR, 18, 260), to(lean, 0, 260), to(P.happy, 0, 260), to(P.smile, 0.5, 260));
+      armsBusy.value = 0;
+    };
+
+    /** Ah… ah… ACHOO. The leaf takes the hit. */
+    const sneeze = async () => {
+      for (let i = 0; i < 2 && !cancelled; i++) {
+        await all(to(P.lid, 0.55, 380), to(P.browUp, 0.7, 380), to(P.mouthOpen, 0.35, 380), to(lean, -5 - i * 3, 380));
+        await wait(160);
+      }
+      if (cancelled) return;
+      leafVel.value += 40;
+      await all(
+        to(lean, 12, 110, Easing.out(Easing.cubic)),
+        to(P.squash, 0.84, 110),
+        to(P.lid, 1, 90),
+        to(P.mouthOpen, 1, 90),
+      );
+      say("recyclops.say_achoo", 900, false);
+      await all(to(lean, 0, 420, settle), to(P.squash, 1, 420, settle), to(P.mouthOpen, 0, 300), to(P.browUp, 0, 300));
+      await to(P.lid, 0, 200);
+      await wait(700);
+    };
+
+    /** Nods off, snores, wakes with a start. */
+    const nap = async () => {
+      await all(to(P.lid, 1, 900), to(lean, 5, 900), to(P.browUp, -0.4, 900), to(P.armL, 8, 900), to(P.armR, 8, 900));
+      if (cancelled) return;
+      await say("recyclops.say_zzz", 2400, false);
+      if (cancelled) return;
+      await all(to(P.lid, 0, 90), to(P.browUp, 1, 90), to(lean, 0, 200, settle));
+      await hop(Math.max(6, size * 0.14));
+      await all(to(P.lookX, -1, 150), to(P.armL, 18, 200), to(P.armR, 18, 200));
+      await to(P.lookX, 1, 220);
+      await all(lookCenter(), to(P.browUp, 0, 300));
+    };
+
+    tricks.push(pirouette, dance, sneeze, nap);
 
     // Arm angle (degrees from straight down) that puts his hands at
     // `reachY` px from the top of his box. Arms stay between "out and a
@@ -581,15 +654,94 @@ export function Recyclops({ size = 76, onPress, planSwap, walkRange = 60 }: Prop
       await walkTo(0);
     };
 
-    type Action = "trick" | "talk" | "wander";
-    const ACTIONS: Record<Action, () => Promise<void>> = { trick, talk, wander };
+    // ── Antics (only with room to move) ────────────────────────────────
+    /** Walk somewhere to his left, have a look around, maybe a trick, back. */
+    const stroll = async () => {
+      await walkTo(-between(0.35, 1) * walkRange);
+      if (cancelled) return;
+      await idle();
+      if (cancelled) return;
+      if (Math.random() < 0.5) await trick();
+      if (cancelled) return;
+      await walkTo(0);
+    };
+
+    /** Slides left while facing right. Smooth. */
+    const moonwalk = async () => {
+      const toX = -between(0.5, 0.9) * walkRange;
+      walkDir.value = 1;
+      await all(to(P.lookX, 1, 200), to(lean, -3, 250), to(P.smile, 1, 200));
+      walking.value = 1;
+      await to(x, toX, Math.abs(toX) * 13 + 400, Easing.linear);
+      walking.value = 0;
+      walkDir.value = 0;
+      await all(to(lean, 0, 300, settle), to(P.armL, 18, 220), to(P.armR, 18, 220));
+      if (cancelled) return;
+      await say("recyclops.say_smooth", 1300);
+      if (cancelled) return;
+      await all(to(P.smile, 0.5, 200), to(P.lookX, 0, 200));
+      await walkTo(0);
+    };
+
+    /** Trips over nothing on the way somewhere, lies there, gets up. */
+    const trip = async () => {
+      const toX = -between(0.4, 0.8) * walkRange;
+      walkDir.value = -1;
+      await all(to(P.lookX, -1, 200), to(lean, -4, 250));
+      walking.value = 1;
+      await to(x, toX * 0.6, Math.abs(toX * 0.6) * 9 + 200);
+      walking.value = 0;
+      walkDir.value = 0;
+      if (cancelled) return;
+      // Down he goes, nose first.
+      armsBusy.value = 1;
+      await all(
+        to(lean, -82, 300, Easing.in(Easing.quad)),
+        to(P.armL, 160, 260),
+        to(P.armR, 160, 260),
+        to(P.browUp, 1, 200),
+        to(P.mouthOpen, 0.8, 200),
+      );
+      leafVel.value -= 30;
+      await all(to(P.squash, 0.9, 120), to(P.lid, 1, 120));
+      await wait(900);
+      if (cancelled) return;
+      await all(to(lean, 0, 520, settle), to(P.squash, 1, 400), to(P.armL, 18, 400), to(P.armR, 18, 400), to(P.mouthOpen, 0, 300), to(P.lid, 0, 300));
+      armsBusy.value = 0;
+      await all(to(P.browUp, -0.4, 200), to(P.lookX, 0, 200));
+      if (cancelled) return;
+      await say("recyclops.say_meant");
+      await to(P.browUp, 0, 200);
+      await walkTo(0);
+    };
+
+    /** Off the right edge of the screen, and back in from the left. */
+    const exitStage = async () => {
+      await walkTo(size + 60);
+      if (cancelled) return;
+      await wait(between(1200, 2600));
+      if (cancelled) return;
+      x.value = -(walkRange + size + 60);
+      await walkTo(0);
+      if (cancelled) return;
+      await say("recyclops.say_back");
+    };
+
+    type Action = "trick" | "talk" | "wander" | "stroll" | "moonwalk" | "trip" | "exitStage";
+    const ACTIONS: Record<Action, () => Promise<void>> = { trick, talk, wander, stroll, moonwalk, trip, exitStage };
+    const roam = antics && walkRange > size;
     const WEIGHTS: [Action, number][] = [
-      ["wander", walkRange > 0 ? 4 : 0],
+      ["wander", walkRange > 0 && planSwapRef.current ? 4 : 0],
       ["talk", 3],
       ["trick", 3],
+      ["stroll", roam ? 3 : 0],
+      ["moonwalk", roam ? 1 : 0],
+      ["trip", roam ? 1 : 0],
+      ["exitStage", roam ? 1 : 0],
     ];
-    // Opens with a wander (so the swap shows up soon) and a line.
-    const opening: Action[] = walkRange > 0 ? ["wander", "talk"] : ["talk"];
+    // Opens with something that shows what he does: the swap where there
+    // is one, a stroll on Home, and a line.
+    const opening: Action[] = planSwapRef.current && walkRange > 0 ? ["wander", "talk"] : roam ? ["talk", "stroll"] : ["talk"];
     let last: Action | null = null;
     const next = (): Action => {
       const scripted = opening.shift();
@@ -625,7 +777,7 @@ export function Recyclops({ size = 76, onPress, planSwap, walkRange = 60 }: Prop
     };
     // Shared values are stable; only walkRange/size should restart it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [walkRange, size, reduceMotion]);
+  }, [walkRange, size, reduceMotion, antics]);
 
   const handlePress = () => {
     onPress?.();
