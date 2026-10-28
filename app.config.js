@@ -77,6 +77,10 @@ module.exports = ({ config }) => ({
   },
   plugins: [
     "expo-font",
+    "expo-localization",
+    "expo-secure-store",
+    "expo-status-bar",
+    "expo-web-browser",
     [
       "expo-splash-screen",
       {

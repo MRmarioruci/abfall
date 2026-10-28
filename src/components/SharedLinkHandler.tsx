@@ -29,7 +29,7 @@ export function SharedLinkHandler() {
   toastRef.current = toast;
 
   useEffect(() => {
-    const open = async (url: string | null) => {
+    const open = async (url: string | null | undefined) => {
       const id = sharedCalendarIdFromUrl(url);
       if (!id || handled.has(id)) return;
       handled.add(id);

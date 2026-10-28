@@ -3,7 +3,7 @@
 // location can stay centred.
 
 import { useEffect, useRef, useState } from "react";
-import { Animated, Easing, Modal, Pressable, Text, View } from "react-native";
+import { Animated, Easing, Modal, Pressable, Text, View, type HostInstance } from "react-native";
 import { useTheme } from "../../theme/ThemeContext";
 import { TYPE } from "../../theme/type";
 import { CircBtn } from "../ui/CircBtn";
@@ -20,7 +20,7 @@ export interface HeaderMenuItem {
 
 export function HeaderMenu({ items, accessibilityLabel }: { items: HeaderMenuItem[]; accessibilityLabel: string }) {
   const { S, ST } = useTheme();
-  const anchor = useRef<View>(null);
+  const anchor = useRef<HostInstance>(null);
   const [open, setOpen] = useState(false);
   const [top, setTop] = useState(0);
   const appear = useRef(new Animated.Value(0)).current;
