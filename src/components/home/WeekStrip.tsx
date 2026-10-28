@@ -17,9 +17,12 @@ function iso(d: Date) {
 
 export function WeekStrip({
   events,
+  selected,
   onDayPress,
 }: {
   events: CollectionEvent[];
+  /** The day shown in the details below (YYYY-MM-DD): ringed. */
+  selected?: string;
   /** Same signature as CalendarMonth's: day of month, 0-based month, year. */
   onDayPress: (day: number, month: number, year: number) => void;
 }) {
@@ -50,6 +53,7 @@ export function WeekStrip({
         const marks = (byDate.get(iso(d)) ?? []).sort((a, b) => STREAM_ORDER.indexOf(a) - STREAM_ORDER.indexOf(b));
         const isToday = d.getTime() === today.getTime();
         const isPast = d < today;
+        const isSel = iso(d) === selected && !isToday;
         const label = [weekdayLong(d.getDay()), d.getDate(), ...marks.map((id) => wasteLabel(id))].join(", ");
         return (
           <Pressable
@@ -60,7 +64,7 @@ export function WeekStrip({
             }}
             accessibilityRole="button"
             accessibilityLabel={label}
-            accessibilityState={isToday ? { selected: true } : undefined}
+            accessibilityState={{ selected: iso(d) === selected }}
             style={({ pressed }) => ({
               flex: 1,
               alignItems: "center",
@@ -68,7 +72,9 @@ export function WeekStrip({
               paddingBottom: 9,
               borderRadius: RADIUS.control,
               backgroundColor: isToday ? S.ink : "transparent",
-              opacity: isPast && !isToday ? 0.45 : 1,
+              borderWidth: 1.5,
+              borderColor: isSel ? S.ink : "transparent",
+              opacity: isPast && !isToday && !isSel ? 0.45 : 1,
               transform: [{ scale: pressed ? 0.94 : 1 }],
             })}
           >

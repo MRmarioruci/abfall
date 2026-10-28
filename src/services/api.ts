@@ -10,6 +10,7 @@
 
 import { getDeviceId } from "./deviceId";
 import type { CollectionEvent, SavedCalendar } from "../types/calendar";
+import type { WasteStreamId } from "../theme/colors";
 
 const BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ?? "https://api.abfall.example";
@@ -380,4 +381,37 @@ export async function readCalendar(
     clearTimeout(timer);
     signal?.removeEventListener("abort", onAbort);
   }
+}
+
+// ─── where does this go? ───────────────────────────────────────────────
+
+export type SortWhere = "bin" | "dropoff" | "shop" | "special";
+export type DropoffKind = "centre" | "glass" | "clothes" | "plastic" | "paper" | "generic";
+
+export interface SortAnswer {
+  item: string;
+  where: SortWhere;
+  stream: WasteStreamId | null;
+  dropoff: DropoffKind | null;
+  tip: string;
+}
+
+/**
+ * Ask the server where an item goes: typed (`query`) or photographed
+ * (`image`, a base64 JPEG). `streams` are the bins the user's calendar
+ * collects, so the answer fits their household.
+ */
+export async function sortItem(args: {
+  query?: string;
+  image?: string;
+  locale: string;
+  streams: WasteStreamId[];
+  municipality?: string;
+  canton?: string;
+}): Promise<SortAnswer> {
+  const res = await request<{ result: SortAnswer }>("/v1/sort", {
+    method: "POST",
+    body: JSON.stringify(args),
+  });
+  return res.result;
 }

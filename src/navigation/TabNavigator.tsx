@@ -104,6 +104,7 @@ export function TabNavigator() {
         <HomeScreen
           onCalendarPress={handleSwitcherOpen}
           onGoToReminders={() => setActiveTab("Reminders")}
+          onOpenMap={() => setActiveTab("Map")}
           onAddPress={handleAddPress}
         />
       )}

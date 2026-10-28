@@ -6,7 +6,7 @@ import { useTheme } from "../theme/ThemeContext";
 import { BrandMark } from "../components/ui/BrandMark";
 import { CircBtn } from "../components/ui/CircBtn";
 import { CalendarMonth } from "../components/CalendarMonth";
-import { PinIcon, ChevRIcon, ShareIcon, PencilIcon, CheckIcon, BellIcon, XIcon } from "../components/icons/Icons";
+import { PinIcon, ChevRIcon, ShareIcon, PencilIcon, CheckIcon, BellIcon, XIcon, SearchIcon, CameraIcon } from "../components/icons/Icons";
 import { useCalendars } from "../context/CalendarContext";
 import { useT } from "../context/LocaleContext";
 import { ShareSheet } from "../components/ShareSheet";
@@ -21,13 +21,15 @@ import { getFunFactPool } from "../services/funFacts";
 import type { ReminderRule, CollectionEvent } from "../types/calendar";
 import { parseISODate } from "../lib/dates";
 import { TYPE } from "../theme/type";
-import { ArtTile, PillButton, QuietButton, SoftCard, StreamMark } from "../components/ui/sheet";
+import { ArtTile, PillButton, SoftCard, StreamMark } from "../components/ui/sheet";
 import { HAIRLINE, RADIUS } from "../theme/layout";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ScanArt, BrowseArt } from "../components/art/Art";
 import { haptics } from "../lib/haptics";
 import { NextPickupHero } from "../components/home/NextPickupHero";
-import { UpcomingList } from "../components/home/UpcomingList";
+import { DayDetail } from "../components/home/DayDetail";
+import { TonightCard } from "../components/home/TonightCard";
+import { SortSheet } from "../components/SortSheet";
 import { HomeSkeleton } from "../components/home/HomeSkeleton";
 import { HeaderMenu } from "../components/home/HeaderMenu";
 import { WeekStrip } from "../components/home/WeekStrip";
@@ -45,10 +47,12 @@ interface Props {
   /** Callback fired when the user taps the "Set up reminders" nudge card.
    *  Lets the parent (TabNavigator) switch tabs to Reminders. */
   onGoToReminders?: () => void;
+  /** Switches to the map of collection points (from "where does this go?"). */
+  onOpenMap?: () => void;
   navigation?: any;
 }
 
-export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders }: Props) {
+export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders, onOpenMap }: Props) {
   const { S, ST } = useTheme();
   const insets = useSafeAreaInsets();
   const { active, loading, patchCalendar, homeLocation, setHomeLocation } = useCalendars();
@@ -165,9 +169,7 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders }: Pro
     });
   }, [active]);
 
-  // Sorted list of every future event for the active calendar. The visible
-  // window starts at 5 unique days and expands by 5 each time the user taps
-  // "Show more days".
+  // Sorted list of every future event for the active calendar.
   const allUpcoming = useMemo(() => {
     if (!active) return [];
     const now = new Date();
@@ -188,21 +190,6 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders }: Pro
     }
     return out;
   }, [allUpcoming]);
-
-  const [dayLimit, setDayLimit] = useState(5);
-  // Reset window whenever the active calendar changes so a freshly switched
-  // calendar always starts at the first 5 days.
-  useEffect(() => {
-    setDayLimit(5);
-  }, [active?.id]);
-
-  const upcoming = useMemo(() => {
-    const visibleDates = new Set(uniqueUpcomingDates.slice(0, dayLimit));
-    return allUpcoming.filter((e) => visibleDates.has(e.date));
-  }, [allUpcoming, uniqueUpcomingDates, dayLimit]);
-
-  const hasMoreDays = uniqueUpcomingDates.length > dayLimit;
-  const remainingDays = Math.max(0, uniqueUpcomingDates.length - dayLimit);
 
   // "Did you know" facts — rotate through the merged pool (stream-relevant
   // tips first, then generic recycling facts) every 10 seconds with a
@@ -276,28 +263,20 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders }: Pro
       return;
     }
 
-    const streams = active.events
-      .filter((e) => e.date === dateStr)
-      .map((e) => e.type);
-    const unique = Array.from(new Set(streams));
+    // Otherwise the day becomes the one shown in the details below.
+    setSelectedDate(dateStr);
+  };
 
-    if (unique.length === 0) {
-      // Empty day — let the user add a one-off "specific date" reminder for
-      // the day they tapped. Stream defaults to the calendar's first known
-      // stream (or papier as a fallback); they can swap in the editor.
-      const fallback = (active.events[0]?.type as WasteStreamId | undefined) ?? "papier";
-      setReminderSheet({
-        visible: true,
-        stream: fallback,
-        date: dateStr,
-        when: "specific date",
-      });
+  // From the day details: a reminder for a bin on that day, or (no bin) a
+  // one-off for the day itself.
+  const handleRemind = (stream: WasteStreamId | null, date: string) => {
+    if (!active) return;
+    if (stream) {
+      setReminderSheet({ visible: true, stream, date });
       return;
     }
-
-    // Day has pickups — open the editor with the first matching stream
-    // pre-selected; user can swap streams inside the sheet's chip row.
-    setReminderSheet({ visible: true, stream: unique[0], date: dateStr });
+    const fallback = (active.events[0]?.type as WasteStreamId | undefined) ?? "papier";
+    setReminderSheet({ visible: true, stream: fallback, date, when: "specific date" });
   };
 
   const handleSaveDayEvents = async (date: string, nextDayEvents: CollectionEvent[]) => {
@@ -344,7 +323,14 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders }: Pro
     () => (heroDate ? allUpcoming.filter((e) => e.date === heroDate && ST[e.type]) : []),
     [allUpcoming, heroDate],
   );
-  const listEvents = upcoming.filter((e) => e.date !== heroDate);
+  // The day shown under the calendar: the next pickup until the user
+  // picks another; back to it when the calendar changes.
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  useEffect(() => {
+    setSelectedDate(null);
+  }, [active?.id]);
+  const shownDate = selectedDate ?? heroDate ?? todayIso();
+  const [sortVisible, setSortVisible] = useState(false);
   const factStream: WasteStreamId = allUpcoming[0]?.type && ST[allUpcoming[0].type] ? allUpcoming[0].type : "gruengut";
 
   const openReminder = (stream: WasteStreamId, date: string) => {
@@ -492,6 +478,51 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders }: Pro
               )}
             </View>
 
+            {/* The evening before a pickup: tick the bins as they go out */}
+            <View style={{ paddingHorizontal: 16, paddingTop: 20 }}>
+              <TonightCard calendarId={active.id} events={active.events} />
+            </View>
+
+            {/* Where does this go? Opens the sort sheet */}
+            <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+              <Pressable
+                onPress={() => {
+                  haptics.tap();
+                  setSortVisible(true);
+                }}
+                accessibilityRole="search"
+                accessibilityLabel={t("sort.bar")}
+                style={({ pressed }) => ({
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 10,
+                  height: 50,
+                  paddingLeft: 14,
+                  paddingRight: 6,
+                  borderRadius: RADIUS.control,
+                  backgroundColor: S.card,
+                  borderWidth: HAIRLINE,
+                  borderColor: S.line,
+                  transform: [{ scale: pressed ? 0.98 : 1 }],
+                })}
+              >
+                <SearchIcon color={S.sec} size={17} />
+                <Text style={[TYPE.label, { flex: 1, color: S.sec, fontSize: 15 }]}>{t("sort.bar")}</Text>
+                <View
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: RADIUS.well,
+                    backgroundColor: S.ink,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <CameraIcon color={S.onInk} size={18} />
+                </View>
+              </Pressable>
+            </View>
+
             {/* Reminder nudge: one line and one small button */}
             {showReminderNudge && (
               <View style={{ paddingHorizontal: 16, paddingTop: 14 }}>
@@ -576,30 +607,29 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders }: Pro
             <View style={{ paddingHorizontal: 14 }}>
               {calendarView === "week" ? (
                 <SoftCard style={{ padding: 6 }}>
-                  <WeekStrip events={active.events} onDayPress={handleDayPress} />
+                  <WeekStrip events={active.events} selected={shownDate} onDayPress={handleDayPress} />
                 </SoftCard>
               ) : (
-                <CalendarMonth marks={marks} municipality={municipality} onDayPress={handleDayPress} mascot={false} />
+                <CalendarMonth
+                  marks={marks}
+                  municipality={municipality}
+                  onDayPress={handleDayPress}
+                  selected={shownDate}
+                  mascot={false}
+                />
               )}
             </View>
 
-            {/* The rest of the upcoming pickups */}
-            {listEvents.length > 0 && (
-              <View style={{ paddingHorizontal: 20, paddingTop: 28 }}>
-                <Text style={[TYPE.cap, { color: S.sec }]}>{t("home.coming_up")}</Text>
-                <UpcomingList events={listEvents} />
-              </View>
-            )}
-
-            {/* Show more: expands the window by 5 days at a time */}
-            {hasMoreDays && (
-              <View style={{ alignItems: "center", paddingTop: 6 }}>
-                <QuietButton
-                  label={t("home.show_more", { n: Math.min(5, remainingDays) })}
-                  onPress={() => setDayLimit((n) => n + 5)}
-                />
-              </View>
-            )}
+            {/* The picked day's bins and reminders, then what's after it */}
+            <View style={{ paddingHorizontal: 14, paddingTop: 20 }}>
+              <DayDetail
+                date={shownDate}
+                events={active.events}
+                reminders={active.reminders}
+                onRemind={handleRemind}
+                onSelect={setSelectedDate}
+              />
+            </View>
 
             {/* Fun fact: one quiet line under a hairline, rotating every 10 s */}
             {!!funFact && (
@@ -624,6 +654,15 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders }: Pro
           </>
         )}
       </ScrollView>
+
+      <SortSheet
+        visible={sortVisible}
+        onClose={() => setSortVisible(false)}
+        events={active?.events ?? []}
+        municipality={active?.municipality}
+        canton={active?.canton}
+        onOpenMap={onOpenMap}
+      />
 
       <ShareSheet
         visible={shareVisible}
@@ -661,6 +700,11 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders }: Pro
       />
     </View>
   );
+}
+
+function todayIso(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function formatTriggerLabel(d: Date, monthShort: (m: number) => string): string {

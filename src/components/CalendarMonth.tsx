@@ -24,6 +24,8 @@ interface Props {
   marks?: CollectionMark[];
   municipality?: string;
   onDayPress?: (day: number, month: number, year: number) => void;
+  /** The day shown in the details below (YYYY-MM-DD): ringed. */
+  selected?: string;
   /** Recyclops on the card. Off where he already stands elsewhere on the
    *  screen (Home shows him next to the next pickup). */
   mascot?: boolean;
@@ -50,7 +52,7 @@ const RECYCLOPS_SIZE = 54;
 const RECYCLOPS_RIGHT = 6;
 const RECYCLOPS_BOTTOM_OVERHANG = 6;
 
-export function CalendarMonth({ marks = EMPTY_MARKS, municipality = "", onDayPress, mascot = true }: Props) {
+export function CalendarMonth({ marks = EMPTY_MARKS, municipality = "", onDayPress, selected, mascot = true }: Props) {
   const { S, ST } = useTheme();
   const { t, monthLong, weekdayMin, weekdayLong, wasteLabel } = useT();
   // A white card with a hairline edge. Pickup days are bold, with a short
@@ -341,6 +343,8 @@ export function CalendarMonth({ marks = EMPTY_MARKS, municipality = "", onDayPre
           const dayMarks = markMap[d] || [];
           const primary = dayMarks[0];
           const isToday = isCurrentMonth && d === today;
+          const isSel =
+            !isToday && selected === `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
           const dateLabel = t("day_edit.date_long", {
             weekday: weekdayLong(new Date(year, month, d).getDay()),
             day: d,
@@ -370,6 +374,8 @@ export function CalendarMonth({ marks = EMPTY_MARKS, municipality = "", onDayPre
                   flex: 1,
                   borderRadius: RADIUS.well,
                   backgroundColor: isToday ? T.todayBg : "transparent",
+                  borderWidth: 1.5,
+                  borderColor: isSel ? T.primaryText : "transparent",
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 4,
