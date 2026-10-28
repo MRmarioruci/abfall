@@ -12,7 +12,8 @@ import { SlideUpSheet } from "../components/ui/SlideUpSheet";
 import { OptionRow, QuietButton, SheetHeader } from "../components/ui/sheet";
 import { APPEARANCE_OPTIONS, AppearanceGlyph, AppearancePickerSheet } from "../components/AppearancePickerSheet";
 import { Recyclops } from "../components/Recyclops";
-import { ChevRIcon, XIcon, CalIcon } from "../components/icons/Icons";
+import { ChevRIcon, XIcon, CalIcon, TrophyIcon } from "../components/icons/Icons";
+import { usePlayer } from "../context/PlayerContext";
 import { FlagIcon } from "../components/icons/Flags";
 import { useCalendars } from "../context/CalendarContext";
 import { useLocale, useT } from "../context/LocaleContext";
@@ -40,8 +41,9 @@ const LOCALE_TINT: Record<string, WasteStreamId> = {
 // can't present one Modal while another is still dismissing.
 const SHEET_SWAP_MS = 320;
 
-export function ProfileScreen() {
+export function ProfileScreen({ onOpenLeaderboard }: { onOpenLeaderboard?: () => void }) {
   const { S, ST, mode } = useTheme();
+  const { player } = usePlayer();
   const insets = useSafeAreaInsets();
   const { reload } = useCalendars();
   const { locale } = useLocale();
@@ -114,6 +116,16 @@ export function ProfileScreen() {
         </View>
 
         <View style={{ paddingHorizontal: 16, gap: 8 }}>
+          {onOpenLeaderboard && (
+            <OptionRow
+              label={t("lb.title")}
+              subtitle={player ? `${player.avatar} ${player.nickname} · ${t("lb.home_chip", { n: player.points })}` : t("lb.join_body")}
+              icon={<TrophyIcon color={ST.karton.ink} size={20} />}
+              iconBg={ST.karton.soft}
+              onPress={onOpenLeaderboard}
+              right={<ChevRIcon color={S.ter} size={13} />}
+            />
+          )}
           <OptionRow
             label={t("profile.language_row")}
             icon={<FlagIcon locale={locale} width={24} />}

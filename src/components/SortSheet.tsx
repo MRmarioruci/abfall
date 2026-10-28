@@ -18,6 +18,7 @@ import { useT } from "../context/LocaleContext";
 import { haptics } from "../lib/haptics";
 import { parseISODate } from "../lib/dates";
 import { sortItem, type SortAnswer } from "../services/api";
+import { usePlayer } from "../context/PlayerContext";
 import type { WasteStreamId } from "../theme/colors";
 import type { CollectionEvent } from "../types/calendar";
 import type { StringKey } from "../i18n";
@@ -49,7 +50,8 @@ export function SortSheet({ visible, onClose, events, municipality, canton, onOp
   const { t, locale, wasteLabel, weekdayShort, monthShort } = useT();
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
-  const [answer, setAnswer] = useState<SortAnswer | null>(null);
+  const [answer, setAnswer] = useState<(SortAnswer & { points: number }) | null>(null);
+  const { addPoints } = usePlayer();
   const [error, setError] = useState(false);
   const lastAsk = useRef<{ query?: string; image?: string } | null>(null);
 
@@ -72,6 +74,7 @@ export function SortSheet({ visible, onClose, events, municipality, canton, onOp
       const a = await sortItem({ ...input, locale, streams, municipality, canton });
       haptics.success();
       setAnswer(a);
+      addPoints(a.points);
     } catch (err) {
       console.warn("[sort] failed", err);
       haptics.warn();
@@ -272,6 +275,9 @@ export function SortSheet({ visible, onClose, events, municipality, canton, onOp
               </View>
               {!!answer.tip && (
                 <Text style={[TYPE.body, { color: S.ink, marginTop: 12 }]}>{answer.tip}</Text>
+              )}
+              {answer.points > 0 && (
+                <Text style={[TYPE.cap, { color: S.success, marginTop: 10 }]}>{t("lb.learn", { n: answer.points })}</Text>
               )}
             </SoftCard>
 

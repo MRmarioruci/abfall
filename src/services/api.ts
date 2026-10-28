@@ -408,10 +408,77 @@ export async function sortItem(args: {
   streams: WasteStreamId[];
   municipality?: string;
   canton?: string;
-}): Promise<SortAnswer> {
-  const res = await request<{ result: SortAnswer }>("/v1/sort", {
+}): Promise<SortAnswer & { points: number }> {
+  const res = await request<{ result: SortAnswer; points?: number }>("/v1/sort", {
     method: "POST",
     body: JSON.stringify(args),
   });
-  return res.result;
+  return { ...res.result, points: res.points ?? 0 };
+}
+
+// ─── leaderboard ───────────────────────────────────────────────────────
+
+export interface Player {
+  nickname: string;
+  avatar: string;
+  municipality: string | null;
+  canton: string | null;
+  /** Consecutive weeks with a check-in. */
+  streak: number;
+  /** This season's points. */
+  points: number;
+  season: { id: string; endsOn: string };
+}
+
+export type BoardScope = "town" | "canton" | "all";
+
+export interface Board {
+  season: { id: string; endsOn: string };
+  scope: BoardScope;
+  place: { canton: string | null; municipality: string | null };
+  rows: { rank: number; nickname: string; avatar: string; points: number; streak: number; me: boolean }[];
+  me: { rank: number; points: number; toNext: number | null } | null;
+}
+
+export interface CheckinResult {
+  points: { bins: number; allOut: number; evening: number; multiplier: number; milestone: number; total: number };
+  streak: number;
+  seasonPoints: number;
+}
+
+/** This device's player profile, or null when it hasn't joined. */
+export async function getPlayer(): Promise<Player | null> {
+  try {
+    return (await request<{ player: Player }>("/v1/players/me")).player;
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+export async function savePlayer(p: {
+  nickname: string;
+  avatar: string;
+  municipality?: string;
+  canton?: string;
+}): Promise<Player> {
+  return (await request<{ player: Player }>("/v1/players/me", { method: "PUT", body: JSON.stringify(p) })).player;
+}
+
+export async function leaveLeaderboard(): Promise<void> {
+  await request("/v1/players/me", { method: "DELETE" });
+}
+
+export async function checkIn(args: { date: string; streams: WasteStreamId[]; due: number }): Promise<CheckinResult> {
+  return request<CheckinResult>("/v1/checkins", { method: "POST", body: JSON.stringify(args) });
+}
+
+export async function getBoard(
+  scope: BoardScope,
+  place?: { canton?: string; municipality?: string },
+): Promise<Board> {
+  const q = new URLSearchParams({ scope });
+  if (place?.canton) q.set("canton", place.canton);
+  if (place?.municipality) q.set("municipality", place.municipality);
+  return request<Board>(`/v1/leaderboard?${q.toString()}`);
 }

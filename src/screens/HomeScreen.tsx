@@ -6,7 +6,7 @@ import { useTheme } from "../theme/ThemeContext";
 import { BrandMark } from "../components/ui/BrandMark";
 import { CircBtn } from "../components/ui/CircBtn";
 import { CalendarMonth } from "../components/CalendarMonth";
-import { PinIcon, ChevRIcon, ShareIcon, PencilIcon, CheckIcon, BellIcon, XIcon, SearchIcon, CameraIcon } from "../components/icons/Icons";
+import { PinIcon, ChevRIcon, ShareIcon, PencilIcon, CheckIcon, BellIcon, XIcon, SearchIcon, CameraIcon, TrophyIcon } from "../components/icons/Icons";
 import { useCalendars } from "../context/CalendarContext";
 import { useT } from "../context/LocaleContext";
 import { ShareSheet } from "../components/ShareSheet";
@@ -20,7 +20,7 @@ import { isReminderNudgeDismissed, dismissReminderNudge } from "../services/nudg
 import { getFunFactPool } from "../services/funFacts";
 import type { ReminderRule, CollectionEvent } from "../types/calendar";
 import { parseISODate } from "../lib/dates";
-import { TYPE } from "../theme/type";
+import { FONT, NUMS, TYPE } from "../theme/type";
 import { ArtTile, PillButton, SoftCard, StreamMark } from "../components/ui/sheet";
 import { HAIRLINE, RADIUS } from "../theme/layout";
 import { EmptyState } from "../components/ui/EmptyState";
@@ -34,6 +34,7 @@ import { HomeSkeleton } from "../components/home/HomeSkeleton";
 import { HeaderMenu } from "../components/home/HeaderMenu";
 import { WeekStrip } from "../components/home/WeekStrip";
 import { Segmented } from "../components/ui/Segmented";
+import { usePlayer } from "../context/PlayerContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type CalendarView = "week" | "month";
@@ -49,11 +50,14 @@ interface Props {
   onGoToReminders?: () => void;
   /** Switches to the map of collection points (from "where does this go?"). */
   onOpenMap?: () => void;
+  /** Opens the leaderboard (header chip, "join" from tonight's checklist). */
+  onOpenLeaderboard?: () => void;
   navigation?: any;
 }
 
-export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders, onOpenMap }: Props) {
+export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders, onOpenMap, onOpenLeaderboard }: Props) {
   const { S, ST } = useTheme();
+  const { player } = usePlayer();
   const insets = useSafeAreaInsets();
   const { active, loading, patchCalendar, homeLocation, setHomeLocation } = useCalendars();
   const { t, monthShort, locale } = useT();
@@ -347,7 +351,7 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders, onOpe
         {/* Top bar: logo · location (centred) · menu. The side slots have
             the same width, so the location sits in the screen's centre. */}
         <View style={{ paddingHorizontal: 20, flexDirection: "row", alignItems: "center" }}>
-          <View style={{ width: 44, alignItems: "flex-start" }}>
+          <View style={{ width: 92, alignItems: "flex-start" }}>
             <BrandMark size={30} />
           </View>
 
@@ -383,7 +387,36 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders, onOpe
             </Pressable>
           </View>
 
-          <View style={{ width: 44, alignItems: "flex-end" }}>
+          <View style={{ width: 92, flexDirection: "row", justifyContent: "flex-end", alignItems: "center", gap: 6 }}>
+            {/* Leaderboard: your points once you've joined, a trophy before */}
+            {onOpenLeaderboard && !editMode && (
+              <Pressable
+                onPress={() => {
+                  haptics.tap();
+                  onOpenLeaderboard();
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={t("lb.title")}
+                hitSlop={6}
+                style={({ pressed }) => ({
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 4,
+                  height: 36,
+                  paddingHorizontal: player ? 10 : 0,
+                  width: player ? undefined : 36,
+                  justifyContent: "center",
+                  borderRadius: RADIUS.well + 4,
+                  backgroundColor: S.card,
+                  borderWidth: HAIRLINE,
+                  borderColor: S.line,
+                  opacity: pressed ? 0.6 : 1,
+                })}
+              >
+                <TrophyIcon color={S.ink} size={16} />
+                {player && <Text style={[TYPE.cap, NUMS, { color: S.ink, fontFamily: FONT.w800 }]}>{player.points}</Text>}
+              </Pressable>
+            )}
             {active &&
               (editMode ? (
                 // While editing, the slot is the way out: one tap to finish.
@@ -480,7 +513,7 @@ export function HomeScreen({ onCalendarPress, onAddPress, onGoToReminders, onOpe
 
             {/* The evening before a pickup: tick the bins as they go out */}
             <View style={{ paddingHorizontal: 16, paddingTop: 20 }}>
-              <TonightCard calendarId={active.id} events={active.events} />
+              <TonightCard calendarId={active.id} events={active.events} onJoin={onOpenLeaderboard} />
             </View>
 
             {/* Where does this go? Opens the sort sheet */}

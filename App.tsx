@@ -7,6 +7,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { View } from "react-native";
 import { TabNavigator } from "./src/navigation/TabNavigator";
 import { CalendarProvider } from "./src/context/CalendarContext";
+import { PlayerProvider } from "./src/context/PlayerContext";
 import { ToastProvider } from "./src/components/ui/Toast";
 import { OnboardingScreen } from "./src/screens/OnboardingScreen";
 import { hasOnboarded, markOnboarded } from "./src/services/onboarding";
@@ -72,14 +73,16 @@ export default function App() {
           <LocaleProvider initialLocale={initialLocale}>
             <ToastProvider>
               <CalendarProvider>
-                <NavigationContainer>
-                  {showOnboarding ? (
-                    <OnboardingScreen onDone={handleOnboardingDone} />
-                  ) : (
-                    <TabNavigator />
-                  )}
-                  <ThemedStatusBar />
-                </NavigationContainer>
+                <PlayerProvider>
+                  <NavigationContainer>
+                    {showOnboarding ? (
+                      <OnboardingScreen onDone={handleOnboardingDone} />
+                    ) : (
+                      <TabNavigator />
+                    )}
+                    <ThemedStatusBar />
+                  </NavigationContainer>
+                </PlayerProvider>
               </CalendarProvider>
             </ToastProvider>
           </LocaleProvider>

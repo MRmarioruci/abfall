@@ -221,6 +221,8 @@ interface Props {
   /** Bigger bits that use `walkRange`: strolls, moonwalk, tripping, and
    *  walking off-screen and back. Needs room to his left and right. */
   antics?: boolean;
+  /** Speech bubbles; off where there's no room above him for one. */
+  talk?: boolean;
 }
 
 // Rig geometry (viewBox units; see recyclops/rig.ts): shoulders sit at
@@ -253,7 +255,7 @@ function usePointProps(R: SharedValue<Rig>, part: PointPart) {
   return useAnimatedProps(() => ({ cx: R.value[part].cx, cy: R.value[part].cy }));
 }
 
-export function Recyclops({ size = 76, onPress, planSwap, walkRange = 60, antics = false }: Props) {
+export function Recyclops({ size = 76, onPress, planSwap, walkRange = 60, antics = false, talk: talks = true }: Props) {
   const { t } = useT();
   const { isDark } = useTheme();
   const limb = isDark ? LIMB_ON_DARK : INK;
@@ -518,6 +520,7 @@ export function Recyclops({ size = 76, onPress, planSwap, walkRange = 60, antics
 
     /** Show a line in the bubble; `mouth` moves his mouth while it's up. */
     const say = async (line: StringKey, ms?: number, mouth = true) => {
+      if (!talks) return wait(Math.min(ms ?? 1200, 1200));
       setBubbleMsg(line);
       bubbleScale.value = 0.7;
       bubbleOpacity.value = withTiming(1, { duration: 200, easing: Easing.out(Easing.quad) });
@@ -732,7 +735,7 @@ export function Recyclops({ size = 76, onPress, planSwap, walkRange = 60, antics
     const roam = antics && walkRange > size;
     const WEIGHTS: [Action, number][] = [
       ["wander", walkRange > 0 && planSwapRef.current ? 4 : 0],
-      ["talk", 3],
+      ["talk", talks ? 3 : 0],
       ["trick", 3],
       ["stroll", roam ? 3 : 0],
       ["moonwalk", roam ? 1 : 0],
@@ -741,7 +744,9 @@ export function Recyclops({ size = 76, onPress, planSwap, walkRange = 60, antics
     ];
     // Opens with something that shows what he does: the swap where there
     // is one, a stroll on Home, and a line.
-    const opening: Action[] = planSwapRef.current && walkRange > 0 ? ["wander", "talk"] : roam ? ["talk", "stroll"] : ["talk"];
+    const opening: Action[] = (
+      planSwapRef.current && walkRange > 0 ? ["wander", "talk"] : roam ? ["talk", "stroll"] : ["talk"]
+    ).filter((a) => talks || a !== "talk") as Action[];
     let last: Action | null = null;
     const next = (): Action => {
       const scripted = opening.shift();
@@ -777,7 +782,7 @@ export function Recyclops({ size = 76, onPress, planSwap, walkRange = 60, antics
     };
     // Shared values are stable; only walkRange/size should restart it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [walkRange, size, reduceMotion, antics]);
+  }, [walkRange, size, reduceMotion, antics, talks]);
 
   const handlePress = () => {
     onPress?.();

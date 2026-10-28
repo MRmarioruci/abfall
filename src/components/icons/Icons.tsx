@@ -234,6 +234,16 @@ export function ScanIcon({ color, size = 22 }: IconProps) {
   );
 }
 
+export function TrophyIcon({ color, size = 20 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M7 4h10v5a5 5 0 0 1-10 0V4Z" stroke={color} {...sw(2)} />
+      <Path d="M7 6H4.5v1.5A3 3 0 0 0 7.4 10.5M17 6h2.5v1.5a3 3 0 0 1-2.9 3" stroke={color} {...sw(2)} />
+      <Path d="M12 14v3.5M8.5 20.5h7M10 17.5h4" stroke={color} {...sw(2)} />
+    </Svg>
+  );
+}
+
 export function QrIcon({ color, size = 22 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">

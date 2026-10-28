@@ -10,6 +10,7 @@ import { RemindersScreen } from "../screens/RemindersScreen";
 import { ProfileScreen } from "../screens/ProfileScreen";
 import { ScanReviewScreen } from "../screens/ScanReviewScreen";
 import { ScanCameraScreen } from "../screens/ScanCameraScreen";
+import { LeaderboardScreen } from "../screens/LeaderboardScreen";
 import { useCalendars } from "../context/CalendarContext";
 import { STREAM_ORDER, type WasteStreamId } from "../theme/colors";
 import type { ImageInput } from "../services/parseCalendar";
@@ -27,6 +28,7 @@ export function TabNavigator() {
   const [cameraMode, setCameraMode] = useState<"paper" | "qr" | null>(null);
   const cameraOpen = cameraMode !== null;
   const [scanImages, setScanImages] = useState<ImageInput[] | null>(null);
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
 
   // Count of reminders currently turned on across all streams of the active
   // calendar — drives the badge on the Reminders tab icon.
@@ -73,6 +75,10 @@ export function TabNavigator() {
         setCameraMode(null);
         return true;
       }
+      if (leaderboardOpen) {
+        setLeaderboardOpen(false);
+        return true;
+      }
       if (activeTab !== "Home") {
         setActiveTab("Home");
         return true;
@@ -80,7 +86,7 @@ export function TabNavigator() {
       return false;
     });
     return () => sub.remove();
-  }, [scanImages, cameraOpen, activeTab]);
+  }, [scanImages, cameraOpen, leaderboardOpen, activeTab]);
 
   if (scanImages) {
     return (
@@ -96,6 +102,15 @@ export function TabNavigator() {
     return <ScanCameraScreen mode={cameraMode} onClose={() => setCameraMode(null)} onDone={handleScanConfirm} />;
   }
 
+  if (leaderboardOpen) {
+    return (
+      <View style={{ flex: 1 }}>
+        <LeaderboardScreen onBack={() => setLeaderboardOpen(false)} />
+        <SharedLinkHandler />
+      </View>
+    );
+  }
+
   // Conditional render: only the active tab's screen is mounted at any one
   // time. This ensures heavy native modules (Google Maps on the Map tab)
   // are fully torn down when the user navigates away — so other tabs
@@ -107,12 +122,13 @@ export function TabNavigator() {
           onCalendarPress={handleSwitcherOpen}
           onGoToReminders={() => setActiveTab("Reminders")}
           onOpenMap={() => setActiveTab("Map")}
+          onOpenLeaderboard={() => setLeaderboardOpen(true)}
           onAddPress={handleAddPress}
         />
       )}
       {activeTab === "Map" && <CollectionCentersScreen />}
       {activeTab === "Reminders" && <RemindersScreen onAddCalendar={handleAddPress} />}
-      {activeTab === "Profile" && <ProfileScreen />}
+      {activeTab === "Profile" && <ProfileScreen onOpenLeaderboard={() => setLeaderboardOpen(true)} />}
 
       <BottomTabBar
         activeTab={activeTab}
